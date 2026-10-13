@@ -1,5 +1,5 @@
 // Fantasy and Tactical Stamp Catalog
-// Renders vector-sharp cartography and battlemap assets
+// Renders vector-sharp cartography and battlemap assets with consistent aspect ratios and lighting
 
 export const STAMP_CATEGORIES = [
   { id: 'world_nature', name: 'Nature & Land', type: 'world' },
@@ -11,7 +11,9 @@ export const STAMP_CATEGORIES = [
 ];
 
 export const STAMPS = [
-  // ---------------- WORLD: MOUNTAINS & HILLS ----------------
+  // =========================================================================
+  // 1. WORLD: NATURE & LAND (Mountains, Hills, Trees, Flora)
+  // =========================================================================
   {
     id: 'mountain_grand',
     name: 'Grand Mountain Peak',
@@ -99,121 +101,419 @@ export const STAMPS = [
       // Draw secondary peak left
       ctx.beginPath();
       ctx.moveTo(w * 0.05, h * 0.85);
-      ctx.lineTo(w * 0.3, h * 0.35);
-      ctx.lineTo(w * 0.55, h * 0.85);
+      ctx.lineTo(w * 0.28, h * 0.35);
+      ctx.lineTo(w * 0.52, h * 0.85);
+      ctx.closePath();
       ctx.fillStyle = fill;
       ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = h * 0.035;
-      ctx.stroke();
 
-      // Draw secondary peak right
+      // Left peak shadow
       ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.85);
-      ctx.lineTo(w * 0.75, h * 0.38);
-      ctx.lineTo(w * 0.95, h * 0.85);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.stroke();
-
-      // Draw primary main peak center
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.85);
-      ctx.lineTo(w * 0.5, h * 0.18);
-      ctx.lineTo(w * 0.78, h * 0.85);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.stroke();
-
-      // Primary ridge line
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.18);
-      ctx.quadraticCurveTo(w * 0.52, h * 0.5, w * 0.56, h * 0.85);
-      ctx.stroke();
-
-      // Shading on center peak
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.18);
-      ctx.quadraticCurveTo(w * 0.52, h * 0.5, w * 0.56, h * 0.85);
-      ctx.lineTo(w * 0.78, h * 0.85);
+      ctx.moveTo(w * 0.28, h * 0.35);
+      ctx.lineTo(w * 0.35, h * 0.85);
+      ctx.lineTo(w * 0.52, h * 0.85);
       ctx.closePath();
       ctx.fillStyle = 'rgba(50, 40, 35, 0.25)';
       ctx.fill();
+
+      // Secondary peak right
+      ctx.beginPath();
+      ctx.moveTo(w * 0.48, h * 0.85);
+      ctx.lineTo(w * 0.75, h * 0.3);
+      ctx.lineTo(w * 0.95, h * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Right peak shadow
+      ctx.beginPath();
+      ctx.moveTo(w * 0.75, h * 0.3);
+      ctx.lineTo(w * 0.82, h * 0.85);
+      ctx.lineTo(w * 0.95, h * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(50, 40, 35, 0.25)';
+      ctx.fill();
+
+      // Center grand peak in front
+      ctx.beginPath();
+      ctx.moveTo(w * 0.2, h * 0.9);
+      ctx.lineTo(w * 0.5, h * 0.15);
+      ctx.lineTo(w * 0.8, h * 0.9);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Center shadow
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.15);
+      ctx.quadraticCurveTo(w * 0.52, h * 0.45, w * 0.58, h * 0.9);
+      ctx.lineTo(w * 0.8, h * 0.9);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(50, 40, 35, 0.3)';
+      ctx.fill();
+
+      // Inking all spines and outlines
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Left outline
+      ctx.beginPath();
+      ctx.moveTo(w * 0.05, h * 0.85);
+      ctx.lineTo(w * 0.28, h * 0.35);
+      ctx.lineTo(w * 0.36, h * 0.55);
+      ctx.stroke();
+
+      // Right outline
+      ctx.beginPath();
+      ctx.moveTo(w * 0.65, h * 0.52);
+      ctx.lineTo(w * 0.75, h * 0.3);
+      ctx.lineTo(w * 0.95, h * 0.85);
+      ctx.stroke();
+
+      // Center outline & spine
+      ctx.beginPath();
+      ctx.moveTo(w * 0.2, h * 0.9);
+      ctx.lineTo(w * 0.5, h * 0.15);
+      ctx.lineTo(w * 0.8, h * 0.9);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.15);
+      ctx.quadraticCurveTo(w * 0.52, h * 0.45, w * 0.58, h * 0.9);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'mountain_snow_peak',
+    name: 'Glacial Horn Peak',
+    category: 'world_nature',
+    defaultScale: 1.2,
+    aspect: 1,
+    render: (ctx, size, color = '#1e293b', fill = '#f8fafc') => {
+      ctx.save();
+      const s = size;
+      // Main sharp horn
+      ctx.beginPath();
+      ctx.moveTo(s * 0.15, s * 0.85);
+      ctx.lineTo(s * 0.48, s * 0.12);
+      ctx.lineTo(s * 0.88, s * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Icy deep blue shadow face
+      ctx.beginPath();
+      ctx.moveTo(s * 0.48, s * 0.12);
+      ctx.lineTo(s * 0.56, s * 0.85);
+      ctx.lineTo(s * 0.88, s * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(56, 110, 168, 0.38)';
+      ctx.fill();
+
+      // Blue ice crevasse fissures
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = s * 0.02;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.52, s * 0.4);
+      ctx.lineTo(s * 0.68, s * 0.52);
+      ctx.moveTo(s * 0.55, s * 0.6);
+      ctx.lineTo(s * 0.76, s * 0.72);
+      ctx.stroke();
+
+      // Dark ink outlines
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.038;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(s * 0.15, s * 0.85);
+      ctx.lineTo(s * 0.48, s * 0.12);
+      ctx.lineTo(s * 0.88, s * 0.85);
+      ctx.moveTo(s * 0.48, s * 0.12);
+      ctx.lineTo(s * 0.56, s * 0.85);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'mountain_volcano',
+    name: 'Volcanic Caldera',
+    category: 'world_nature',
+    defaultScale: 1.3,
+    aspect: 1.2,
+    render: (ctx, size, color = '#271c19', fill = '#4a3f35') => {
+      ctx.save();
+      const w = size * 1.2;
+      const h = size;
+
+      // Base truncated cone
+      ctx.beginPath();
+      ctx.moveTo(w * 0.1, h * 0.85);
+      ctx.lineTo(w * 0.38, h * 0.28);
+      ctx.lineTo(w * 0.62, h * 0.28);
+      ctx.lineTo(w * 0.9, h * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Dark basalt shadow
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.28);
+      ctx.lineTo(w * 0.6, h * 0.85);
+      ctx.lineTo(w * 0.9, h * 0.85);
+      ctx.lineTo(w * 0.62, h * 0.28);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(20, 15, 12, 0.45)';
+      ctx.fill();
+
+      // Glowing lava crater
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, h * 0.28, w * 0.14, h * 0.05, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#f97316';
+      ctx.fill();
+      ctx.strokeStyle = '#ea580c';
+      ctx.lineWidth = h * 0.02;
+      ctx.stroke();
+
+      // Lava streaks down flanks
+      ctx.beginPath();
+      ctx.moveTo(w * 0.46, h * 0.32);
+      ctx.lineTo(w * 0.4, h * 0.6);
+      ctx.lineTo(w * 0.32, h * 0.85);
+      ctx.moveTo(w * 0.54, h * 0.32);
+      ctx.lineTo(w * 0.58, h * 0.55);
+      ctx.lineTo(w * 0.65, h * 0.85);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = h * 0.025;
+      ctx.stroke();
+
+      // Smoke billow plume
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.18, w * 0.06, 0, Math.PI * 2);
+      ctx.arc(w * 0.44, h * 0.12, w * 0.08, 0, Math.PI * 2);
+      ctx.arc(w * 0.54, h * 0.1, w * 0.09, 0, Math.PI * 2);
+      ctx.arc(w * 0.48, h * 0.04, w * 0.07, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(100, 95, 90, 0.45)';
+      ctx.fill();
+
+      // Outline
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.1, h * 0.85);
+      ctx.lineTo(w * 0.38, h * 0.28);
+      ctx.moveTo(w * 0.62, h * 0.28);
+      ctx.lineTo(w * 0.9, h * 0.85);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'mountain_mesa',
+    name: 'Desert Mesa Plateau',
+    category: 'world_nature',
+    defaultScale: 1.3,
+    aspect: 1.4,
+    render: (ctx, size, color = '#451a03', fill = '#d97706') => {
+      ctx.save();
+      const w = size * 1.4;
+      const h = size;
+
+      // Flat mesa top and stepped slopes
+      ctx.beginPath();
+      ctx.moveTo(w * 0.08, h * 0.85);
+      ctx.lineTo(w * 0.25, h * 0.32);
+      ctx.lineTo(w * 0.75, h * 0.32);
+      ctx.lineTo(w * 0.92, h * 0.85);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Shadow side
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.32);
+      ctx.lineTo(w * 0.55, h * 0.85);
+      ctx.lineTo(w * 0.92, h * 0.85);
+      ctx.lineTo(w * 0.75, h * 0.32);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(70, 20, 10, 0.35)';
+      ctx.fill();
+
+      // Sedimentary horizontal stratum lines
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = h * 0.02;
+      for (let y = 0.45; y < 0.8; y += 0.12) {
+        ctx.beginPath();
+        ctx.moveTo(w * (0.08 + (0.85 - y) * 0.25), h * y);
+        ctx.lineTo(w * (0.92 - (0.85 - y) * 0.25), h * y);
+        ctx.stroke();
+      }
+
+      // Outlines
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.strokeRect(w * 0.25, h * 0.32, w * 0.5, 0); // Flat top line
+      ctx.beginPath();
+      ctx.moveTo(w * 0.08, h * 0.85);
+      ctx.lineTo(w * 0.25, h * 0.32);
+      ctx.lineTo(w * 0.75, h * 0.32);
+      ctx.lineTo(w * 0.92, h * 0.85);
+      ctx.stroke();
 
       ctx.restore();
     }
   },
   {
     id: 'hills_rolling',
-    name: 'Rolling Hills',
+    name: 'Rolling Green Hills',
     category: 'world_nature',
     defaultScale: 1.0,
     aspect: 1.3,
-    render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
+    render: (ctx, size, color = '#2c221e', fill = '#dbe5c5') => {
       ctx.save();
       const w = size * 1.3;
       const h = size;
 
-      // Hill 1
+      // Draw mounds
       ctx.beginPath();
-      ctx.arc(w * 0.35, h * 0.75, h * 0.4, Math.PI, 0, false);
+      ctx.moveTo(w * 0.05, h * 0.8);
+      ctx.quadraticCurveTo(w * 0.35, h * 0.3, w * 0.65, h * 0.8);
+      ctx.closePath();
       ctx.fillStyle = fill;
       ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.4, h * 0.8);
+      ctx.quadraticCurveTo(w * 0.7, h * 0.4, w * 0.95, h * 0.8);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Hill shadow curves
+      ctx.beginPath();
+      ctx.moveTo(w * 0.35, h * 0.3);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.55, w * 0.65, h * 0.8);
+      ctx.strokeStyle = 'rgba(50, 40, 35, 0.25)';
+      ctx.lineWidth = h * 0.08;
+      ctx.stroke();
+
+      // Inking
       ctx.strokeStyle = color;
       ctx.lineWidth = h * 0.035;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.05, h * 0.8);
+      ctx.quadraticCurveTo(w * 0.35, h * 0.3, w * 0.65, h * 0.8);
       ctx.stroke();
 
-      // Hill 2
       ctx.beginPath();
-      ctx.arc(w * 0.68, h * 0.75, h * 0.35, Math.PI, 0, false);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.stroke();
-
-      // Detail stipple lines
-      ctx.beginPath();
-      ctx.arc(w * 0.35, h * 0.75, h * 0.32, Math.PI * 1.15, Math.PI * 1.45, false);
-      ctx.lineWidth = h * 0.02;
+      ctx.moveTo(w * 0.45, h * 0.65);
+      ctx.quadraticCurveTo(w * 0.7, h * 0.4, w * 0.95, h * 0.8);
       ctx.stroke();
 
       ctx.restore();
     }
   },
+  {
+    id: 'hills_dunes',
+    name: 'Desert Sand Dunes',
+    category: 'world_nature',
+    defaultScale: 1.1,
+    aspect: 1.4,
+    render: (ctx, size, color = '#78350f', fill = '#fde68a') => {
+      ctx.save();
+      const w = size * 1.4;
+      const h = size;
 
-  // ---------------- WORLD: TREES & FORESTS ----------------
+      // Crescent barchan dune curve
+      ctx.beginPath();
+      ctx.moveTo(w * 0.05, h * 0.75);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.35, w * 0.85, h * 0.75);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Windward shadow face
+      ctx.beginPath();
+      ctx.moveTo(w * 0.45, h * 0.35);
+      ctx.quadraticCurveTo(w * 0.62, h * 0.55, w * 0.85, h * 0.75);
+      ctx.lineTo(w * 0.45, h * 0.75);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(180, 83, 9, 0.28)';
+      ctx.fill();
+
+      // Crest lines
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.05, h * 0.75);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.35, w * 0.85, h * 0.75);
+      ctx.stroke();
+
+      // Second dune ridge
+      ctx.beginPath();
+      ctx.moveTo(w * 0.35, h * 0.8);
+      ctx.quadraticCurveTo(w * 0.7, h * 0.5, w * 0.95, h * 0.85);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  },
   {
     id: 'tree_pine',
     name: 'Evergreen Pine',
     category: 'world_nature',
-    defaultScale: 0.8,
+    defaultScale: 0.9,
     aspect: 0.8,
-    render: (ctx, size, color = '#1f3823', fill = '#3f6844') => {
+    render: (ctx, size, color = '#2c221e', fill = '#4a6741') => {
       ctx.save();
       const s = size;
+      const trunkColor = '#5c4033';
 
       // Trunk
-      ctx.fillStyle = '#5c4033';
-      ctx.fillRect(s * 0.44, s * 0.75, s * 0.12, s * 0.2);
+      ctx.fillStyle = trunkColor;
+      ctx.fillRect(s * 0.36, s * 0.65, s * 0.08, s * 0.25);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.03;
+      ctx.strokeRect(s * 0.36, s * 0.65, s * 0.08, s * 0.25);
 
-      // Layered pine triangles
-      const layers = [
-        { top: s * 0.1, bot: s * 0.42, w: s * 0.42 },
-        { top: s * 0.3, bot: s * 0.62, w: s * 0.58 },
-        { top: s * 0.48, bot: s * 0.82, w: s * 0.74 }
+      // Layered pine boughs
+      const boughs = [
+        { top: 0.15, bot: 0.38, w: 0.45 },
+        { top: 0.3, bot: 0.52, w: 0.6 },
+        { top: 0.44, bot: 0.7, w: 0.75 }
       ];
 
-      layers.forEach((l) => {
+      for (const b of boughs) {
         ctx.beginPath();
-        ctx.moveTo(s * 0.5, l.top);
-        ctx.lineTo(s * 0.5 - l.w / 2, l.bot);
-        ctx.lineTo(s * 0.5 + l.w / 2, l.bot);
+        ctx.moveTo(s * 0.4, s * b.top);
+        ctx.lineTo(s * (0.4 - b.w / 2), s * b.bot);
+        ctx.lineTo(s * 0.4, s * (b.bot - 0.06));
+        ctx.lineTo(s * (0.4 + b.w / 2), s * b.bot);
         ctx.closePath();
         ctx.fillStyle = fill;
         ctx.fill();
+
+        // Shaded right half
+        ctx.beginPath();
+        ctx.moveTo(s * 0.4, s * b.top);
+        ctx.lineTo(s * 0.4, s * (b.bot - 0.06));
+        ctx.lineTo(s * (0.4 + b.w / 2), s * b.bot);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(20, 40, 20, 0.3)';
+        ctx.fill();
+
         ctx.strokeStyle = color;
         ctx.lineWidth = s * 0.03;
         ctx.stroke();
-      });
+      }
 
       ctx.restore();
     }
@@ -222,362 +522,587 @@ export const STAMPS = [
     id: 'tree_oak',
     name: 'Ancient Oak',
     category: 'world_nature',
-    defaultScale: 0.9,
-    aspect: 0.9,
-    render: (ctx, size, color = '#2a3b1f', fill = '#638c47') => {
+    defaultScale: 1.0,
+    aspect: 1,
+    render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
+      ctx.save();
+      const s = size;
+
+      // Trunk with roots
+      ctx.fillStyle = '#654321';
+      ctx.beginPath();
+      ctx.moveTo(s * 0.42, s * 0.55);
+      ctx.lineTo(s * 0.4, s * 0.88);
+      ctx.lineTo(s * 0.32, s * 0.95);
+      ctx.lineTo(s * 0.68, s * 0.95);
+      ctx.lineTo(s * 0.6, s * 0.88);
+      ctx.lineTo(s * 0.58, s * 0.55);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.03;
+      ctx.stroke();
+
+      // Canopy foliage clouds
+      const foliageBlobs = [
+        { x: 0.5, y: 0.35, r: 0.28 },
+        { x: 0.32, y: 0.45, r: 0.2 },
+        { x: 0.68, y: 0.45, r: 0.2 },
+        { x: 0.45, y: 0.22, r: 0.18 }
+      ];
+
+      for (const f of foliageBlobs) {
+        ctx.beginPath();
+        ctx.arc(s * f.x, s * f.y, s * f.r, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+
+        // Shading bottom-right
+        ctx.save();
+        ctx.clip();
+        ctx.beginPath();
+        ctx.arc(s * (f.x + 0.08), s * (f.y + 0.08), s * f.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(25, 45, 20, 0.35)';
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.03;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'tree_autumn',
+    name: 'Autumn Maple',
+    category: 'world_nature',
+    defaultScale: 1.0,
+    aspect: 1,
+    render: (ctx, size, color = '#3f2212', fill = '#d97706') => {
       ctx.save();
       const s = size;
 
       // Trunk
-      ctx.beginPath();
-      ctx.moveTo(s * 0.42, s * 0.6);
-      ctx.lineTo(s * 0.4, s * 0.92);
-      ctx.lineTo(s * 0.6, s * 0.92);
-      ctx.lineTo(s * 0.58, s * 0.6);
-      ctx.fillStyle = '#543d2b';
-      ctx.fill();
-      ctx.strokeStyle = '#2d2015';
-      ctx.lineWidth = s * 0.025;
-      ctx.stroke();
-
-      // Puffy foliage puffs
-      ctx.fillStyle = fill;
+      ctx.fillStyle = '#5c3d2e';
+      ctx.fillRect(s * 0.44, s * 0.55, s * 0.12, s * 0.38);
       ctx.strokeStyle = color;
       ctx.lineWidth = s * 0.03;
+      ctx.strokeRect(s * 0.44, s * 0.55, s * 0.12, s * 0.38);
 
-      const puffs = [
-        { x: s * 0.35, y: s * 0.45, r: s * 0.24 },
-        { x: s * 0.65, y: s * 0.45, r: s * 0.24 },
-        { x: s * 0.5, y: s * 0.3, r: s * 0.26 },
-        { x: s * 0.5, y: s * 0.5, r: s * 0.28 }
+      // Amber and red canopy lobes
+      const lobes = [
+        { x: 0.5, y: 0.32, r: 0.26, col: '#ea580c' },
+        { x: 0.34, y: 0.42, r: 0.19, col: '#d97706' },
+        { x: 0.66, y: 0.42, r: 0.19, col: '#b91c1c' }
       ];
 
-      puffs.forEach(p => {
+      for (const l of lobes) {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.arc(s * l.x, s * l.y, s * l.r, 0, Math.PI * 2);
+        ctx.fillStyle = l.col;
         ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.03;
         ctx.stroke();
-      });
+      }
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'tree_dead',
+    name: 'Gnarled Dead Tree',
+    category: 'world_nature',
+    defaultScale: 0.9,
+    aspect: 0.9,
+    render: (ctx, size, color = '#1c1917', fill = '#44403c') => {
+      ctx.save();
+      const s = size;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.045;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Twisted trunk and bare branches
+      ctx.beginPath();
+      ctx.moveTo(s * 0.45, s * 0.92);
+      ctx.quadraticCurveTo(s * 0.42, s * 0.6, s * 0.48, s * 0.4);
+      // Main fork left
+      ctx.lineTo(s * 0.25, s * 0.22);
+      ctx.moveTo(s * 0.32, s * 0.28);
+      ctx.lineTo(s * 0.2, s * 0.38);
+      // Main fork right
+      ctx.moveTo(s * 0.48, s * 0.4);
+      ctx.lineTo(s * 0.72, s * 0.2);
+      ctx.moveTo(s * 0.62, s * 0.27);
+      ctx.lineTo(s * 0.78, s * 0.36);
+      ctx.stroke();
 
       ctx.restore();
     }
   },
   {
     id: 'tree_forest_cluster',
-    name: 'Dense Forest Grove',
+    name: 'Dense Woodland Canopy',
     category: 'world_nature',
     defaultScale: 1.2,
     aspect: 1.4,
-    render: (ctx, size, color = '#1a331c', fill = '#4a7541') => {
+    render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
       ctx.save();
       const w = size * 1.4;
       const h = size;
 
+      // Cluster of 6 overlapping tree canopy mounds
       const trees = [
-        { x: w * 0.25, y: h * 0.4, s: h * 0.7 },
-        { x: w * 0.75, y: h * 0.4, s: h * 0.7 },
-        { x: w * 0.5, y: h * 0.3, s: h * 0.8 },
-        { x: w * 0.38, y: h * 0.55, s: h * 0.65 },
-        { x: w * 0.62, y: h * 0.55, s: h * 0.65 }
+        { x: 0.25, y: 0.65, r: 0.22, f: '#486b3a' },
+        { x: 0.75, y: 0.65, r: 0.22, f: '#486b3a' },
+        { x: 0.35, y: 0.42, r: 0.25, f: fill },
+        { x: 0.65, y: 0.42, r: 0.25, f: fill },
+        { x: 0.5, y: 0.3, r: 0.28, f: '#5c864b' }
       ];
 
-      trees.forEach(t => {
+      for (const t of trees) {
         ctx.beginPath();
-        ctx.arc(t.x, t.y, t.s * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = fill;
+        ctx.arc(w * t.x, h * t.y, h * t.r, 0, Math.PI * 2);
+        ctx.fillStyle = t.f;
         ctx.fill();
+
+        // Shadow bottom-right
+        ctx.save();
+        ctx.clip();
+        ctx.beginPath();
+        ctx.arc(w * (t.x + 0.05), h * (t.y + 0.05), h * t.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(20, 40, 15, 0.35)';
+        ctx.fill();
+        ctx.restore();
+
         ctx.strokeStyle = color;
-        ctx.lineWidth = h * 0.03;
+        ctx.lineWidth = h * 0.035;
         ctx.stroke();
-      });
+      }
 
       ctx.restore();
     }
   },
 
-  // ---------------- WORLD: CIVILIZATION & STRUCTURES ----------------
+  // =========================================================================
+  // 2. WORLD: SETTLEMENTS & CIVILIZATION
+  // =========================================================================
   {
     id: 'castle_citadel',
-    name: 'Grand Fortress Citadel',
+    name: 'Royal Citadel & Keep',
     category: 'world_civilization',
     defaultScale: 1.3,
     aspect: 1.2,
-    render: (ctx, size, color = '#23201d', fill = '#d4cbb8') => {
+    render: (ctx, size, color = '#271c19', fill = '#e2d9cc') => {
       ctx.save();
-      const s = size;
+      const w = size * 1.2;
+      const h = size;
+
+      // Central Great Tower
       ctx.fillStyle = fill;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.03;
+      ctx.fillRect(w * 0.38, h * 0.25, w * 0.24, h * 0.65);
+      // Left tower
+      ctx.fillRect(w * 0.15, h * 0.45, w * 0.18, h * 0.45);
+      // Right tower
+      ctx.fillRect(w * 0.67, h * 0.45, w * 0.18, h * 0.45);
 
-      // Central keep
-      ctx.fillRect(s * 0.35, s * 0.3, s * 0.3, s * 0.55);
-      ctx.strokeRect(s * 0.35, s * 0.3, s * 0.3, s * 0.55);
+      // Shaded right sides of towers
+      ctx.fillStyle = 'rgba(30, 25, 20, 0.3)';
+      ctx.fillRect(w * 0.5, h * 0.25, w * 0.12, h * 0.65);
+      ctx.fillRect(w * 0.76, h * 0.45, w * 0.09, h * 0.45);
 
-      // Left Tower
-      ctx.fillRect(s * 0.18, s * 0.22, s * 0.18, s * 0.63);
-      ctx.strokeRect(s * 0.18, s * 0.22, s * 0.18, s * 0.63);
-
-      // Right Tower
-      ctx.fillRect(s * 0.64, s * 0.22, s * 0.18, s * 0.63);
-      ctx.strokeRect(s * 0.64, s * 0.22, s * 0.18, s * 0.63);
-
-      // Conical roofs
-      ctx.fillStyle = '#8b2626'; // Deep red roof
-      // Left roof
-      ctx.beginPath();
-      ctx.moveTo(s * 0.15, s * 0.22);
-      ctx.lineTo(s * 0.27, s * 0.05);
-      ctx.lineTo(s * 0.39, s * 0.22);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Right roof
-      ctx.beginPath();
-      ctx.moveTo(s * 0.61, s * 0.22);
-      ctx.lineTo(s * 0.73, s * 0.05);
-      ctx.lineTo(s * 0.85, s * 0.22);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
+      // Roof conical caps (Crimson roofs)
+      ctx.fillStyle = '#b91c1c';
       // Center roof
       ctx.beginPath();
-      ctx.moveTo(s * 0.32, s * 0.3);
-      ctx.lineTo(s * 0.5, s * 0.12);
-      ctx.lineTo(s * 0.68, s * 0.3);
+      ctx.moveTo(w * 0.34, h * 0.25);
+      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.66, h * 0.25);
       ctx.closePath();
       ctx.fill();
+      // Left roof
+      ctx.beginPath();
+      ctx.moveTo(w * 0.12, h * 0.45);
+      ctx.lineTo(w * 0.24, h * 0.28);
+      ctx.lineTo(w * 0.36, h * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      // Right roof
+      ctx.beginPath();
+      ctx.moveTo(w * 0.64, h * 0.45);
+      ctx.lineTo(w * 0.76, h * 0.28);
+      ctx.lineTo(w * 0.88, h * 0.45);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gate archway
+      ctx.fillStyle = '#1c1917';
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.78, w * 0.07, Math.PI, 0);
+      ctx.lineTo(w * 0.57, h * 0.9);
+      ctx.lineTo(w * 0.43, h * 0.9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Outlines
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.strokeRect(w * 0.38, h * 0.25, w * 0.24, h * 0.65);
+      ctx.strokeRect(w * 0.15, h * 0.45, w * 0.18, h * 0.45);
+      ctx.strokeRect(w * 0.67, h * 0.45, w * 0.18, h * 0.45);
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.34, h * 0.25);
+      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.66, h * 0.25);
+      ctx.moveTo(w * 0.12, h * 0.45);
+      ctx.lineTo(w * 0.24, h * 0.28);
+      ctx.lineTo(w * 0.36, h * 0.45);
+      ctx.moveTo(w * 0.64, h * 0.45);
+      ctx.lineTo(w * 0.76, h * 0.28);
+      ctx.lineTo(w * 0.88, h * 0.45);
       ctx.stroke();
 
-      // Portcullis / arched gate
-      ctx.fillStyle = '#3a2e24';
-      ctx.beginPath();
-      ctx.arc(s * 0.5, s * 0.72, s * 0.08, Math.PI, 0, false);
-      ctx.lineTo(s * 0.58, s * 0.85);
-      ctx.lineTo(s * 0.42, s * 0.85);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      ctx.restore();
+    }
+  },
+  {
+    id: 'fortress_keep',
+    name: 'Stone Bastion Keep',
+    category: 'world_civilization',
+    defaultScale: 1.2,
+    aspect: 1.1,
+    render: (ctx, size, color = '#1c1917', fill = '#cbd5e1') => {
+      ctx.save();
+      const w = size * 1.1;
+      const h = size;
+
+      // Heavy square battlement keep
+      ctx.fillStyle = fill;
+      ctx.fillRect(w * 0.25, h * 0.35, w * 0.5, h * 0.55);
+
+      // Crenellations
+      const creneCount = 5;
+      const cw = (w * 0.5) / (creneCount * 2 - 1);
+      for (let i = 0; i < creneCount; i++) {
+        ctx.fillRect(w * 0.25 + i * cw * 2, h * 0.27, cw, h * 0.08);
+      }
+
+      // Shadow side
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
+      ctx.fillRect(w * 0.5, h * 0.35, w * 0.25, h * 0.55);
 
       // Arrow slits
-      ctx.fillStyle = '#222';
-      ctx.fillRect(s * 0.25, s * 0.38, s * 0.04, s * 0.1);
-      ctx.fillRect(s * 0.71, s * 0.38, s * 0.04, s * 0.1);
-      ctx.fillRect(s * 0.48, s * 0.42, s * 0.04, s * 0.1);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(w * 0.36, h * 0.45, w * 0.03, h * 0.12);
+      ctx.fillRect(w * 0.61, h * 0.45, w * 0.03, h * 0.12);
+
+      // Inking
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.strokeRect(w * 0.25, h * 0.35, w * 0.5, h * 0.55);
 
       ctx.restore();
     }
   },
   {
     id: 'village_houses',
-    name: 'Village Hamlet',
+    name: 'Village Settlement',
     category: 'world_civilization',
     defaultScale: 1.1,
-    aspect: 1.2,
-    render: (ctx, size, color = '#23201d', fill = '#dcd4c0') => {
+    aspect: 1.3,
+    render: (ctx, size, color = '#2c221e', fill = '#dcd4c0') => {
       ctx.save();
-      const s = size;
-      ctx.lineWidth = s * 0.03;
+      const w = size * 1.3;
+      const h = size;
 
       const houses = [
-        { x: s * 0.15, y: s * 0.45, w: s * 0.32, h: s * 0.35, roofH: s * 0.2 },
-        { x: s * 0.53, y: s * 0.4, w: s * 0.35, h: s * 0.4, roofH: s * 0.22 }
+        { x: 0.15, y: 0.5, w: 0.28, h: 0.35, roof: '#991b1b' },
+        { x: 0.55, y: 0.45, w: 0.32, h: 0.4, roof: '#854d0e' },
+        { x: 0.38, y: 0.6, w: 0.26, h: 0.32, roof: '#78350f' }
       ];
 
-      houses.forEach(h => {
-        // Base
+      for (const b of houses) {
+        // Walls
         ctx.fillStyle = fill;
-        ctx.fillRect(h.x, h.y + h.roofH * 0.7, h.w, h.h - h.roofH * 0.7);
-        ctx.strokeRect(h.x, h.y + h.roofH * 0.7, h.w, h.h - h.roofH * 0.7);
+        ctx.fillRect(w * b.x, h * b.y, w * b.w, h * b.h);
 
-        // Roof
-        ctx.fillStyle = '#9e472a';
+        // Gable Roof
+        ctx.fillStyle = b.roof;
         ctx.beginPath();
-        ctx.moveTo(h.x - s * 0.03, h.y + h.roofH * 0.7);
-        ctx.lineTo(h.x + h.w / 2, h.y);
-        ctx.lineTo(h.x + h.w + s * 0.03, h.y + h.roofH * 0.7);
+        ctx.moveTo(w * (b.x - 0.04), h * b.y);
+        ctx.lineTo(w * (b.x + b.w / 2), h * (b.y - 0.22));
+        ctx.lineTo(w * (b.x + b.w + 0.04), h * b.y);
         ctx.closePath();
         ctx.fill();
-        ctx.stroke();
 
         // Door
-        ctx.fillStyle = '#42281a';
-        ctx.fillRect(h.x + h.w * 0.4, h.y + h.h * 0.65, h.w * 0.2, h.h * 0.35);
-      });
+        ctx.fillStyle = '#3e2723';
+        ctx.fillRect(w * (b.x + b.w * 0.35), h * (b.y + b.h * 0.55), w * (b.w * 0.3), h * (b.h * 0.45));
+
+        // Inking
+        ctx.strokeStyle = color;
+        ctx.lineWidth = h * 0.035;
+        ctx.strokeRect(w * b.x, h * b.y, w * b.w, h * b.h);
+        ctx.beginPath();
+        ctx.moveTo(w * (b.x - 0.04), h * b.y);
+        ctx.lineTo(w * (b.x + b.w / 2), h * (b.y - 0.22));
+        ctx.lineTo(w * (b.x + b.w + 0.04), h * b.y);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'windmill',
+    name: 'Windmill & Farm',
+    category: 'world_civilization',
+    defaultScale: 1.0,
+    aspect: 0.9,
+    render: (ctx, size, color = '#2c221e', fill = '#f5f5f4') => {
+      ctx.save();
+      const s = size;
+
+      // Tapered tower
+      ctx.beginPath();
+      ctx.moveTo(s * 0.32, s * 0.88);
+      ctx.lineTo(s * 0.38, s * 0.35);
+      ctx.lineTo(s * 0.52, s * 0.35);
+      ctx.lineTo(s * 0.58, s * 0.88);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.035;
+      ctx.stroke();
+
+      // Conical cap
+      ctx.beginPath();
+      ctx.moveTo(s * 0.35, s * 0.35);
+      ctx.lineTo(s * 0.45, s * 0.22);
+      ctx.lineTo(s * 0.55, s * 0.35);
+      ctx.closePath();
+      ctx.fillStyle = '#78350f';
+      ctx.fill();
+      ctx.stroke();
+
+      // 4 Windmill lattice sails
+      ctx.save();
+      ctx.translate(s * 0.45, s * 0.35);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.025;
+      for (let i = 0; i < 4; i++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -s * 0.32);
+        ctx.stroke();
+        // Lattice sail cloth
+        ctx.fillStyle = 'rgba(240, 235, 220, 0.85)';
+        ctx.fillRect(s * 0.02, -s * 0.3, s * 0.08, s * 0.26);
+        ctx.strokeRect(s * 0.02, -s * 0.3, s * 0.08, s * 0.26);
+      }
+      ctx.restore();
 
       ctx.restore();
     }
   },
   {
     id: 'tower_wizard',
-    name: 'Spire Tower',
+    name: 'Spire of High Sorcery',
     category: 'world_civilization',
     defaultScale: 1.1,
     aspect: 0.7,
-    render: (ctx, size, color = '#23201d', fill = '#ccc4b0') => {
+    render: (ctx, size, color = '#1e1b4b', fill = '#c7d2fe') => {
       ctx.save();
-      const s = size;
-      ctx.lineWidth = s * 0.03;
+      const w = size * 0.7;
+      const h = size;
 
-      // Shaft
+      // Tall slender tower
       ctx.fillStyle = fill;
-      ctx.fillRect(s * 0.35, s * 0.28, s * 0.3, s * 0.62);
-      ctx.strokeRect(s * 0.35, s * 0.28, s * 0.3, s * 0.62);
+      ctx.fillRect(w * 0.36, h * 0.32, w * 0.28, h * 0.58);
 
-      // Top parapet
-      ctx.fillRect(s * 0.3, s * 0.22, s * 0.4, s * 0.08);
-      ctx.strokeRect(s * 0.3, s * 0.22, s * 0.4, s * 0.08);
+      // Arcane blue shading
+      ctx.fillStyle = 'rgba(49, 46, 129, 0.35)';
+      ctx.fillRect(w * 0.5, h * 0.32, w * 0.14, h * 0.58);
 
-      // Sharp roof
-      ctx.fillStyle = '#4338ca'; // Arcane blue roof
+      // High spire cone (Indigo)
       ctx.beginPath();
-      ctx.moveTo(s * 0.28, s * 0.22);
-      ctx.lineTo(s * 0.5, s * 0.03);
-      ctx.lineTo(s * 0.72, s * 0.22);
+      ctx.moveTo(w * 0.3, h * 0.32);
+      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.7, h * 0.32);
       ctx.closePath();
+      ctx.fillStyle = '#4338ca';
       ctx.fill();
-      ctx.stroke();
 
-      // Glowing crystal orb on top
+      // Floating arcane crystal orb
       ctx.beginPath();
-      ctx.arc(s * 0.5, s * 0.03, s * 0.04, 0, Math.PI * 2);
-      ctx.fillStyle = '#67e8f9';
+      ctx.arc(w * 0.5, h * 0.03, w * 0.08, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8';
       ctx.fill();
+
+      // Inking
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.strokeRect(w * 0.36, h * 0.32, w * 0.28, h * 0.58);
+      ctx.beginPath();
+      ctx.moveTo(w * 0.3, h * 0.32);
+      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.7, h * 0.32);
       ctx.stroke();
 
       ctx.restore();
     }
   },
-
-  // ---------------- WORLD: NAUTICAL & CARTOGRAPHY ----------------
   {
-    id: 'compass_rose',
-    name: 'Cartographer Compass Rose',
-    category: 'world_nautical',
-    defaultScale: 1.4,
-    aspect: 1,
-    render: (ctx, size, color = '#2c221e', fill = '#dfd2b5') => {
+    id: 'ruins_stonehenge',
+    name: 'Ancient Megalith Circle',
+    category: 'world_civilization',
+    defaultScale: 1.2,
+    aspect: 1.3,
+    render: (ctx, size, color = '#292524', fill = '#a8a29e') => {
       ctx.save();
-      const s = size;
-      const c = s / 2;
-      const r = s * 0.44;
+      const w = size * 1.3;
+      const h = size;
 
-      // Outer rings
-      ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.025;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(c, c, r * 0.8, 0, Math.PI * 2);
-      ctx.lineWidth = s * 0.015;
-      ctx.stroke();
-
-      // 4 Main Cardinal Points (N, S, E, W)
-      const points = [
-        { angle: -Math.PI / 2, len: r * 0.95, label: 'N' },
-        { angle: 0, len: r * 0.95, label: 'E' },
-        { angle: Math.PI / 2, len: r * 0.95, label: 'S' },
-        { angle: Math.PI, len: r * 0.95, label: 'W' }
+      // Three trilithon stone arches
+      const stones = [
+        { x: 0.15, h: 0.4 },
+        { x: 0.42, h: 0.5 },
+        { x: 0.72, h: 0.42 }
       ];
 
-      points.forEach(p => {
-        const perp = p.angle + Math.PI / 2;
-        const w = s * 0.07;
-        const tipX = c + Math.cos(p.angle) * p.len;
-        const tipY = c + Math.sin(p.angle) * p.len;
-        const baseLX = c + Math.cos(perp) * w;
-        const baseLY = c + Math.sin(perp) * w;
-        const baseRX = c - Math.cos(perp) * w;
-        const baseRY = c - Math.sin(perp) * w;
+      for (const s of stones) {
+        // Vertical pillars
+        ctx.fillStyle = fill;
+        ctx.fillRect(w * s.x, h * (0.85 - s.h), w * 0.08, h * s.h);
+        ctx.fillRect(w * (s.x + 0.12), h * (0.85 - s.h), w * 0.08, h * s.h);
 
-        // Dark half
-        ctx.beginPath();
-        ctx.moveTo(c, c);
-        ctx.lineTo(tipX, tipY);
-        ctx.lineTo(baseLX, baseLY);
-        ctx.closePath();
-        ctx.fillStyle = '#2c221e';
-        ctx.fill();
+        // Capstone horizontal slab
+        ctx.fillRect(w * (s.x - 0.02), h * (0.85 - s.h - 0.08), w * 0.24, h * 0.08);
 
-        // Light half
+        // Outlines
+        ctx.strokeStyle = color;
+        ctx.lineWidth = h * 0.032;
+        ctx.strokeRect(w * s.x, h * (0.85 - s.h), w * 0.08, h * s.h);
+        ctx.strokeRect(w * (s.x + 0.12), h * (0.85 - s.h), w * 0.08, h * s.h);
+        ctx.strokeRect(w * (s.x - 0.02), h * (0.85 - s.h - 0.08), w * 0.24, h * 0.08);
+      }
+
+      ctx.restore();
+    }
+  },
+
+  // =========================================================================
+  // 3. WORLD: NAUTICAL & ICONS (Compass, Ships, Monsters)
+  // =========================================================================
+  {
+    id: 'compass_rose',
+    name: 'Nautical Compass Rose',
+    category: 'world_nautical',
+    defaultScale: 1.5,
+    aspect: 1,
+    render: (ctx, size, color = '#2c221e', fill = '#d4af37') => {
+      ctx.save();
+      const s = size;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
+      const r = s * 0.42;
+
+      // Outer rings
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.03;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 8-Point Compass Star
+      const points = 8;
+      for (let i = 0; i < points; i++) {
+        const isMajor = i % 2 === 0;
+        const len = isMajor ? r * 0.95 : r * 0.65;
+        const angle = (Math.PI / 4) * i - Math.PI / 2;
+        const nextAngle = angle + Math.PI / points;
+
+        // Left half (Dark shade)
         ctx.beginPath();
-        ctx.moveTo(c, c);
-        ctx.lineTo(tipX, tipY);
-        ctx.lineTo(baseRX, baseRY);
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+        ctx.lineTo(cx + Math.cos(nextAngle) * (r * 0.22), cy + Math.sin(nextAngle) * (r * 0.22));
         ctx.closePath();
-        ctx.fillStyle = '#d4af37'; // Antique gold
+        ctx.fillStyle = isMajor ? '#78350f' : '#b45309';
         ctx.fill();
         ctx.stroke();
-      });
 
-      // Center gem
-      ctx.beginPath();
-      ctx.arc(c, c, s * 0.06, 0, Math.PI * 2);
-      ctx.fillStyle = '#8b2626';
-      ctx.fill();
-      ctx.stroke();
+        // Right half (Gold/Light)
+        const prevAngle = angle - Math.PI / points;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+        ctx.lineTo(cx + Math.cos(prevAngle) * (r * 0.22), cy + Math.sin(prevAngle) * (r * 0.22));
+        ctx.closePath();
+        ctx.fillStyle = isMajor ? fill : '#fef08a';
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Fleur-de-lis / North Arrow indicator
+      ctx.font = `bold ${Math.round(s * 0.16)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = color;
+      ctx.fillText('N', cx, cy - r * 0.98);
 
       ctx.restore();
     }
   },
   {
     id: 'ship_caravel',
-    name: 'Galleon / Caravel',
+    name: 'Merchant Caravel',
     category: 'world_nautical',
     defaultScale: 1.1,
     aspect: 1.2,
-    render: (ctx, size, color = '#23201d', fill = '#5a3d28') => {
+    render: (ctx, size, color = '#2c221e', fill = '#fafafa') => {
       ctx.save();
-      const s = size;
-      ctx.lineWidth = s * 0.03;
+      const w = size * 1.2;
+      const h = size;
 
-      // Hull
+      // Wooden Hull
       ctx.beginPath();
-      ctx.moveTo(s * 0.1, s * 0.65);
-      ctx.quadraticCurveTo(s * 0.45, s * 0.85, s * 0.9, s * 0.6);
-      ctx.lineTo(s * 0.85, s * 0.72);
-      ctx.quadraticCurveTo(s * 0.45, s * 0.92, s * 0.15, s * 0.75);
+      ctx.moveTo(w * 0.1, h * 0.65);
+      ctx.lineTo(w * 0.85, h * 0.65);
+      ctx.quadraticCurveTo(w * 0.95, h * 0.72, w * 0.82, h * 0.85);
+      ctx.lineTo(w * 0.22, h * 0.85);
       ctx.closePath();
-      ctx.fillStyle = fill;
+      ctx.fillStyle = '#78350f';
       ctx.fill();
       ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
       ctx.stroke();
 
       // Masts
       ctx.beginPath();
-      ctx.moveTo(s * 0.35, s * 0.68);
-      ctx.lineTo(s * 0.35, s * 0.2);
-      ctx.moveTo(s * 0.62, s * 0.66);
-      ctx.lineTo(s * 0.62, s * 0.15);
+      ctx.moveTo(w * 0.45, h * 0.65);
+      ctx.lineTo(w * 0.45, h * 0.15); // Main mast
+      ctx.moveTo(w * 0.7, h * 0.65);
+      ctx.lineTo(w * 0.7, h * 0.25); // Foremast
       ctx.stroke();
 
-      // Billowing Sails
-      ctx.fillStyle = '#f5f0e1';
-      // Fore sail
-      ctx.beginPath();
-      ctx.moveTo(s * 0.35, s * 0.25);
-      ctx.quadraticCurveTo(s * 0.48, s * 0.38, s * 0.35, s * 0.52);
-      ctx.quadraticCurveTo(s * 0.22, s * 0.38, s * 0.35, s * 0.25);
-      ctx.fill();
-      ctx.stroke();
-
+      // Billowed White Sails
+      ctx.fillStyle = fill;
       // Main sail
       ctx.beginPath();
-      ctx.moveTo(s * 0.62, s * 0.2);
-      ctx.quadraticCurveTo(s * 0.77, s * 0.35, s * 0.62, s * 0.52);
-      ctx.quadraticCurveTo(s * 0.48, s * 0.35, s * 0.62, s * 0.2);
+      ctx.moveTo(w * 0.32, h * 0.22);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.35, w * 0.58, h * 0.22);
+      ctx.lineTo(w * 0.58, h * 0.55);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.68, w * 0.32, h * 0.55);
+      ctx.closePath();
       ctx.fill();
-      ctx.stroke();
-
-      // Water waves under ship
-      ctx.beginPath();
-      ctx.moveTo(s * 0.05, s * 0.82);
-      ctx.quadraticCurveTo(s * 0.25, s * 0.78, s * 0.5, s * 0.82);
-      ctx.quadraticCurveTo(s * 0.75, s * 0.86, s * 0.95, s * 0.8);
-      ctx.strokeStyle = '#29527a';
       ctx.stroke();
 
       ctx.restore();
@@ -585,217 +1110,218 @@ export const STAMPS = [
   },
   {
     id: 'sea_serpent',
-    name: 'Mythic Sea Monster',
+    name: 'Mythic Leviathan',
     category: 'world_nautical',
     defaultScale: 1.2,
     aspect: 1.3,
-    render: (ctx, size, color = '#1a332d', fill = '#265449') => {
+    render: (ctx, size, color = '#0f172a', fill = '#0d9488') => {
       ctx.save();
-      const s = size;
-      ctx.lineWidth = s * 0.035;
+      const w = size * 1.3;
+      const h = size;
 
-      // Serpent coils rising from the deep
-      // Coil 1
-      ctx.beginPath();
-      ctx.arc(s * 0.25, s * 0.7, s * 0.16, Math.PI, 0, false);
+      // Coils rising above ocean waves
       ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.045;
+      ctx.lineCap = 'round';
+
+      // Serpent Head & Yawning Maw
       ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.stroke();
-
-      // Coil 2
       ctx.beginPath();
-      ctx.arc(s * 0.55, s * 0.7, s * 0.2, Math.PI, 0, false);
-      ctx.fill();
-      ctx.stroke();
-
-      // Dragon/Serpent Head rising up
-      ctx.beginPath();
-      ctx.moveTo(s * 0.75, s * 0.7);
-      ctx.quadraticCurveTo(s * 0.8, s * 0.4, s * 0.78, s * 0.25);
-      ctx.lineTo(s * 0.92, s * 0.2); // snout
-      ctx.lineTo(s * 0.82, s * 0.32); // jaw
-      ctx.quadraticCurveTo(s * 0.86, s * 0.5, s * 0.82, s * 0.7);
+      ctx.moveTo(w * 0.15, h * 0.7);
+      ctx.quadraticCurveTo(w * 0.18, h * 0.3, w * 0.28, h * 0.25);
+      ctx.lineTo(w * 0.38, h * 0.2); // Snout
+      ctx.lineTo(w * 0.32, h * 0.35); // Lower jaw
+      ctx.quadraticCurveTo(w * 0.25, h * 0.45, w * 0.22, h * 0.7);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Eye
+      // Monster eye
+      ctx.fillStyle = '#ef4444';
       ctx.beginPath();
-      ctx.arc(s * 0.82, s * 0.24, s * 0.02, 0, Math.PI * 2);
-      ctx.fillStyle = '#fbbf24';
+      ctx.arc(w * 0.28, h * 0.28, h * 0.03, 0, Math.PI * 2);
       ctx.fill();
 
-      // Water ripples
-      ctx.strokeStyle = '#2563eb';
-      ctx.beginPath();
-      ctx.moveTo(s * 0.05, s * 0.72);
-      ctx.lineTo(s * 0.95, s * 0.72);
-      ctx.stroke();
+      // Body coils
+      const coils = [
+        { x: 0.45, y: 0.75, r: 0.18 },
+        { x: 0.72, y: 0.75, r: 0.15 }
+      ];
+
+      for (const c of coils) {
+        ctx.beginPath();
+        ctx.arc(w * c.x, h * c.y, h * c.r, Math.PI, 0);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
   },
 
-  // ---------------- BATTLEMAP: DUNGEON STRUCTURES ----------------
+  // =========================================================================
+  // 4. BATTLEMAP: DUNGEON & STRUCTURES
+  // =========================================================================
   {
     id: 'dungeon_wall_block',
     name: 'Stone Wall Section',
     category: 'battle_rooms',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#0f172a', fill = '#334155') => {
       ctx.save();
       const s = size;
-      // Stone masonry block
-      ctx.fillStyle = '#3a3d40';
-      ctx.fillRect(0, 0, s, s);
 
-      // Inner brick lines
-      ctx.strokeStyle = '#1e2022';
-      ctx.lineWidth = s * 0.06;
-      ctx.strokeRect(s * 0.03, s * 0.03, s * 0.94, s * 0.94);
+      // Outer drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(s * 0.1, s * 0.1, s * 0.85, s * 0.85);
 
-      // Brick pattern
-      ctx.lineWidth = s * 0.03;
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.5);
-      ctx.lineTo(s, s * 0.5);
-      ctx.moveTo(s * 0.5, 0);
-      ctx.lineTo(s * 0.5, s * 0.5);
-      ctx.moveTo(s * 0.25, s * 0.5);
-      ctx.lineTo(s * 0.25, s);
-      ctx.moveTo(s * 0.75, s * 0.5);
-      ctx.lineTo(s * 0.75, s);
-      ctx.stroke();
+      // Thick masonry wall cap
+      ctx.fillStyle = fill;
+      ctx.fillRect(s * 0.05, s * 0.05, s * 0.85, s * 0.85);
 
-      // Highlight bevel
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = s * 0.03;
-      ctx.beginPath();
-      ctx.moveTo(s * 0.05, s * 0.05);
-      ctx.lineTo(s * 0.95, s * 0.05);
-      ctx.stroke();
+      // Inner bevel highlight
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(s * 0.1, s * 0.1, s * 0.75, s * 0.06);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.05;
+      ctx.strokeRect(s * 0.05, s * 0.05, s * 0.85, s * 0.85);
 
       ctx.restore();
     }
   },
   {
     id: 'dungeon_door_wooden',
-    name: 'Heavy Reinforced Door',
+    name: 'Iron-Banded Wood Door',
     category: 'battle_rooms',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#1c1917', fill = '#78350f') => {
       ctx.save();
       const s = size;
+
       // Wooden door leaf
-      ctx.fillStyle = '#5c3a21';
-      ctx.fillRect(s * 0.1, s * 0.2, s * 0.8, s * 0.6);
+      ctx.fillStyle = fill;
+      ctx.fillRect(s * 0.15, s * 0.35, s * 0.7, s * 0.3);
 
-      // Planks
-      ctx.strokeStyle = '#321e10';
+      // Iron strapping
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(s * 0.25, s * 0.35, s * 0.08, s * 0.3);
+      ctx.fillRect(s * 0.65, s * 0.35, s * 0.08, s * 0.3);
+
+      // Iron ring handle
+      ctx.beginPath();
+      ctx.arc(s * 0.5, s * 0.5, s * 0.06, 0, Math.PI * 2);
+      ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = s * 0.03;
-      for (let i = 1; i <= 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(s * (0.1 + i * 0.2), s * 0.2);
-        ctx.lineTo(s * (0.1 + i * 0.2), s * 0.8);
-        ctx.stroke();
-      }
+      ctx.stroke();
 
-      // Iron hinges / bands
-      ctx.fillStyle = '#222';
-      ctx.fillRect(s * 0.08, s * 0.3, s * 0.84, s * 0.08);
-      ctx.fillRect(s * 0.08, s * 0.62, s * 0.84, s * 0.08);
-
-      // Door outline
-      ctx.strokeRect(s * 0.1, s * 0.2, s * 0.8, s * 0.6);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.04;
+      ctx.strokeRect(s * 0.15, s * 0.35, s * 0.7, s * 0.3);
 
       ctx.restore();
     }
   },
   {
     id: 'dungeon_pillar',
-    name: 'Carved Stone Pillar',
+    name: 'Carved Dungeon Pillar',
     category: 'battle_rooms',
-    defaultScale: 0.9,
+    defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#0f172a', fill = '#475569') => {
       ctx.save();
       const s = size;
-      const c = s / 2;
-      const r = s * 0.4;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
 
-      // Base shadow
+      // Circular shadow
       ctx.beginPath();
-      ctx.arc(c + s * 0.04, c + s * 0.04, r, 0, Math.PI * 2);
+      ctx.arc(cx + s * 0.05, cy + s * 0.05, s * 0.35, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fill();
 
-      // Outer ring
+      // Outer plinth
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
+      ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.04;
+      ctx.stroke();
+
+      // Inner capital ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.2, 0, Math.PI * 2);
       ctx.fillStyle = '#64748b';
-      ctx.fill();
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = s * 0.05;
-      ctx.stroke();
-
-      // Inner fluted ring
-      ctx.beginPath();
-      ctx.arc(c, c, r * 0.65, 0, Math.PI * 2);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fill();
-      ctx.stroke();
-
-      // Center core
-      ctx.beginPath();
-      ctx.arc(c, c, r * 0.3, 0, Math.PI * 2);
-      ctx.fillStyle = '#cbd5e1';
       ctx.fill();
       ctx.stroke();
 
       ctx.restore();
     }
   },
+  {
+    id: 'dungeon_stairs_down',
+    name: 'Descending Stone Stairs',
+    category: 'battle_rooms',
+    defaultScale: 1.1,
+    aspect: 1,
+    render: (ctx, size, color = '#0f172a', fill = '#334155') => {
+      ctx.save();
+      const s = size;
 
-  // ---------------- BATTLEMAP: PROPS & FURNITURE ----------------
+      // Receding steps (progressively darker downwards)
+      const steps = 6;
+      for (let i = 0; i < steps; i++) {
+        const y = s * (0.15 + i * 0.11);
+        const darkness = Math.round(75 - i * 11);
+        ctx.fillStyle = `rgb(${darkness}, ${darkness + 5}, ${darkness + 10})`;
+        ctx.fillRect(s * 0.15, y, s * 0.7, s * 0.11);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.03;
+        ctx.strokeRect(s * 0.15, y, s * 0.7, s * 0.11);
+      }
+
+      ctx.restore();
+    }
+  },
+
+  // =========================================================================
+  // 5. BATTLEMAP: FURNITURE & PROPS
+  // =========================================================================
   {
     id: 'prop_table_tavern',
-    name: 'Tavern Long Table',
+    name: 'Long Tavern Feast Table',
     category: 'battle_props',
     defaultScale: 1.1,
     aspect: 1.8,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#2c1810', fill = '#854d0e') => {
       ctx.save();
       const w = size * 1.8;
       const h = size;
 
-      // Drop shadow
+      // Shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.fillRect(w * 0.08, h * 0.18, w * 0.88, h * 0.72);
+      ctx.fillRect(w * 0.14, h * 0.28, w * 0.75, h * 0.55);
 
-      // Wood top
-      ctx.fillStyle = '#7c5335';
-      ctx.fillRect(w * 0.05, h * 0.15, w * 0.9, h * 0.7);
-      ctx.strokeStyle = '#382212';
-      ctx.lineWidth = h * 0.05;
-      ctx.strokeRect(w * 0.05, h * 0.15, w * 0.9, h * 0.7);
+      // Wood table planks
+      ctx.fillStyle = fill;
+      ctx.fillRect(w * 0.1, h * 0.22, w * 0.75, h * 0.55);
 
-      // Wood plank lines
-      ctx.strokeStyle = '#4e311b';
+      // Plank grooves
+      ctx.strokeStyle = color;
       ctx.lineWidth = h * 0.025;
       ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.38);
-      ctx.lineTo(w * 0.95, h * 0.38);
-      ctx.moveTo(w * 0.05, h * 0.62);
-      ctx.lineTo(w * 0.95, h * 0.62);
+      ctx.moveTo(w * 0.1, h * 0.4);
+      ctx.lineTo(w * 0.85, h * 0.4);
+      ctx.moveTo(w * 0.1, h * 0.58);
+      ctx.lineTo(w * 0.85, h * 0.58);
       ctx.stroke();
 
-      // Tankards & Map on table
-      ctx.fillStyle = '#fef3c7'; // map parchment
-      ctx.fillRect(w * 0.35, h * 0.3, w * 0.3, h * 0.4);
-      ctx.strokeRect(w * 0.35, h * 0.3, w * 0.3, h * 0.4);
+      ctx.lineWidth = h * 0.04;
+      ctx.strokeRect(w * 0.1, h * 0.22, w * 0.75, h * 0.55);
 
       ctx.restore();
     }
@@ -804,34 +1330,27 @@ export const STAMPS = [
     id: 'prop_chest_treasure',
     name: 'Gilded Treasure Chest',
     category: 'battle_props',
-    defaultScale: 0.8,
-    aspect: 1,
-    render: (ctx, size) => {
+    defaultScale: 0.9,
+    aspect: 1.2,
+    render: (ctx, size, color = '#271c19', fill = '#92400e') => {
       ctx.save();
-      const s = size;
+      const w = size * 1.2;
+      const h = size;
 
-      // Shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.fillRect(s * 0.15, s * 0.25, s * 0.75, s * 0.55);
-
-      // Chest body
-      ctx.fillStyle = '#6b4423';
-      ctx.fillRect(s * 0.12, s * 0.2, s * 0.76, s * 0.55);
-      ctx.strokeStyle = '#27170a';
-      ctx.lineWidth = s * 0.04;
-      ctx.strokeRect(s * 0.12, s * 0.2, s * 0.76, s * 0.55);
+      // Wood body
+      ctx.fillStyle = fill;
+      ctx.fillRect(w * 0.15, h * 0.3, w * 0.7, h * 0.5);
 
       // Gold bands
       ctx.fillStyle = '#eab308';
-      ctx.fillRect(s * 0.2, s * 0.2, s * 0.09, s * 0.55);
-      ctx.fillRect(s * 0.71, s * 0.2, s * 0.09, s * 0.55);
+      ctx.fillRect(w * 0.15, h * 0.3, w * 0.1, h * 0.5);
+      ctx.fillRect(w * 0.75, h * 0.3, w * 0.1, h * 0.5);
+      // Keyhole escutcheon
+      ctx.fillRect(w * 0.46, h * 0.45, w * 0.08, h * 0.15);
 
-      // Gold lock
-      ctx.beginPath();
-      ctx.arc(s * 0.5, s * 0.48, s * 0.08, 0, Math.PI * 2);
-      ctx.fillStyle = '#ca8a04';
-      ctx.fill();
-      ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.04;
+      ctx.strokeRect(w * 0.15, h * 0.3, w * 0.7, h * 0.5);
 
       ctx.restore();
     }
@@ -840,43 +1359,51 @@ export const STAMPS = [
     id: 'prop_campfire',
     name: 'Roaring Campfire',
     category: 'battle_props',
-    defaultScale: 0.9,
+    defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#2c221e') => {
       ctx.save();
       const s = size;
-      const c = s / 2;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
 
-      // Outer stones
-      const stoneCount = 8;
-      ctx.fillStyle = '#475569';
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = s * 0.03;
-      for (let i = 0; i < stoneCount; i++) {
-        const ang = (i / stoneCount) * Math.PI * 2;
-        const sx = c + Math.cos(ang) * (s * 0.34);
-        const sy = c + Math.sin(ang) * (s * 0.34);
+      // Warm radial glow
+      const glow = ctx.createRadialGradient(cx, cy, s * 0.1, cx, cy, s * 0.48);
+      glow.addColorStop(0, 'rgba(249, 115, 22, 0.75)');
+      glow.addColorStop(0.6, 'rgba(234, 88, 12, 0.25)');
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.48, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Stone ring
+      ctx.fillStyle = '#64748b';
+      const stones = 8;
+      for (let i = 0; i < stones; i++) {
+        const a = (Math.PI * 2 / stones) * i;
         ctx.beginPath();
-        ctx.arc(sx, sy, s * 0.09, 0, Math.PI * 2);
+        ctx.arc(cx + Math.cos(a) * (s * 0.3), cy + Math.sin(a) * (s * 0.3), s * 0.08, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = s * 0.02;
         ctx.stroke();
       }
 
-      // Fire glow gradient
-      const grad = ctx.createRadialGradient(c, c, s * 0.05, c, c, s * 0.4);
-      grad.addColorStop(0, '#fef08a');
-      grad.addColorStop(0.3, '#f97316');
-      grad.addColorStop(0.7, '#ef4444');
-      grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-      ctx.fillStyle = grad;
+      // Crossed burning logs
+      ctx.strokeStyle = '#451a03';
+      ctx.lineWidth = s * 0.06;
       ctx.beginPath();
-      ctx.arc(c, c, s * 0.4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(cx - s * 0.22, cy - s * 0.22);
+      ctx.lineTo(cx + s * 0.22, cy + s * 0.22);
+      ctx.moveTo(cx + s * 0.22, cy - s * 0.22);
+      ctx.lineTo(cx - s * 0.22, cy + s * 0.22);
+      ctx.stroke();
 
-      // Fire embers
+      // Flame core
+      ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
-      ctx.arc(c, c, s * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
+      ctx.arc(cx, cy, s * 0.12, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -884,122 +1411,212 @@ export const STAMPS = [
   },
   {
     id: 'prop_barrel_crate',
-    name: 'Ale Barrel & Crate Stack',
+    name: 'Storage Crates & Barrels',
     category: 'battle_props',
-    defaultScale: 0.9,
-    aspect: 1.1,
-    render: (ctx, size) => {
+    defaultScale: 1.0,
+    aspect: 1.2,
+    render: (ctx, size, color = '#271c19', fill = '#a16207') => {
       ctx.save();
-      const s = size;
+      const w = size * 1.2;
+      const h = size;
 
-      // Wooden Crate
-      ctx.fillStyle = '#855c39';
-      ctx.fillRect(s * 0.1, s * 0.25, s * 0.45, s * 0.45);
-      ctx.strokeStyle = '#3d2512';
-      ctx.lineWidth = s * 0.035;
-      ctx.strokeRect(s * 0.1, s * 0.25, s * 0.45, s * 0.45);
-      // X brace
+      // Wooden square crate
+      ctx.fillStyle = fill;
+      ctx.fillRect(w * 0.15, h * 0.25, w * 0.42, h * 0.55);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.strokeRect(w * 0.15, h * 0.25, w * 0.42, h * 0.55);
+      // Crate cross-brace
       ctx.beginPath();
-      ctx.moveTo(s * 0.1, s * 0.25);
-      ctx.lineTo(s * 0.55, s * 0.7);
-      ctx.moveTo(s * 0.55, s * 0.25);
-      ctx.lineTo(s * 0.1, s * 0.7);
+      ctx.moveTo(w * 0.15, h * 0.25);
+      ctx.lineTo(w * 0.57, h * 0.8);
+      ctx.moveTo(w * 0.57, h * 0.25);
+      ctx.lineTo(w * 0.15, h * 0.8);
       ctx.stroke();
 
-      // Barrel (Round top-down)
+      // Round barrel beside it
       ctx.beginPath();
-      ctx.arc(s * 0.72, s * 0.5, s * 0.22, 0, Math.PI * 2);
-      ctx.fillStyle = '#6d4827';
+      ctx.ellipse(w * 0.72, h * 0.52, w * 0.18, h * 0.25, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#854d0e';
       ctx.fill();
-      ctx.stroke();
-      // Barrel metal hoop
-      ctx.beginPath();
-      ctx.arc(s * 0.72, s * 0.5, s * 0.17, 0, Math.PI * 2);
-      ctx.strokeStyle = '#1f2937';
-      ctx.lineWidth = s * 0.03;
       ctx.stroke();
 
       ctx.restore();
     }
   },
+  {
+    id: 'prop_throne_royal',
+    name: 'Gilded Royal Throne',
+    category: 'battle_props',
+    defaultScale: 1.1,
+    aspect: 1,
+    render: (ctx, size, color = '#1c1917', fill = '#b91c1c') => {
+      ctx.save();
+      const s = size;
 
-  // ---------------- BATTLEMAP: TOKENS & CREATURES ----------------
+      // High backrest
+      ctx.fillStyle = fill; // Crimson velvet
+      ctx.fillRect(s * 0.3, s * 0.15, s * 0.4, s * 0.45);
+
+      // Gold frame & finials
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = s * 0.05;
+      ctx.strokeRect(s * 0.28, s * 0.12, s * 0.44, s * 0.5);
+
+      // Seat cushion
+      ctx.fillStyle = fill;
+      ctx.fillRect(s * 0.25, s * 0.58, s * 0.5, s * 0.28);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.035;
+      ctx.strokeRect(s * 0.25, s * 0.58, s * 0.5, s * 0.28);
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'prop_brazier_lit',
+    name: 'Iron Fire Brazier',
+    category: 'battle_props',
+    defaultScale: 0.9,
+    aspect: 1,
+    render: (ctx, size, color = '#0f172a') => {
+      ctx.save();
+      const s = size;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
+
+      // Glow halo
+      const grad = ctx.createRadialGradient(cx, cy, s * 0.05, cx, cy, s * 0.45);
+      grad.addColorStop(0, 'rgba(251, 146, 60, 0.75)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tripod iron bowl
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.25, 0, Math.PI * 2);
+      ctx.fillStyle = '#334155';
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = s * 0.04;
+      ctx.stroke();
+
+      // Embers
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  },
+
+  // =========================================================================
+  // 6. BATTLEMAP: CREATURES & TOKENS
+  // =========================================================================
   {
     id: 'token_hero_warrior',
-    name: 'Paladin / Warrior Token',
+    name: 'Knight Hero Token',
     category: 'battle_tokens',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#1e293b', fill = '#3b82f6') => {
       ctx.save();
       const s = size;
-      const c = s / 2;
-      const r = s * 0.42;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
 
-      // Token gold border
+      // Base token circular disk
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#1e293b';
+      ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
       ctx.fill();
+
+      // Golden ornate rim
       ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = s * 0.07;
+      ctx.lineWidth = s * 0.06;
       ctx.stroke();
 
-      // Shield & Sword crest
-      ctx.beginPath();
-      ctx.moveTo(c, s * 0.22);
-      ctx.lineTo(s * 0.7, s * 0.32);
-      ctx.lineTo(s * 0.65, s * 0.6);
-      ctx.lineTo(c, s * 0.78);
-      ctx.lineTo(s * 0.35, s * 0.6);
-      ctx.lineTo(s * 0.3, s * 0.32);
-      ctx.closePath();
-      ctx.fillStyle = '#3b82f6';
-      ctx.fill();
+      // Knight sword crest
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = s * 0.03;
+      ctx.lineWidth = s * 0.04;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.25);
+      ctx.lineTo(cx, cy + s * 0.25); // Blade
+      ctx.moveTo(cx - s * 0.12, cy - s * 0.08);
+      ctx.lineTo(cx + s * 0.12, cy - s * 0.08); // Guard
       ctx.stroke();
-
-      // Cross
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(c - s * 0.03, s * 0.35, s * 0.06, s * 0.32);
-      ctx.fillRect(s * 0.38, s * 0.45, s * 0.24, s * 0.06);
 
       ctx.restore();
     }
   },
   {
     id: 'token_hero_mage',
-    name: 'Arcane Wizard Token',
+    name: 'Arcanist Mage Token',
     category: 'battle_tokens',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#1e1b4b', fill = '#8b5cf6') => {
       ctx.save();
       const s = size;
-      const c = s / 2;
-      const r = s * 0.42;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
 
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#2e1065';
+      ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
       ctx.fill();
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = s * 0.07;
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = s * 0.06;
       ctx.stroke();
 
-      // Arcane star / pentagram
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const outerAng = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-        const ox = c + Math.cos(outerAng) * (r * 0.6);
-        const oy = c + Math.sin(outerAng) * (r * 0.6);
-        if (i === 0) ctx.moveTo(ox, oy);
-        else ctx.lineTo(ox, oy);
+      // Arcane star icon
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = s * 0.035;
+      const pts = 8;
+      for (let i = 0; i < pts; i++) {
+        const a = (Math.PI * 2 / pts) * i;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * (s * 0.24), cy + Math.sin(a) * (s * 0.24));
+        ctx.stroke();
       }
-      ctx.closePath();
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = s * 0.04;
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'token_hero_rogue',
+    name: 'Shadow Rogue Token',
+    category: 'battle_tokens',
+    defaultScale: 1.0,
+    aspect: 1,
+    render: (ctx, size, color = '#0f172a', fill = '#15803d') => {
+      ctx.save();
+      const s = size;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = s * 0.06;
+      ctx.stroke();
+
+      // Crossed daggers
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = s * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.18, cy - s * 0.18);
+      ctx.lineTo(cx + s * 0.18, cy + s * 0.18);
+      ctx.moveTo(cx + s * 0.18, cy - s * 0.18);
+      ctx.lineTo(cx - s * 0.18, cy + s * 0.18);
       ctx.stroke();
 
       ctx.restore();
@@ -1007,49 +1624,75 @@ export const STAMPS = [
   },
   {
     id: 'token_monster_dragon',
-    name: 'Red Dragon Beast Token',
+    name: 'Elder Red Dragon',
     category: 'battle_tokens',
-    defaultScale: 1.3,
+    defaultScale: 1.5,
     aspect: 1,
-    render: (ctx, size) => {
+    render: (ctx, size, color = '#450a0a', fill = '#dc2626') => {
       ctx.save();
       const s = size;
-      const c = s / 2;
-      const r = s * 0.44;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
 
-      // Fiery menacing border
+      // Colossal Boss Token
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#450a0a';
+      ctx.arc(cx, cy, s * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
       ctx.fill();
-      ctx.strokeStyle = '#dc2626';
+
+      // Blood red spikes rim
+      ctx.strokeStyle = '#7f1d1d';
       ctx.lineWidth = s * 0.08;
       ctx.stroke();
 
-      // Dragon Silhouette / Horns
-      ctx.fillStyle = '#ef4444';
+      // Dragon Silhouette Crest
+      ctx.fillStyle = '#fef08a';
       ctx.beginPath();
-      ctx.moveTo(c, s * 0.2); // snout
-      ctx.lineTo(s * 0.65, s * 0.35);
-      ctx.lineTo(s * 0.82, s * 0.15); // right horn
-      ctx.lineTo(s * 0.68, s * 0.48);
-      ctx.lineTo(s * 0.72, s * 0.78);
-      ctx.lineTo(c, s * 0.68);
-      ctx.lineTo(s * 0.28, s * 0.78);
-      ctx.lineTo(s * 0.32, s * 0.48);
-      ctx.lineTo(s * 0.18, s * 0.15); // left horn
-      ctx.lineTo(s * 0.35, s * 0.35);
+      ctx.moveTo(cx - s * 0.2, cy - s * 0.1);
+      ctx.lineTo(cx, cy - s * 0.28);
+      ctx.lineTo(cx + s * 0.2, cy - s * 0.1);
+      ctx.lineTo(cx + s * 0.12, cy + s * 0.15);
+      ctx.lineTo(cx, cy + s * 0.28);
+      ctx.lineTo(cx - s * 0.12, cy + s * 0.15);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#7f1d1d';
-      ctx.lineWidth = s * 0.03;
+
+      ctx.restore();
+    }
+  },
+  {
+    id: 'token_skull_marker',
+    name: 'Boss / Skull Marker',
+    category: 'battle_tokens',
+    defaultScale: 1.0,
+    aspect: 1,
+    render: (ctx, size, color = '#18181b', fill = '#f43f5e') => {
+      ctx.save();
+      const s = size;
+      const cx = s * 0.5;
+      const cy = s * 0.5;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      ctx.strokeStyle = '#881337';
+      ctx.lineWidth = s * 0.06;
       ctx.stroke();
 
-      // Slit Eyes
-      ctx.fillStyle = '#facc15';
+      // Skull face
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(s * 0.42, s * 0.42, s * 0.03, s * 0.06, 0.2, 0, Math.PI * 2);
-      ctx.ellipse(s * 0.58, s * 0.42, s * 0.03, s * 0.06, -0.2, 0, Math.PI * 2);
+      ctx.arc(cx, cy - s * 0.05, s * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(cx - s * 0.1, cy + s * 0.05, s * 0.2, s * 0.12);
+
+      // Eye sockets
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(cx - s * 0.07, cy - s * 0.05, s * 0.04, 0, Math.PI * 2);
+      ctx.arc(cx + s * 0.07, cy - s * 0.05, s * 0.04, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -1058,5 +1701,5 @@ export const STAMPS = [
 ];
 
 export function getStampById(id) {
-  return STAMPS.find(s => s.id === id) || STAMPS[0];
+  return STAMPS.find((s) => s.id === id);
 }

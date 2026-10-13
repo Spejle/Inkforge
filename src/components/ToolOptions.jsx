@@ -1,17 +1,15 @@
 import React from 'react';
-import { 
-  Plus, 
-  Minus, 
-  Trash2, 
-  Copy, 
-  ArrowUpToLine, 
-  ArrowDownToLine, 
-  RotateCw, 
+import {
+  Trash2,
+  Copy,
+  ArrowUpToLine,
+  ArrowDownToLine,
   Sparkles,
   Shuffle,
-  SplitSquareVertical,
   FlipHorizontal,
-  FlipVertical
+  FlipVertical,
+  Magnet,
+  Type as TypeIcon
 } from 'lucide-react';
 import { BIOMES } from '../engine/biomesCatalog';
 import { getStampById } from '../engine/stampsCatalog';
@@ -55,6 +53,8 @@ export default function ToolOptions({
   setTextFont,
   textSize,
   setTextSize,
+  textCurvature,
+  setTextCurvature,
   textColor,
   setTextColor,
   textStroke,
@@ -66,9 +66,13 @@ export default function ToolOptions({
   // Atmosphere options
   atmosphereConfig,
   setAtmosphereConfig,
-  // Select tool actions
+  // Selection actions
   selectedStamp,
   selectedText,
+  selectedPath,
+  onUpdateSelectedStamp,
+  onUpdateSelectedText,
+  onUpdateSelectedPath,
   onDeleteSelected,
   onDuplicateSelected,
   onBringToFront,
@@ -82,9 +86,42 @@ export default function ToolOptions({
       {activeTool === 'select' && (
         <div className="options-segment">
           <span className="segment-label">Selection:</span>
-          {selectedStamp ? (
-            <div className="flex-row gap-2 items-center">
+          {selectedStamp && (
+            <div className="flex-row gap-3 items-center">
               <span className="selected-tag">{getStampById(selectedStamp.stampId)?.name || 'Stamp'}</span>
+              
+              <label className="option-label">
+                Scale: {Math.round((selectedStamp.scale || 1.0) * 100)}%
+                <input
+                  type="range"
+                  min="0.3"
+                  max="3.0"
+                  step="0.05"
+                  value={selectedStamp.scale || 1.0}
+                  onChange={(e) => onUpdateSelectedStamp?.({ scale: parseFloat(e.target.value) })}
+                />
+              </label>
+
+              <label className="option-label">
+                Rot: {Math.round(((selectedStamp.rotation || 0) * 180) / Math.PI)}°
+                <input
+                  type="range"
+                  min="-3.14"
+                  max="3.14"
+                  step="0.05"
+                  value={selectedStamp.rotation || 0}
+                  onChange={(e) => onUpdateSelectedStamp?.({ rotation: parseFloat(e.target.value) })}
+                />
+              </label>
+
+              <button
+                className="btn-small"
+                onClick={() => onUpdateSelectedStamp?.({ flipX: !selectedStamp.flipX })}
+                title="Flip Horizontally"
+              >
+                <FlipHorizontal size={14} /> Flip X
+              </button>
+
               <button className="btn-small" onClick={onBringToFront} title="Bring to Front">
                 <ArrowUpToLine size={14} /> Front
               </button>
@@ -98,362 +135,495 @@ export default function ToolOptions({
                 <Trash2 size={14} /> Delete
               </button>
             </div>
-          ) : selectedText ? (
-            <div className="flex-row gap-2 items-center">
-              <span className="selected-tag">Label: "{selectedText.text}"</span>
+          )}
+
+          {selectedText && (
+            <div className="flex-row gap-3 items-center">
+              <span className="selected-tag">Label</span>
+              <input
+                type="text"
+                className="text-input"
+                style={{ width: '160px' }}
+                value={selectedText.text || ''}
+                onChange={(e) => onUpdateSelectedText?.({ text: e.target.value })}
+              />
+
+              <select
+                className="select-input"
+                value={selectedText.font || 'Cinzel'}
+                onChange={(e) => onUpdateSelectedText?.({ font: e.target.value })}
+              >
+                <option value="Cinzel">Cinzel (Regal)</option>
+                <option value="MedievalSharp">MedievalSharp</option>
+                <option value="Pirata One">Pirata One (Gothic)</option>
+                <option value="Uncial Antiqua">Uncial Antiqua</option>
+                <option value="Inter">Inter (Sans)</option>
+              </select>
+
+              <label className="option-label">
+                Size: {selectedText.size || 28}px
+                <input
+                  type="range"
+                  min="14"
+                  max="96"
+                  value={selectedText.size || 28}
+                  onChange={(e) => onUpdateSelectedText?.({ size: parseInt(e.target.value) })}
+                />
+              </label>
+
+              <label className="option-label">
+                Arc: {Math.round((selectedText.curvature || 0) * 100)}%
+                <input
+                  type="range"
+                  min="-0.5"
+                  max="0.5"
+                  step="0.05"
+                  value={selectedText.curvature || 0}
+                  onChange={(e) => onUpdateSelectedText?.({ curvature: parseFloat(e.target.value) })}
+                />
+              </label>
+
+              <label className="color-picker-label" title="Text Color">
+                <input
+                  type="color"
+                  value={selectedText.color || '#271b12'}
+                  onChange={(e) => onUpdateSelectedText?.({ color: e.target.value })}
+                />
+              </label>
+
               <button className="btn-small danger" onClick={onDeleteSelected} title="Delete">
                 <Trash2 size={14} /> Delete
               </button>
             </div>
-          ) : (
-            <span className="hint-text">Click on any stamp or text label on the canvas to move, scale, or edit it.</span>
+          )}
+
+          {selectedPath && (
+            <div className="flex-row gap-3 items-center">
+              <span className="selected-tag">{selectedPath.type.toUpperCase()}</span>
+              <label className="option-label">
+                Width: {selectedPath.width || 12}px
+                <input
+                  type="range"
+                  min="4"
+                  max="60"
+                  value={selectedPath.width || 12}
+                  onChange={(e) => onUpdateSelectedPath?.({ width: parseInt(e.target.value) })}
+                />
+              </label>
+              <label className="color-picker-label" title="Path Color">
+                <input
+                  type="color"
+                  value={selectedPath.color || '#3b82f6'}
+                  onChange={(e) => onUpdateSelectedPath?.({ color: e.target.value })}
+                />
+              </label>
+              <button className="btn-small danger" onClick={onDeleteSelected} title="Delete">
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          )}
+
+          {!selectedStamp && !selectedText && !selectedPath && (
+            <span className="hint-text">Click any stamp, label, or river to inspect and transform</span>
           )}
         </div>
       )}
 
-      {/* 2. MASK / LANDMASS SCULPTOR */}
+      {/* 2. MASK TOOL OPTIONS */}
       {activeTool === 'mask' && (
         <div className="options-segment">
-          <div className="segmented-toggle">
+          <span className="segment-label">Sculpt Mode:</span>
+          <div className="btn-group">
             <button
-              className={`toggle-opt ${maskMode === 'land' ? 'active' : ''}`}
+              className={`btn-toggle ${maskMode === 'land' ? 'active green' : ''}`}
               onClick={() => setMaskMode('land')}
+              title="Paint continents and islands"
             >
-              Add Landmass
+              Add Land
             </button>
             <button
-              className={`toggle-opt ${maskMode === 'water' ? 'active' : ''}`}
+              className={`btn-toggle ${maskMode === 'water' ? 'active blue' : ''}`}
               onClick={() => setMaskMode('water')}
+              title="Carve ocean, lakes, and fjords"
             >
-              Carve Ocean
+              Carve Water
             </button>
           </div>
 
-          <div className="divider-vert" />
-
-          <div className="slider-group">
-            <label>Brush Size: {brushSize}px</label>
+          <label className="option-label">
+            Brush Size: {brushSize}px
             <input
               type="range"
-              min="20"
+              min="15"
               max="240"
               value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
+              onChange={(e) => setBrushSize(parseInt(e.target.value))}
             />
-          </div>
+          </label>
 
-          <span className="hint-text">Drag across the canvas to sculpt coastlines and islands.</span>
-        </div>
-      )}
-
-      {/* 3. BIOME & TEXTURE BRUSH */}
-      {activeTool === 'brush' && (
-        <div className="options-segment">
-          <label className="segment-label">Biome:</label>
-          <div className="biome-swatches">
-            {BIOMES.map((b) => (
-              <button
-                key={b.id}
-                className={`biome-swatch-btn ${activeBiome === b.id ? 'active' : ''}`}
-                style={{ backgroundColor: b.preview }}
-                title={`${b.name} (${b.category}): ${b.description}`}
-                onClick={() => setActiveBiome(b.id)}
-              >
-                <span className="swatch-label">{b.name}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="divider-vert" />
-
-          <div className="slider-group">
-            <label>Size: {brushSize}px</label>
-            <input
-              type="range"
-              min="20"
-              max="240"
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="slider-group">
-            <label>Opacity: {Math.round(brushOpacity * 100)}%</label>
+          <label className="option-label">
+            Flow: {Math.round(brushOpacity * 100)}%
             <input
               type="range"
               min="0.1"
               max="1.0"
               step="0.05"
               value={brushOpacity}
-              onChange={(e) => setBrushOpacity(Number(e.target.value))}
+              onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
             />
-          </div>
+          </label>
         </div>
       )}
 
-      {/* 4. STAMPS & PROPS */}
+      {/* 3. BIOME BRUSH OPTIONS */}
+      {activeTool === 'brush' && (
+        <div className="options-segment">
+          <span className="segment-label">Biome:</span>
+          <select
+            className="select-input"
+            value={activeBiome}
+            onChange={(e) => setActiveBiome(e.target.value)}
+          >
+            {BIOMES.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="option-label">
+            Size: {brushSize}px
+            <input
+              type="range"
+              min="15"
+              max="240"
+              value={brushSize}
+              onChange={(e) => setBrushSize(parseInt(e.target.value))}
+            />
+          </label>
+
+          <label className="option-label">
+            Opacity: {Math.round(brushOpacity * 100)}%
+            <input
+              type="range"
+              min="0.1"
+              max="1.0"
+              step="0.05"
+              value={brushOpacity}
+              onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
+
+      {/* 4. STAMP TOOL OPTIONS */}
       {activeTool === 'stamp' && (
         <div className="options-segment">
-          <div className="active-stamp-badge">
-            <span className="stamp-name-highlight">{activeStampDef?.name || 'Active Stamp'}</span>
-          </div>
+          <span className="segment-label">Active:</span>
+          <span className="selected-tag">{activeStampDef?.name || 'Stamp'}</span>
 
-          <div className="slider-group">
-            <label>Scale: {Math.round(stampScale * 100)}%</label>
+          <label className="option-label">
+            Scale: {Math.round(stampScale * 100)}%
             <input
               type="range"
               min="0.4"
               max="2.5"
               step="0.05"
               value={stampScale}
-              onChange={(e) => setStampScale(Number(e.target.value))}
+              onChange={(e) => setStampScale(parseFloat(e.target.value))}
             />
-          </div>
+          </label>
 
-          <div className="slider-group">
-            <label>Rotation: {Math.round((stampRotation * 180) / Math.PI)}°</label>
+          <label className="option-label">
+            Rot: {Math.round((stampRotation * 180) / Math.PI)}°
             <input
               type="range"
               min="-3.14"
               max="3.14"
               step="0.05"
               value={stampRotation}
-              onChange={(e) => setStampRotation(Number(e.target.value))}
+              onChange={(e) => setStampRotation(parseFloat(e.target.value))}
             />
-          </div>
-
-          <div className="divider-vert" />
+          </label>
 
           <button
             className={`btn-toggle ${stampJitter ? 'active' : ''}`}
-            onClick={() => setStampJitter(v => !v)}
-            title="Adds slight natural random variation to scale & angle when placing clusters"
+            onClick={() => setStampJitter(!stampJitter)}
+            title="Randomize size and rotation for natural clusters"
           >
-            <Shuffle size={14} /> Jitter Variation
+            <Shuffle size={14} /> Jitter
           </button>
 
           <button
-            className={`btn-toggle ${stampSpray ? 'active' : ''}`}
-            onClick={() => setStampSpray(v => !v)}
-            title="Spray mode: drag mouse continuously to plant forests and mountain chains"
+            className={`btn-toggle ${stampSpray ? 'active amber' : ''}`}
+            onClick={() => setStampSpray(!stampSpray)}
+            title="Continuous drag painting for dense mountain chains and forests"
           >
-            <Sparkles size={14} /> Continuous Spray
+            <Sparkles size={14} /> Spray Mode
           </button>
 
           <div className="btn-group">
-            <button className="btn-icon-sm" onClick={() => onFlipStamp('x')} title="Flip Horizontal">
+            <button className="btn-small" onClick={() => onFlipStamp('x')} title="Flip Horizontal">
               <FlipHorizontal size={14} />
             </button>
-            <button className="btn-icon-sm" onClick={() => onFlipStamp('y')} title="Flip Vertical">
+            <button className="btn-small" onClick={() => onFlipStamp('y')} title="Flip Vertical">
               <FlipVertical size={14} />
             </button>
           </div>
         </div>
       )}
 
-      {/* 5. PATHS & RIVERS */}
+      {/* 5. PATH TOOL OPTIONS */}
       {activeTool === 'path' && (
         <div className="options-segment">
-          <label className="segment-label">Path Type:</label>
-          <div className="segmented-toggle">
+          <span className="segment-label">Path Type:</span>
+          <div className="btn-group">
             <button
-              className={`toggle-opt ${pathType === 'river' ? 'active' : ''}`}
-              onClick={() => { setPathType('river'); setPathColor('#2563eb'); }}
+              className={`btn-toggle ${pathType === 'river' ? 'active' : ''}`}
+              onClick={() => {
+                setPathType('river');
+                setPathColor('#2563eb');
+                setPathWidth(12);
+              }}
             >
               River
             </button>
             <button
-              className={`toggle-opt ${pathType === 'road' ? 'active' : ''}`}
-              onClick={() => { setPathType('road'); setPathColor('#78350f'); }}
+              className={`btn-toggle ${pathType === 'road' ? 'active' : ''}`}
+              onClick={() => {
+                setPathType('road');
+                setPathColor('#78350f');
+                setPathWidth(6);
+              }}
             >
               Road
             </button>
             <button
-              className={`toggle-opt ${pathType === 'wall' ? 'active' : ''}`}
-              onClick={() => { setPathType('wall'); setPathColor('#475569'); }}
+              className={`btn-toggle ${pathType === 'wall' ? 'active' : ''}`}
+              onClick={() => {
+                setPathType('wall');
+                setPathColor('#475569');
+                setPathWidth(14);
+              }}
             >
-              Stone Wall
+              Wall
             </button>
           </div>
 
-          <div className="slider-group">
-            <label>Width: {pathWidth}px</label>
+          <label className="option-label">
+            Width: {pathWidth}px
             <input
               type="range"
               min="4"
               max="40"
               value={pathWidth}
-              onChange={(e) => setPathWidth(Number(e.target.value))}
+              onChange={(e) => setPathWidth(parseInt(e.target.value))}
             />
-          </div>
+          </label>
 
           {pathType === 'road' && (
-            <button
-              className={`btn-toggle ${pathDashed ? 'active' : ''}`}
-              onClick={() => setPathDashed(v => !v)}
-            >
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={pathDashed}
+                onChange={(e) => setPathDashed(e.target.checked)}
+              />
               Dashed Trail
-            </button>
+            </label>
           )}
 
-          <div className="color-picker-group">
-            <label>Color:</label>
+          <label className="color-picker-label" title="Path Color">
             <input
               type="color"
               value={pathColor}
               onChange={(e) => setPathColor(e.target.value)}
             />
-          </div>
-
-          <span className="hint-text">Click and drag on the canvas to carve flowing paths.</span>
+          </label>
         </div>
       )}
 
-      {/* 6. TEXT & BANNERS */}
+      {/* 6. TEXT TOOL OPTIONS */}
       {activeTool === 'text' && (
         <div className="options-segment">
-          <div className="text-input-group">
-            <input
-              type="text"
-              placeholder="Enter realm or tavern name..."
-              value={newTextContent}
-              onChange={(e) => setNewTextContent(e.target.value)}
-              className="text-input"
-            />
-            <button className="btn-small primary" onClick={onAddText}>
-              <Plus size={14} /> Add Label
-            </button>
-          </div>
+          <input
+            type="text"
+            className="text-input"
+            placeholder="Kingdom, Sea, or Dungeon Title..."
+            value={newTextContent}
+            onChange={(e) => setNewTextContent(e.target.value)}
+          />
 
-          <div className="divider-vert" />
+          <select
+            className="select-input"
+            value={textFont}
+            onChange={(e) => setTextFont(e.target.value)}
+          >
+            <option value="Cinzel">Cinzel (Regal)</option>
+            <option value="MedievalSharp">MedievalSharp</option>
+            <option value="Pirata One">Pirata One (Gothic)</option>
+            <option value="Uncial Antiqua">Uncial Antiqua</option>
+            <option value="Inter">Inter (Sans)</option>
+          </select>
 
-          <div className="select-group">
-            <label>Font:</label>
-            <select
-              value={textFont}
-              onChange={(e) => setTextFont(e.target.value)}
-              className="select-styled-sm"
-            >
-              <option value="Cinzel">Cinzel (Regal Fantasy)</option>
-              <option value="MedievalSharp">MedievalSharp (Gothic)</option>
-              <option value="Pirata One">Pirata One (Pirate / Sea)</option>
-              <option value="Uncial Antiqua">Uncial Antiqua (Ancient)</option>
-            </select>
-          </div>
-
-          <div className="slider-group">
-            <label>Size: {textSize}px</label>
+          <label className="option-label">
+            Size: {textSize}px
             <input
               type="range"
-              min="14"
-              max="72"
+              min="16"
+              max="80"
               value={textSize}
-              onChange={(e) => setTextSize(Number(e.target.value))}
+              onChange={(e) => setTextSize(parseInt(e.target.value))}
             />
-          </div>
+          </label>
 
-          <div className="color-picker-group">
-            <label>Text:</label>
+          <label className="option-label">
+            Arc: {Math.round((textCurvature || 0) * 100)}%
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.05"
+              value={textCurvature || 0}
+              onChange={(e) => setTextCurvature?.(parseFloat(e.target.value))}
+            />
+          </label>
+
+          <label className="color-picker-label" title="Fill Color">
             <input
               type="color"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
             />
-            <label>Outline:</label>
+          </label>
+
+          <label className="color-picker-label" title="Stroke Outline">
             <input
               type="color"
               value={textStroke}
               onChange={(e) => setTextStroke(e.target.value)}
             />
-          </div>
+          </label>
+
+          <button className="btn-primary" onClick={onAddText}>
+            <TypeIcon size={14} /> Add Label
+          </button>
         </div>
       )}
 
-      {/* 7. GRID SETTINGS */}
+      {/* 7. GRID TOOL OPTIONS */}
       {activeTool === 'grid' && (
         <div className="options-segment">
-          <div className="segmented-toggle">
-            <button
-              className={`toggle-opt ${gridConfig.type === 'hex_flat' ? 'active' : ''}`}
-              onClick={() => setGridConfig(g => ({ ...g, type: 'hex_flat' }))}
-            >
-              Hex (Flat)
-            </button>
-            <button
-              className={`toggle-opt ${gridConfig.type === 'square' ? 'active' : ''}`}
-              onClick={() => setGridConfig(g => ({ ...g, type: 'square' }))}
-            >
-              Square Grid
-            </button>
-          </div>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={gridConfig.enabled}
+              onChange={(e) => setGridConfig((prev) => ({ ...prev, enabled: e.target.checked }))}
+            />
+            Show Grid
+          </label>
 
-          <div className="slider-group">
-            <label>Cell Size: {gridConfig.size}px</label>
+          <select
+            className="select-input"
+            value={gridConfig.type}
+            onChange={(e) => setGridConfig((prev) => ({ ...prev, type: e.target.value }))}
+          >
+            <option value="square">Square Grid</option>
+            <option value="hex_flat">Flat Hex</option>
+            <option value="hex_pointy">Pointy Hex</option>
+            <option value="isometric">Isometric Diamond</option>
+          </select>
+
+          <label className="option-label">
+            Size: {gridConfig.size}px
             <input
               type="range"
-              min="30"
-              max="120"
+              min="24"
+              max="140"
               value={gridConfig.size}
-              onChange={(e) => setGridConfig(g => ({ ...g, size: Number(e.target.value) }))}
+              onChange={(e) => setGridConfig((prev) => ({ ...prev, size: parseInt(e.target.value) }))}
             />
-          </div>
+          </label>
 
-          <div className="slider-group">
-            <label>Opacity: {Math.round(gridConfig.opacity * 100)}%</label>
+          <label className="option-label">
+            Opacity: {Math.round(gridConfig.opacity * 100)}%
             <input
               type="range"
               min="0.05"
-              max="0.8"
+              max="0.6"
               step="0.05"
               value={gridConfig.opacity}
-              onChange={(e) => setGridConfig(g => ({ ...g, opacity: Number(e.target.value) }))}
+              onChange={(e) => setGridConfig((prev) => ({ ...prev, opacity: parseFloat(e.target.value) }))}
             />
-          </div>
+          </label>
 
-          <div className="color-picker-group">
-            <label>Grid Color:</label>
+          <button
+            className={`btn-toggle ${gridConfig.snap ? 'active' : ''}`}
+            onClick={() => setGridConfig((prev) => ({ ...prev, snap: !prev.snap }))}
+            title="Snap placed stamps and battle tokens to grid cells"
+          >
+            <Magnet size={14} /> Snap to Grid
+          </button>
+
+          <label className="color-picker-label" title="Grid Line Color">
             <input
               type="color"
               value={gridConfig.color}
-              onChange={(e) => setGridConfig(g => ({ ...g, color: e.target.value }))}
+              onChange={(e) => setGridConfig((prev) => ({ ...prev, color: e.target.value }))}
             />
-          </div>
+          </label>
         </div>
       )}
 
-      {/* 8. ATMOSPHERE & LIGHTING */}
+      {/* 8. ATMOSPHERE TOOL OPTIONS */}
       {activeTool === 'atmosphere' && (
         <div className="options-segment">
-          <div className="slider-group">
-            <label>Vignette Shadow: {Math.round(atmosphereConfig.vignette * 100)}%</label>
+          <label className="option-label">
+            Vignette: {Math.round(atmosphereConfig.vignette * 100)}%
             <input
               type="range"
               min="0"
-              max="1.0"
+              max="1"
               step="0.05"
               value={atmosphereConfig.vignette}
-              onChange={(e) => setAtmosphereConfig(a => ({ ...a, vignette: Number(e.target.value) }))}
+              onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, vignette: parseFloat(e.target.value) }))}
             />
-          </div>
+          </label>
 
-          <div className="slider-group">
-            <label>Parchment Sepia: {Math.round(atmosphereConfig.sepia * 100)}%</label>
+          <label className="option-label">
+            Parchment Grain: {Math.round((atmosphereConfig.parchmentGrain || 0) * 100)}%
             <input
               type="range"
               min="0"
-              max="1.0"
+              max="1"
+              step="0.05"
+              value={atmosphereConfig.parchmentGrain || 0}
+              onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, parchmentGrain: parseFloat(e.target.value) }))}
+            />
+          </label>
+
+          <label className="option-label">
+            Sepia Warmth: {Math.round(atmosphereConfig.sepia * 100)}%
+            <input
+              type="range"
+              min="0"
+              max="1"
               step="0.05"
               value={atmosphereConfig.sepia}
-              onChange={(e) => setAtmosphereConfig(a => ({ ...a, sepia: Number(e.target.value) }))}
+              onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, sepia: parseFloat(e.target.value) }))}
             />
-          </div>
-        </div>
-      )}
+          </label>
 
-      {/* 9. PAN CANVAS */}
-      {activeTool === 'hand' && (
-        <div className="options-segment">
-          <span className="hint-text">Click and drag to pan across your map. Tip: You can also hold Spacebar at any time!</span>
+          <label className="option-label">
+            Brightness: {Math.round((atmosphereConfig.brightness ?? 1.0) * 100)}%
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={atmosphereConfig.brightness ?? 1.0}
+              onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, brightness: parseFloat(e.target.value) }))}
+            />
+          </label>
         </div>
       )}
     </div>

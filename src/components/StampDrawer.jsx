@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
-import { Upload, Search, Sparkles, Layers, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Upload, Search, Sparkles, ChevronRight, ChevronLeft } from 'lucide-react';
 
 export default function StampDrawer({
   isOpen,
@@ -13,7 +13,7 @@ export default function StampDrawer({
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = React.useRef(null);
 
-  const filteredStamps = STAMPS.filter(stamp => {
+  const filteredStamps = STAMPS.filter((stamp) => {
     const matchesCat = selectedCat === 'all' || stamp.category === selectedCat;
     const matchesSearch = stamp.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
@@ -24,11 +24,12 @@ export default function StampDrawer({
     if (file) {
       const reader = new FileReader();
       reader.onload = (loadEvt) => {
+        const dataUrl = loadEvt.target.result;
         const img = new Image();
         img.onload = () => {
-          onUploadCustomStamp(img, file.name);
+          onUploadCustomStamp(img, file.name, dataUrl);
         };
-        img.src = loadEvt.target.result;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
       e.target.value = '';
@@ -38,10 +39,10 @@ export default function StampDrawer({
   return (
     <aside className={`stamp-drawer ${isOpen ? 'open' : 'closed'}`}>
       {/* Toggle collapse button */}
-      <button 
+      <button
         className="drawer-toggle-btn"
-        onClick={() => setIsOpen(v => !v)}
-        title={isOpen ? "Collapse Stamp Library" : "Open Stamp Library"}
+        onClick={() => setIsOpen((v) => !v)}
+        title={isOpen ? 'Collapse Stamp Library' : 'Open Stamp Library'}
       >
         {isOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
@@ -53,18 +54,18 @@ export default function StampDrawer({
               <Sparkles size={18} className="text-amber-400" />
               <h3>Stamp Library</h3>
             </div>
-            <button 
+            <button
               className="btn-upload-stamp"
               onClick={() => fileInputRef.current?.click()}
               title="Upload your own PNG or SVG stamp"
             >
               <Upload size={14} /> Import Stamp
             </button>
-            <input 
-              ref={fileInputRef} 
-              type="file" 
-              accept="image/png,image/svg+xml,image/webp,image/jpeg" 
-              style={{ display: 'none' }} 
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/svg+xml,image/webp,image/jpeg"
+              style={{ display: 'none' }}
               onChange={handleCustomUpload}
             />
           </div>
@@ -72,7 +73,7 @@ export default function StampDrawer({
           {/* Search bar */}
           <div className="search-box">
             <Search size={15} className="search-icon" />
-            <input 
+            <input
               type="text"
               placeholder="Search mountains, castles, tokens..."
               value={searchQuery}
@@ -86,9 +87,9 @@ export default function StampDrawer({
               className={`chip ${selectedCat === 'all' ? 'active' : ''}`}
               onClick={() => setSelectedCat('all')}
             >
-              All Assets
+              All Assets ({STAMPS.length})
             </button>
-            {STAMP_CATEGORIES.map(cat => (
+            {STAMP_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 className={`chip ${selectedCat === cat.id ? 'active' : ''}`}
@@ -101,7 +102,7 @@ export default function StampDrawer({
 
           {/* Stamp Grid */}
           <div className="stamp-grid">
-            {filteredStamps.map(stamp => {
+            {filteredStamps.map((stamp) => {
               const isSelected = activeStampId === stamp.id;
 
               return (
@@ -125,7 +126,7 @@ export default function StampDrawer({
   );
 }
 
-// Renders a miniature preview of the vector stamp
+// Renders a miniature preview of the vector stamp with proper aspect fitting
 function StampThumbnail({ stamp }) {
   const canvasRef = React.useRef(null);
 
@@ -134,8 +135,18 @@ function StampThumbnail({ stamp }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, 72, 72);
+
     if (stamp.render) {
+      const aspect = stamp.aspect || 1.0;
+      const targetW = aspect >= 1 ? 60 : 60 * aspect;
+      const targetH = aspect >= 1 ? 60 / aspect : 60;
+      const scale = targetH / 72;
+
+      ctx.save();
+      ctx.translate((72 - targetW) / 2, (72 - targetH) / 2);
+      ctx.scale(scale, scale);
       stamp.render(ctx, 72);
+      ctx.restore();
     }
   }, [stamp]);
 

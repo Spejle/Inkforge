@@ -1,17 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import ToolBar from './components/ToolBar';
 import ToolOptions from './components/ToolOptions';
 import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
 import { PRESET_MAPS } from './engine/presetMaps';
-import { exportToPng, exportToJson, importFromJson } from './utils/exportUtils';
+import {
+  exportToPng,
+  exportToHighResPng,
+  exportToUniversalVtt,
+  exportToJson,
+  importFromJson
+} from './utils/exportUtils';
 import { renderMap } from './engine/renderer';
 import './App.css';
 
 export default function App() {
-  // Current active map data
   const defaultPreset = PRESET_MAPS[0]; // The Shattered Archipelago
+
+  // Map settings
   const [mapTitle, setMapTitle] = useState(defaultPreset.title);
   const [mapType, setMapType] = useState(defaultPreset.type);
   const [mapWidth, setMapWidth] = useState(defaultPreset.width);
@@ -24,9 +31,17 @@ export default function App() {
   const [grid, setGrid] = useState(defaultPreset.grid);
   const [atmosphere, setAtmosphere] = useState(defaultPreset.atmosphere);
 
-  // Undo / Redo history
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  // Undo / Redo history initialized directly
+  const [history, setHistory] = useState([
+    {
+      landmasses: defaultPreset.landmasses || [],
+      brushStrokes: [],
+      stamps: defaultPreset.stamps || [],
+      paths: defaultPreset.paths || [],
+      texts: defaultPreset.texts || []
+    }
+  ]);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
   // Active Tool & UI States
   const [activeTool, setActiveTool] = useState('select');
@@ -52,50 +67,46 @@ export default function App() {
   const [newTextContent, setNewTextContent] = useState('');
   const [textFont, setTextFont] = useState('Cinzel');
   const [textSize, setTextSize] = useState(32);
+  const [textCurvature, setTextCurvature] = useState(0);
   const [textColor, setTextColor] = useState('#271b12');
   const [textStroke, setTextStroke] = useState('#ffffff');
 
-  // Selection state
+  // Selection states
   const [selectedStampId, setSelectedStampId] = useState(null);
   const [selectedTextId, setSelectedTextId] = useState(null);
+  const [selectedPathId, setSelectedPathId] = useState(null);
 
   // Canvas Viewport Pan & Zoom
   const [zoom, setZoom] = useState(0.65);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
-  // Record history snapshot
-  const recordHistory = useCallback((newState) => {
-    const snapshot = {
-      landmasses: newState.landmasses ?? landmasses,
-      brushStrokes: newState.brushStrokes ?? brushStrokes,
-      stamps: newState.stamps ?? stamps,
-      paths: newState.paths ?? paths,
-      texts: newState.texts ?? texts
-    };
+  // Record history snapshot helper
+  const recordHistory = useCallback(
+    (newState) => {
+      const snapshot = {
+        landmasses: newState?.landmasses ?? landmasses,
+        brushStrokes: newState?.brushStrokes ?? brushStrokes,
+        stamps: newState?.stamps ?? stamps,
+        paths: newState?.paths ?? paths,
+        texts: newState?.texts ?? texts
+      };
 
-    setHistory((prev) => {
-      const sliced = prev.slice(0, historyIndex + 1);
-      return [...sliced, snapshot];
-    });
-    setHistoryIndex((prev) => prev + 1);
-  }, [landmasses, brushStrokes, stamps, paths, texts, historyIndex]);
+      setHistory((prev) => {
+        const sliced = prev.slice(0, historyIndex + 1);
+        return [...sliced, snapshot];
+      });
+      setHistoryIndex((prev) => prev + 1);
+    },
+    [landmasses, brushStrokes, stamps, paths, texts, historyIndex]
+  );
 
-  // Initial snapshot
-  useEffect(() => {
-    if (history.length === 0) {
-      setHistory([{
-        landmasses: defaultPreset.landmasses || [],
-        brushStrokes: [],
-        stamps: defaultPreset.stamps || [],
-        paths: defaultPreset.paths || [],
-        texts: defaultPreset.texts || []
-      }]);
-      setHistoryIndex(0);
-    }
-  }, []);
+  // Atomic commit on mouse release
+  const handleCommitAction = useCallback(() => {
+    recordHistory();
+  }, [recordHistory]);
 
   // Undo / Redo handlers
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const prev = history[historyIndex - 1];
       setLandmasses(prev.landmasses);
@@ -106,10 +117,11 @@ export default function App() {
       setHistoryIndex(historyIndex - 1);
       setSelectedStampId(null);
       setSelectedTextId(null);
+      setSelectedPathId(null);
     }
-  };
+  }, [historyIndex, history]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const next = history[historyIndex + 1];
       setLandmasses(next.landmasses);
@@ -119,9 +131,131 @@ export default function App() {
       setTexts(next.texts);
       setHistoryIndex(historyIndex + 1);
     }
-  };
+  }, [historyIndex, history]);
 
-  // Keyboard shortcut listener for Ctrl+Z, Ctrl+Y, tool shortcuts
+  // Selection mutations
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedStampId) {
+      setStamps((prev) => {
+        const updated = prev.filter((s) => s.id !== selectedStampId);
+        recordHistory({ stamps: updated });
+        return updated;
+      });
+      setSelectedStampId(null);
+    } else if (selectedTextId) {
+      setTexts((prev) => {
+        const updated = prev.filter((t) => t.id !== selectedTextId);
+        recordHistory({ texts: updated });
+        return updated;
+      });
+      setSelectedTextId(null);
+    } else if (selectedPathId) {
+      setPaths((prev) => {
+        const updated = prev.filter((p) => p.id !== selectedPathId);
+        recordHistory({ paths: updated });
+        return updated;
+      });
+      setSelectedPathId(null);
+    }
+  }, [selectedStampId, selectedTextId, selectedPathId, recordHistory]);
+
+  const handleDuplicateSelected = useCallback(() => {
+    if (selectedStampId) {
+      const target = stamps.find((s) => s.id === selectedStampId);
+      if (!target) return;
+      const clone = {
+        ...target,
+        id: 'stamp_' + Date.now(),
+        x: target.x + 35,
+        y: target.y + 35
+      };
+      setStamps((prev) => {
+        const updated = [...prev, clone];
+        recordHistory({ stamps: updated });
+        return updated;
+      });
+      setSelectedStampId(clone.id);
+    } else if (selectedTextId) {
+      const target = texts.find((t) => t.id === selectedTextId);
+      if (!target) return;
+      const clone = {
+        ...target,
+        id: 'text_' + Date.now(),
+        x: target.x + 30,
+        y: target.y + 30
+      };
+      setTexts((prev) => {
+        const updated = [...prev, clone];
+        recordHistory({ texts: updated });
+        return updated;
+      });
+      setSelectedTextId(clone.id);
+    }
+  }, [selectedStampId, selectedTextId, stamps, texts, recordHistory]);
+
+  const handleBringToFront = useCallback(() => {
+    if (selectedStampId) {
+      setStamps((prev) => {
+        const target = prev.find((s) => s.id === selectedStampId);
+        if (!target) return prev;
+        const maxZ = Math.max(...prev.map((s) => s.zIndex || 0), 0);
+        const updated = prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: maxZ + 1 } : s));
+        recordHistory({ stamps: updated });
+        return updated;
+      });
+    }
+  }, [selectedStampId, recordHistory]);
+
+  const handleSendToBack = useCallback(() => {
+    if (selectedStampId) {
+      setStamps((prev) => {
+        const target = prev.find((s) => s.id === selectedStampId);
+        if (!target) return prev;
+        const minZ = Math.min(...prev.map((s) => s.zIndex || 0), 0);
+        const updated = prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: minZ - 1 } : s));
+        recordHistory({ stamps: updated });
+        return updated;
+      });
+    }
+  }, [selectedStampId, recordHistory]);
+
+  const handleFlipStamp = useCallback(
+    (axis) => {
+      if (selectedStampId) {
+        setStamps((prev) => {
+          const updated = prev.map((s) => {
+            if (s.id === selectedStampId) {
+              return axis === 'x' ? { ...s, flipX: !s.flipX } : { ...s, flipY: !s.flipY };
+            }
+            return s;
+          });
+          recordHistory({ stamps: updated });
+          return updated;
+        });
+      }
+    },
+    [selectedStampId, recordHistory]
+  );
+
+  const handleUpdateSelectedStamp = useCallback((updates) => {
+    setStamps((prev) =>
+      prev.map((s) => (s.id === selectedStampId ? { ...s, ...updates } : s))
+    );
+  }, [selectedStampId]);
+
+  const handleUpdateSelectedText = useCallback((updates) => {
+    setTexts((prev) =>
+      prev.map((t) => (t.id === selectedTextId ? { ...t, ...updates } : t))
+    );
+  }, [selectedTextId]);
+
+  const handleUpdateSelectedPath = useCallback((updates) => {
+    setPaths((prev) =>
+      prev.map((p) => (p.id === selectedPathId ? { ...p, ...updates } : p))
+    );
+  }, [selectedPathId]);
+
+  // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -157,7 +291,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyIndex, history, selectedStampId, selectedTextId]);
+  }, [handleUndo, handleRedo, handleDeleteSelected]);
 
   // Load a preset map
   const handleLoadPreset = (presetId) => {
@@ -177,14 +311,17 @@ export default function App() {
     setAtmosphere(found.atmosphere);
     setSelectedStampId(null);
     setSelectedTextId(null);
+    setSelectedPathId(null);
 
-    setHistory([{
-      landmasses: found.landmasses || [],
-      brushStrokes: [],
-      stamps: found.stamps || [],
-      paths: found.paths || [],
-      texts: found.texts || []
-    }]);
+    setHistory([
+      {
+        landmasses: found.landmasses || [],
+        brushStrokes: [],
+        stamps: found.stamps || [],
+        paths: found.paths || [],
+        texts: found.texts || []
+      }
+    ]);
     setHistoryIndex(0);
   };
 
@@ -206,16 +343,15 @@ export default function App() {
   };
 
   const handleAddStamp = (stamp) => {
-    setStamps((prev) => {
-      const updated = [...prev, stamp];
-      recordHistory({ stamps: updated });
-      return updated;
-    });
+    setStamps((prev) => [...prev, stamp]);
   };
 
   const handleUpdateStamp = (id, updates) => {
     setStamps((prev) =>
       prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+    );
+    setTexts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
     );
   };
 
@@ -227,8 +363,7 @@ export default function App() {
         copy[idx] = path;
         return copy;
       }
-      const updated = [...prev, path];
-      return updated;
+      return [...prev, path];
     });
   };
 
@@ -243,7 +378,7 @@ export default function App() {
       font: textFont,
       color: textColor,
       stroke: textStroke,
-      curved: false
+      curvature: textCurvature
     };
 
     setTexts((prev) => {
@@ -253,93 +388,24 @@ export default function App() {
     });
     setSelectedTextId(newText.id);
     setSelectedStampId(null);
+    setSelectedPathId(null);
     setActiveTool('select');
     setNewTextContent('');
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedStampId) {
-      setStamps((prev) => {
-        const updated = prev.filter((s) => s.id !== selectedStampId);
-        recordHistory({ stamps: updated });
-        return updated;
-      });
-      setSelectedStampId(null);
-    } else if (selectedTextId) {
-      setTexts((prev) => {
-        const updated = prev.filter((t) => t.id !== selectedTextId);
-        recordHistory({ texts: updated });
-        return updated;
-      });
-      setSelectedTextId(null);
-    }
-  };
-
-  const handleDuplicateSelected = () => {
-    if (selectedStampId) {
-      const target = stamps.find((s) => s.id === selectedStampId);
-      if (!target) return;
-      const clone = {
-        ...target,
-        id: 'stamp_' + Date.now(),
-        x: target.x + 30,
-        y: target.y + 30
-      };
-      setStamps((prev) => {
-        const updated = [...prev, clone];
-        recordHistory({ stamps: updated });
-        return updated;
-      });
-      setSelectedStampId(clone.id);
-    }
-  };
-
-  const handleBringToFront = () => {
-    if (selectedStampId) {
-      setStamps((prev) => {
-        const target = prev.find((s) => s.id === selectedStampId);
-        if (!target) return prev;
-        const maxZ = Math.max(...prev.map((s) => s.zIndex || 0), 0);
-        return prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: maxZ + 1 } : s));
-      });
-    }
-  };
-
-  const handleSendToBack = () => {
-    if (selectedStampId) {
-      setStamps((prev) => {
-        const target = prev.find((s) => s.id === selectedStampId);
-        if (!target) return prev;
-        const minZ = Math.min(...prev.map((s) => s.zIndex || 0), 0);
-        return prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: minZ - 1 } : s));
-      });
-    }
-  };
-
-  const handleFlipStamp = (axis) => {
-    if (selectedStampId) {
-      setStamps((prev) =>
-        prev.map((s) => {
-          if (s.id === selectedStampId) {
-            return axis === 'x' ? { ...s, flipX: !s.flipX } : { ...s, flipY: !s.flipY };
-          }
-          return s;
-        })
-      );
-    }
-  };
-
-  const handleUploadCustomStamp = (img, name) => {
+  const handleUploadCustomStamp = (img, name, dataUrl) => {
     const customId = 'custom_' + Date.now();
     const newStamp = {
       id: customId,
       stampId: customId,
       name: name.replace(/\.[^/.]+$/, ''),
       customImage: img,
+      dataUrl: dataUrl,
       x: Math.round(mapWidth / 2),
       y: Math.round(mapHeight / 2),
       scale: 1.0,
-      rotation: 0
+      rotation: 0,
+      zIndex: 0
     };
     setStamps((prev) => {
       const updated = [...prev, newStamp];
@@ -350,8 +416,8 @@ export default function App() {
     setActiveTool('select');
   };
 
-  // Export full map as High-Resolution PNG
-  const handleExportPng = () => {
+  // Export handlers
+  const handleExportPng = (includeGrid = true) => {
     const offscreen = document.createElement('canvas');
     offscreen.width = mapWidth;
     offscreen.height = mapHeight;
@@ -367,7 +433,7 @@ export default function App() {
       stamps,
       paths,
       texts,
-      grid,
+      grid: { ...grid, enabled: includeGrid && grid.enabled },
       atmosphere,
       selectedStampId: null,
       selectedTextId: null
@@ -377,7 +443,46 @@ export default function App() {
     exportToPng(offscreen, `${safeTitle}.png`);
   };
 
-  // Export project JSON
+  const handleExportHighRes = (scaleFactor, includeGrid) => {
+    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    exportToHighResPng({
+      mapState: {
+        mapWidth,
+        mapHeight,
+        mapType,
+        landmasses,
+        brushStrokes,
+        stamps,
+        paths,
+        texts,
+        grid,
+        atmosphere
+      },
+      scaleFactor,
+      includeGrid,
+      filename: `${safeTitle}_${scaleFactor}x.png`
+    });
+  };
+
+  const handleExportVtt = () => {
+    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    exportToUniversalVtt({
+      mapState: {
+        mapWidth,
+        mapHeight,
+        mapType,
+        landmasses,
+        brushStrokes,
+        stamps,
+        paths,
+        texts,
+        grid,
+        atmosphere
+      },
+      filename: `${safeTitle}.dd2vtt`
+    });
+  };
+
   const handleExportJson = () => {
     const projectData = {
       title: mapTitle,
@@ -386,7 +491,10 @@ export default function App() {
       height: mapHeight,
       landmasses,
       brushStrokes,
-      stamps,
+      stamps: stamps.map((s) => ({
+        ...s,
+        customImage: s.dataUrl || (s.customImage && s.customImage.src) || null
+      })),
       paths,
       texts,
       grid,
@@ -396,7 +504,6 @@ export default function App() {
     exportToJson(projectData, `${safeTitle}.inkforge`);
   };
 
-  // Import project JSON
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
@@ -414,17 +521,20 @@ export default function App() {
         if (data.atmosphere) setAtmosphere(data.atmosphere);
         setSelectedStampId(null);
         setSelectedTextId(null);
+        setSelectedPathId(null);
 
-        setHistory([{
-          landmasses: data.landmasses || [],
-          brushStrokes: data.brushStrokes || [],
-          stamps: data.stamps || [],
-          paths: data.paths || [],
-          texts: data.texts || []
-        }]);
+        setHistory([
+          {
+            landmasses: data.landmasses || [],
+            brushStrokes: data.brushStrokes || [],
+            stamps: data.stamps || [],
+            paths: data.paths || [],
+            texts: data.texts || []
+          }
+        ]);
         setHistoryIndex(0);
       }
-    } catch (err) {
+    } catch {
       alert('Could not open file: invalid .inkforge JSON format.');
     }
   };
@@ -436,6 +546,7 @@ export default function App() {
 
   const selectedStamp = stamps.find((s) => s.id === selectedStampId);
   const selectedText = texts.find((t) => t.id === selectedTextId);
+  const selectedPath = paths.find((p) => p.id === selectedPathId);
 
   return (
     <div className="inkforge-app">
@@ -453,120 +564,126 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         gridEnabled={grid.enabled}
-        setGridEnabled={(val) => setGrid((g) => ({ ...g, enabled: typeof val === 'function' ? val(g.enabled) : val }))}
+        setGridEnabled={(val) => setGrid((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
         onExportPng={handleExportPng}
+        onExportHighRes={handleExportHighRes}
+        onExportVtt={handleExportVtt}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
         onLoadPreset={handleLoadPreset}
         onNewMap={handleNewMap}
       />
 
-      {/* Contextual Tool Options Ribbon */}
-      <ToolOptions
-        activeTool={activeTool}
-        maskMode={maskMode}
-        setMaskMode={setMaskMode}
-        brushSize={brushSize}
-        setBrushSize={setBrushSize}
-        activeBiome={activeBiome}
-        setActiveBiome={setActiveBiome}
-        brushOpacity={brushOpacity}
-        setBrushOpacity={setBrushOpacity}
-        activeStampId={activeStampId}
-        stampScale={stampScale}
-        setStampScale={setStampScale}
-        stampRotation={stampRotation}
-        setStampRotation={setStampRotation}
-        stampJitter={stampJitter}
-        setStampJitter={setStampJitter}
-        stampSpray={stampSpray}
-        setStampSpray={setStampSpray}
-        onFlipStamp={handleFlipStamp}
-        pathType={pathType}
-        setPathType={setPathType}
-        pathWidth={pathWidth}
-        setPathWidth={setPathWidth}
-        pathDashed={pathDashed}
-        setPathDashed={setPathDashed}
-        pathColor={pathColor}
-        setPathColor={setPathColor}
-        newTextContent={newTextContent}
-        setNewTextContent={setNewTextContent}
-        textFont={textFont}
-        setTextFont={setTextFont}
-        textSize={textSize}
-        setTextSize={setTextSize}
-        textColor={textColor}
-        setTextColor={setTextColor}
-        textStroke={textStroke}
-        setTextStroke={setTextStroke}
-        onAddText={handleAddText}
-        gridConfig={grid}
-        setGridConfig={setGrid}
-        atmosphereConfig={atmosphere}
-        setAtmosphereConfig={setAtmosphere}
-        selectedStamp={selectedStamp}
-        selectedText={selectedText}
-        onDeleteSelected={handleDeleteSelected}
-        onDuplicateSelected={handleDuplicateSelected}
-        onBringToFront={handleBringToFront}
-        onSendToBack={handleSendToBack}
-      />
-
-      {/* Main Workspace Body */}
-      <div className="workspace-container">
-        {/* Left Toolbar */}
+      {/* Main Studio Workspace */}
+      <div className="studio-workspace">
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} />
 
-        {/* Center Interactive Canvas */}
-        <CanvasArea
-          mapWidth={mapWidth}
-          mapHeight={mapHeight}
-          mapType={mapType}
-          landmasses={landmasses}
-          brushStrokes={brushStrokes}
-          stamps={stamps}
-          paths={paths}
-          texts={texts}
-          grid={grid}
-          atmosphere={atmosphere}
-          activeTool={activeTool}
-          maskMode={maskMode}
-          brushSize={brushSize}
-          activeBiome={activeBiome}
-          brushOpacity={brushOpacity}
-          activeStampId={activeStampId}
-          stampScale={stampScale}
-          stampRotation={stampRotation}
-          stampJitter={stampJitter}
-          stampSpray={stampSpray}
-          pathType={pathType}
-          pathWidth={pathWidth}
-          pathDashed={pathDashed}
-          pathColor={pathColor}
-          onAddBrushStroke={handleAddBrushStroke}
-          onAddStamp={handleAddStamp}
-          onUpdateStamp={handleUpdateStamp}
-          onAddPath={handleAddPath}
-          selectedStampId={selectedStampId}
-          setSelectedStampId={setSelectedStampId}
-          selectedTextId={selectedTextId}
-          setSelectedTextId={setSelectedTextId}
-          zoom={zoom}
-          setZoom={setZoom}
-          panOffset={panOffset}
-          setPanOffset={setPanOffset}
-        />
+        <div className="center-stage">
+          <ToolOptions
+            activeTool={activeTool}
+            maskMode={maskMode}
+            setMaskMode={setMaskMode}
+            brushSize={brushSize}
+            setBrushSize={setBrushSize}
+            activeBiome={activeBiome}
+            setActiveBiome={setActiveBiome}
+            brushOpacity={brushOpacity}
+            setBrushOpacity={setBrushOpacity}
+            activeStampId={activeStampId}
+            stampScale={stampScale}
+            setStampScale={setStampScale}
+            stampRotation={stampRotation}
+            setStampRotation={setStampRotation}
+            stampJitter={stampJitter}
+            setStampJitter={setStampJitter}
+            stampSpray={stampSpray}
+            setStampSpray={setStampSpray}
+            onFlipStamp={handleFlipStamp}
+            pathType={pathType}
+            setPathType={setPathType}
+            pathWidth={pathWidth}
+            setPathWidth={setPathWidth}
+            pathDashed={pathDashed}
+            setPathDashed={setPathDashed}
+            pathColor={pathColor}
+            setPathColor={setPathColor}
+            newTextContent={newTextContent}
+            setNewTextContent={setNewTextContent}
+            textFont={textFont}
+            setTextFont={setTextFont}
+            textSize={textSize}
+            setTextSize={setTextSize}
+            textCurvature={textCurvature}
+            setTextCurvature={setTextCurvature}
+            textColor={textColor}
+            setTextColor={setTextColor}
+            textStroke={textStroke}
+            setTextStroke={setTextStroke}
+            onAddText={handleAddText}
+            gridConfig={grid}
+            setGridConfig={setGrid}
+            atmosphereConfig={atmosphere}
+            setAtmosphereConfig={setAtmosphere}
+            selectedStamp={selectedStamp}
+            selectedText={selectedText}
+            selectedPath={selectedPath}
+            onUpdateSelectedStamp={handleUpdateSelectedStamp}
+            onUpdateSelectedText={handleUpdateSelectedText}
+            onUpdateSelectedPath={handleUpdateSelectedPath}
+            onDeleteSelected={handleDeleteSelected}
+            onDuplicateSelected={handleDuplicateSelected}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+          />
 
-        {/* Right Stamp Drawer */}
+          <CanvasArea
+            mapWidth={mapWidth}
+            mapHeight={mapHeight}
+            mapType={mapType}
+            landmasses={landmasses}
+            brushStrokes={brushStrokes}
+            stamps={stamps}
+            paths={paths}
+            texts={texts}
+            grid={grid}
+            atmosphere={atmosphere}
+            activeTool={activeTool}
+            maskMode={maskMode}
+            brushSize={brushSize}
+            activeBiome={activeBiome}
+            brushOpacity={brushOpacity}
+            activeStampId={activeStampId}
+            stampScale={stampScale}
+            stampRotation={stampRotation}
+            stampJitter={stampJitter}
+            stampSpray={stampSpray}
+            pathType={pathType}
+            pathWidth={pathWidth}
+            pathDashed={pathDashed}
+            pathColor={pathColor}
+            onAddBrushStroke={handleAddBrushStroke}
+            onAddStamp={handleAddStamp}
+            onUpdateStamp={handleUpdateStamp}
+            onAddPath={handleAddPath}
+            onCommitAction={handleCommitAction}
+            selectedStampId={selectedStampId}
+            setSelectedStampId={setSelectedStampId}
+            selectedTextId={selectedTextId}
+            setSelectedTextId={setSelectedTextId}
+            selectedPathId={selectedPathId}
+            setSelectedPathId={setSelectedPathId}
+            zoom={zoom}
+            setZoom={setZoom}
+            panOffset={panOffset}
+            setPanOffset={setPanOffset}
+          />
+        </div>
+
         <StampDrawer
           isOpen={isStampDrawerOpen}
           setIsOpen={setIsStampDrawerOpen}
           activeStampId={activeStampId}
-          setActiveStampId={(id) => {
-            setActiveStampId(id);
-            setActiveTool('stamp');
-          }}
+          setActiveStampId={setActiveStampId}
           onUploadCustomStamp={handleUploadCustomStamp}
         />
       </div>

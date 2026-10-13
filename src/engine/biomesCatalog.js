@@ -1,4 +1,4 @@
-// Biome and Texture Palettes for Map Painting
+// Biome and Texture Palettes for Map Painting with Procedural Patterns
 
 export const BIOMES = [
   {
@@ -52,6 +52,26 @@ export const BIOMES = [
     description: 'Dark obsidian, crags, and grim wilderness'
   },
   {
+    id: 'swamp_mire',
+    name: 'Murky Mire / Swamp',
+    category: 'world',
+    color: '#3d4a36',
+    secondaryColor: '#283324',
+    roughness: 0.5,
+    preview: '#3d4a36',
+    description: 'Stagnant bog, mossy peat, and wetland reeds'
+  },
+  {
+    id: 'lava_molten',
+    name: 'Molten Magma Fields',
+    category: 'world',
+    color: '#b91c1c',
+    secondaryColor: '#7f1d1d',
+    roughness: 0.7,
+    preview: '#b91c1c',
+    description: 'Lava fissures and scorched basalt'
+  },
+  {
     id: 'shallows',
     name: 'Coastal Shallows',
     category: 'world',
@@ -79,7 +99,7 @@ export const BIOMES = [
     color: '#4b5563',
     secondaryColor: '#374151',
     roughness: 0.5,
-    pattern: 'grid',
+    pattern: 'flagstone',
     preview: '#4b5563',
     description: 'Ancient dungeon masonry and fortress floors'
   },
@@ -95,27 +115,95 @@ export const BIOMES = [
     description: 'Wooden floors for taverns, ships, and cabins'
   },
   {
+    id: 'cobblestone_town',
+    name: 'Town Cobblestone',
+    category: 'battle',
+    color: '#64748b',
+    secondaryColor: '#475569',
+    roughness: 0.45,
+    pattern: 'cobble',
+    preview: '#64748b',
+    description: 'Paved market squares and dungeon alleys'
+  },
+  {
     id: 'dirt_cave',
     name: 'Cave Soil / Dirt',
     category: 'battle',
-    color: '#574130',
-    secondaryColor: '#3d2c20',
-    roughness: 0.7,
-    preview: '#574130',
-    description: 'Cavern floors, muddy roads, and earthen burrows'
-  },
-  {
-    id: 'lava_cracks',
-    name: 'Lava Magma',
-    category: 'battle',
-    color: '#b91c1c',
-    secondaryColor: '#f97316',
-    roughness: 0.8,
-    preview: '#b91c1c',
-    description: 'Infernal fire caverns and molten hazards'
+    color: '#5c4033',
+    secondaryColor: '#422817',
+    roughness: 0.6,
+    preview: '#5c4033',
+    description: 'Damp cavern floor, mud, and packed earth'
   }
 ];
 
 export function getBiomeById(id) {
-  return BIOMES.find(b => b.id === id) || BIOMES[0];
+  return BIOMES.find((b) => b.id === id) || BIOMES[0];
+}
+
+// In-memory pattern cache
+const patternCache = new Map();
+
+/**
+ * Creates or retrieves a seamless procedural CanvasPattern for textured biome rendering
+ */
+export function getBiomePattern(ctx, biomeId) {
+  if (patternCache.has(biomeId)) {
+    return patternCache.get(biomeId);
+  }
+
+  const biome = getBiomeById(biomeId);
+  const size = 64;
+  const offscreen = document.createElement('canvas');
+  offscreen.width = size;
+  offscreen.height = size;
+  const octx = offscreen.getContext('2d');
+
+  // Base fill
+  octx.fillStyle = biome.color;
+  octx.fillRect(0, 0, size, size);
+
+  if (biome.pattern === 'flagstone') {
+    // Mortar lines and stone pavers
+    octx.strokeStyle = biome.secondaryColor;
+    octx.lineWidth = 2;
+    octx.strokeRect(2, 2, size / 2 - 4, size / 2 - 4);
+    octx.strokeRect(size / 2 + 2, 2, size / 2 - 4, size / 2 - 4);
+    octx.strokeRect(2, size / 2 + 2, size / 2 - 4, size / 2 - 4);
+    octx.strokeRect(size / 2 + 2, size / 2 + 2, size / 2 - 4, size / 2 - 4);
+  } else if (biome.pattern === 'planks') {
+    // Wood plank horizontal lines & nail dots
+    octx.strokeStyle = biome.secondaryColor;
+    octx.lineWidth = 2;
+    for (let y = 16; y < size; y += 16) {
+      octx.beginPath();
+      octx.moveTo(0, y);
+      octx.lineTo(size, y);
+      octx.stroke();
+    }
+  } else if (biome.pattern === 'cobble') {
+    // Rounded cobblestones
+    octx.fillStyle = biome.secondaryColor;
+    for (let x = 8; x < size; x += 16) {
+      for (let y = 8; y < size; y += 16) {
+        octx.beginPath();
+        octx.arc(x, y, 5, 0, Math.PI * 2);
+        octx.fill();
+      }
+    }
+  } else {
+    // Organic stipple noise flecks
+    octx.fillStyle = biome.secondaryColor;
+    for (let i = 0; i < 28; i++) {
+      const rx = (i * 17 + 5) % size;
+      const ry = (i * 29 + 11) % size;
+      octx.fillRect(rx, ry, 2, 2);
+    }
+  }
+
+  const pattern = ctx.createPattern(offscreen, 'repeat');
+  if (pattern) {
+    patternCache.set(biomeId, pattern);
+  }
+  return pattern || biome.color;
 }

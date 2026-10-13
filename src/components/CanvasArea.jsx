@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { renderMap } from '../engine/renderer';
+import { renderMap, snapToGrid } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
 
 export default function CanvasArea({
@@ -33,10 +33,13 @@ export default function CanvasArea({
   onAddStamp,
   onUpdateStamp,
   onAddPath,
+  onCommitAction,
   selectedStampId,
   setSelectedStampId,
   selectedTextId,
   setSelectedTextId,
+  selectedPathId,
+  setSelectedPathId,
   zoom,
   setZoom,
   panOffset,
@@ -50,6 +53,7 @@ export default function CanvasArea({
   const activeStrokeRef = useRef(null);
   const activePathRef = useRef(null);
   const draggedObjectRef = useRef(null);
+  const lastSprayPosRef = useRef({ x: -9999, y: -9999 });
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0, canvasX: 0, canvasY: 0, inside: false });
   const [spacePressed, setSpacePressed] = useState(false);
@@ -103,7 +107,8 @@ export default function CanvasArea({
       grid,
       atmosphere,
       selectedStampId,
-      selectedTextId
+      selectedTextId,
+      selectedPathId
     });
   }, [
     mapWidth,
@@ -117,22 +122,67 @@ export default function CanvasArea({
     grid,
     atmosphere,
     selectedStampId,
-    selectedTextId
+    selectedTextId,
+    selectedPathId
   ]);
 
-  // Mouse Wheel Zoom centered on cursor
+  // Cursor-anchored mouse wheel zoom
   const handleWheel = (e) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    setZoom((prev) => {
-      const next = Math.min(3.5, Math.max(0.15, prev * zoomFactor));
-      return next;
-    });
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - rect.width / 2;
+    const mouseY = e.clientY - rect.top - rect.height / 2;
+
+    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+    const nextZoom = Math.min(4.0, Math.max(0.1, zoom * zoomFactor));
+    const ratio = nextZoom / zoom;
+
+    setPanOffset((prev) => ({
+      x: mouseX - (mouseX - prev.x) * ratio,
+      y: mouseY - (mouseY - prev.y) * ratio
+    }));
+    setZoom(nextZoom);
   };
 
-  // Mouse Down
+  // Helper to place a single stamp with jitter & grid snapping
+  const placeStampAt = (rawX, rawY) => {
+    let finalScale = stampScale;
+    let finalRot = stampRotation;
+    let finalX = rawX;
+    let finalY = rawY;
+
+    if (grid && grid.snap) {
+      const snapped = snapToGrid(finalX, finalY, grid);
+      finalX = snapped.x;
+      finalY = snapped.y;
+    }
+
+    if (stampJitter) {
+      finalScale *= 0.85 + Math.random() * 0.3;
+      finalRot += (Math.random() - 0.5) * 0.35;
+      finalX += (Math.random() - 0.5) * 12;
+      finalY += (Math.random() - 0.5) * 12;
+    }
+
+    const newStamp = {
+      id: 'stamp_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      stampId: activeStampId,
+      x: Math.round(finalX),
+      y: Math.round(finalY),
+      scale: Number(finalScale.toFixed(2)),
+      rotation: Number(finalRot.toFixed(2)),
+      zIndex: 0 // Stable default for isometric Y-sorting
+    };
+
+    onAddStamp(newStamp);
+    lastSprayPosRef.current = { x: finalX, y: finalY };
+  };
+
+  // Mouse Down handler
   const handleMouseDown = (e) => {
-    // Check if middle click or spacebar or Hand tool is active -> Pan
     if (e.button === 1 || spacePressed || activeTool === 'hand') {
       isPanningRef.current = true;
       panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
@@ -144,115 +194,145 @@ export default function CanvasArea({
     const { x, y } = clientToCanvas(e.clientX, e.clientY);
     isInteractingRef.current = true;
 
-    // 1. SELECT TOOL: Hit test stamps and texts
+    // 1. SELECT TOOL: Hit test stamps, texts, and paths
     if (activeTool === 'select') {
-      // Test stamps in reverse order (top to bottom)
-      const clickedStamp = [...stamps].reverse().find((s) => {
-        const dist = Math.hypot(s.x - x, s.y - y);
-        const radius = (80 * (s.scale || 1)) / 2;
-        return dist <= radius;
+      // Sort stamps identically to the visual render order
+      const sortedStamps = [...stamps].sort((a, b) => {
+        const za = a.zIndex || 0;
+        const zb = b.zIndex || 0;
+        if (za !== zb) return za - zb;
+        return a.y - b.y;
+      });
+
+      // Hit-test in reverse render order (top-most stamp first)
+      const clickedStamp = sortedStamps.slice().reverse().find((s) => {
+        const def = getStampById(s.stampId);
+        const aspect = (def && def.aspect) ? def.aspect : 1.0;
+        const baseSize = 80;
+        const finalSize = baseSize * (s.scale || 1.0);
+        const w = finalSize * aspect;
+        const h = finalSize;
+
+        // Test in rotated stamp local coordinate space
+        const dx = x - s.x;
+        const dy = y - s.y;
+        const rot = -(s.rotation || 0);
+        const localX = dx * Math.cos(rot) - dy * Math.sin(rot);
+        const localY = dx * Math.sin(rot) + dy * Math.cos(rot);
+
+        return Math.abs(localX) <= w / 2 && Math.abs(localY) <= h / 2;
       });
 
       if (clickedStamp) {
         setSelectedStampId(clickedStamp.id);
         setSelectedTextId(null);
-        draggedObjectRef.current = { type: 'stamp', id: clickedStamp.id, offsetX: x - clickedStamp.x, offsetY: y - clickedStamp.y };
+        if (setSelectedPathId) setSelectedPathId(null);
+        draggedObjectRef.current = {
+          type: 'stamp',
+          id: clickedStamp.id,
+          offsetX: x - clickedStamp.x,
+          offsetY: y - clickedStamp.y
+        };
         return;
       }
 
-      // Test texts
+      // Hit-test texts
       const clickedText = [...texts].reverse().find((t) => {
         const dist = Math.hypot(t.x - x, t.y - y);
-        return dist <= (t.size || 24) * 1.5;
+        return dist <= (t.size || 28) * 1.6;
       });
 
       if (clickedText) {
         setSelectedTextId(clickedText.id);
         setSelectedStampId(null);
-        draggedObjectRef.current = { type: 'text', id: clickedText.id, offsetX: x - clickedText.x, offsetY: y - clickedText.y };
+        if (setSelectedPathId) setSelectedPathId(null);
+        draggedObjectRef.current = {
+          type: 'text',
+          id: clickedText.id,
+          offsetX: x - clickedText.x,
+          offsetY: y - clickedText.y
+        };
         return;
       }
 
-      // Clicked empty area -> clear selection
+      // Hit-test paths (within 15px of any path point)
+      if (setSelectedPathId) {
+        const clickedPath = [...paths].reverse().find((p) => {
+          if (!p.points) return false;
+          return p.points.some((pt) => Math.hypot(pt[0] - x, pt[1] - y) <= Math.max(16, (p.width || 12)));
+        });
+
+        if (clickedPath) {
+          setSelectedPathId(clickedPath.id);
+          setSelectedStampId(null);
+          setSelectedTextId(null);
+          return;
+        }
+      }
+
+      // Clicked empty canvas -> clear selections
       setSelectedStampId(null);
       setSelectedTextId(null);
+      if (setSelectedPathId) setSelectedPathId(null);
     }
 
-    // 2. MASK / LANDMASS TOOL: Begin stroke
+    // 2. MASK TOOL (Landmass & Coastline Sculptor)
     if (activeTool === 'mask') {
-      activeStrokeRef.current = {
-        id: 'stroke_' + Date.now(),
+      const strokeId = 'mask_' + Date.now();
+      const newStroke = {
+        id: strokeId,
         type: 'mask',
-        mode: maskMode,
-        biome: maskMode === 'water' ? 'deep_ocean' : 'grassland',
+        mode: maskMode, // 'land' or 'water'
         size: brushSize,
-        opacity: 0.9,
-        points: [{ x, y }]
+        opacity: brushOpacity,
+        points: [{ x: Math.round(x), y: Math.round(y) }]
       };
-      onAddBrushStroke({ ...activeStrokeRef.current });
+      activeStrokeRef.current = newStroke;
+      onAddBrushStroke(newStroke);
     }
 
-    // 3. BIOME / BRUSH TOOL: Begin texture stroke
+    // 3. BRUSH TOOL (Biomes & Textures)
     if (activeTool === 'brush') {
-      activeStrokeRef.current = {
-        id: 'stroke_' + Date.now(),
-        type: 'biome',
+      const strokeId = 'brush_' + Date.now();
+      const newStroke = {
+        id: strokeId,
+        type: 'brush',
         biome: activeBiome,
         size: brushSize,
         opacity: brushOpacity,
-        points: [{ x, y }]
+        points: [{ x: Math.round(x), y: Math.round(y) }]
       };
-      onAddBrushStroke({ ...activeStrokeRef.current });
+      activeStrokeRef.current = newStroke;
+      onAddBrushStroke(newStroke);
     }
 
-    // 4. STAMP TOOL: Place stamp
+    // 4. STAMP TOOL
     if (activeTool === 'stamp') {
       placeStampAt(x, y);
     }
 
-    // 5. PATH / RIVER TOOL: Begin path
+    // 5. PATH TOOL (Rivers, Roads, Walls)
     if (activeTool === 'path') {
-      activePathRef.current = {
-        id: 'path_' + Date.now(),
+      const pathId = 'path_' + Date.now();
+      const newPath = {
+        id: pathId,
         type: pathType,
+        color: pathColor,
         width: pathWidth,
         dashed: pathDashed,
-        color: pathColor,
-        points: [[x, y]]
+        points: [[Math.round(x), Math.round(y)]]
       };
-      onAddPath({ ...activePathRef.current });
+      activePathRef.current = newPath;
+      onAddPath(newPath);
     }
   };
 
-  // Helper to place stamp with optional jitter
-  const placeStampAt = (x, y) => {
-    let finalScale = stampScale;
-    let finalRot = stampRotation;
-
-    if (stampJitter) {
-      finalScale *= 0.85 + Math.random() * 0.3;
-      finalRot += (Math.random() - 0.5) * 0.4;
-    }
-
-    const newStamp = {
-      id: 'stamp_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-      stampId: activeStampId,
-      x: Math.round(x),
-      y: Math.round(y),
-      scale: Number(finalScale.toFixed(2)),
-      rotation: Number(finalRot.toFixed(2)),
-      zIndex: Date.now() % 1000
-    };
-
-    onAddStamp(newStamp);
-  };
-
-  // Mouse Move
+  // Mouse Move handler
   const handleMouseMove = (e) => {
     const { x, y } = clientToCanvas(e.clientX, e.clientY);
     setMousePos({ x: e.clientX, y: e.clientY, canvasX: Math.round(x), canvasY: Math.round(y), inside: true });
 
-    // Handle Pan
+    // Handle Viewport Pan
     if (isPanningRef.current) {
       setPanOffset({
         x: e.clientX - panStartRef.current.x,
@@ -263,26 +343,40 @@ export default function CanvasArea({
 
     if (!isInteractingRef.current) return;
 
-    // Handle dragging selected element
+    // Handle Moving selected object
     if (activeTool === 'select' && draggedObjectRef.current) {
       const { type, id, offsetX, offsetY } = draggedObjectRef.current;
+      let targetX = Math.round(x - offsetX);
+      let targetY = Math.round(y - offsetY);
+
+      if (grid && grid.snap) {
+        const snapped = snapToGrid(targetX, targetY, grid);
+        targetX = snapped.x;
+        targetY = snapped.y;
+      }
+
       if (type === 'stamp') {
-        onUpdateStamp(id, { x: Math.round(x - offsetX), y: Math.round(y - offsetY) });
+        onUpdateStamp(id, { x: targetX, y: targetY });
+      } else if (type === 'text') {
+        onUpdateStamp(id, { x: targetX, y: targetY }); // Handled in App
       }
       return;
     }
 
-    // Handle Brush / Mask sculpting stroke
+    // Handle Brush / Mask freehand sculpting
     if ((activeTool === 'mask' || activeTool === 'brush') && activeStrokeRef.current) {
-      activeStrokeRef.current.points.push({ x, y });
+      activeStrokeRef.current.points.push({ x: Math.round(x), y: Math.round(y) });
       onAddBrushStroke({ ...activeStrokeRef.current });
       return;
     }
 
-    // Handle Stamp spray
+    // Handle Stamp Spray Mode with Distance Throttling
     if (activeTool === 'stamp' && stampSpray) {
-      // Throttle spray distance to avoid too many stamps per pixel
-      placeStampAt(x, y);
+      const dist = Math.hypot(x - lastSprayPosRef.current.x, y - lastSprayPosRef.current.y);
+      const minDistance = Math.max(24, 40 * stampScale);
+      if (dist >= minDistance) {
+        placeStampAt(x, y);
+      }
       return;
     }
 
@@ -294,14 +388,28 @@ export default function CanvasArea({
     }
   };
 
-  // Mouse Up
+  // Mouse Up handler
   const handleMouseUp = () => {
+    if (isInteractingRef.current && onCommitAction) {
+      onCommitAction();
+    }
     isInteractingRef.current = false;
     isPanningRef.current = false;
     activeStrokeRef.current = null;
     activePathRef.current = null;
     draggedObjectRef.current = null;
   };
+
+  // Global window listeners to catch pointer releases outside canvas boundary
+  useEffect(() => {
+    const onWindowMouseUp = () => {
+      if (isInteractingRef.current || isPanningRef.current) {
+        handleMouseUp();
+      }
+    };
+    window.addEventListener('mouseup', onWindowMouseUp);
+    return () => window.removeEventListener('mouseup', onWindowMouseUp);
+  }, [onCommitAction]);
 
   return (
     <div
@@ -312,7 +420,6 @@ export default function CanvasArea({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
-        handleMouseUp();
         setMousePos((p) => ({ ...p, inside: false }));
       }}
     >
@@ -352,6 +459,12 @@ export default function CanvasArea({
         <span>Canvas: {mapWidth} × {mapHeight}</span>
         <span className="divider-dot">•</span>
         <span>Stamps: {stamps.length}</span>
+        {grid && grid.snap && (
+          <>
+            <span className="divider-dot">•</span>
+            <span className="text-amber-400 font-semibold">GRID SNAP ON</span>
+          </>
+        )}
       </div>
     </div>
   );

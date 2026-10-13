@@ -1,9 +1,14 @@
-// InkForge Rendering Pipeline
+// InkForge Rendering Pipeline — High Performance Canvas 2D Engine
 import { getStampById } from './stampsCatalog.js';
-import { getBiomeById } from './biomesCatalog.js';
+import { getBiomeById, getBiomePattern } from './biomesCatalog.js';
+
+// Cache for static background & noise buffers
+let backgroundCache = null;
+let lastBgKey = '';
+let noisePatternCache = null;
 
 /**
- * Main draw loop: renders the composite map into the destination canvas.
+ * Main draw loop: renders the composite map into destination canvas.
  */
 export function renderMap({
   ctx,
@@ -15,10 +20,11 @@ export function renderMap({
   stamps = [],
   paths = [],
   texts = [],
-  grid = { enabled: true, type: 'hex_flat', size: 60, opacity: 0.15, color: '#1e293b' },
-  atmosphere = { vignette: 0.4, parchmentGrain: 0.3, sepia: 0.2, brightness: 1.0 },
+  grid = { enabled: true, type: 'hex_flat', size: 60, opacity: 0.15, color: '#1e293b', offsetX: 0, offsetY: 0 },
+  atmosphere = { vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1.0 },
   selectedStampId = null,
   selectedTextId = null,
+  selectedPathId = null,
   layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true }
 }) {
   ctx.save();
@@ -33,14 +39,14 @@ export function renderMap({
     }
   }
 
-  // 2. LANDMASSES & TERRAIN
+  // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
     renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType);
   }
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    renderPaths(ctx, paths);
+    renderPaths(ctx, paths, selectedPathId);
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
@@ -48,19 +54,19 @@ export function renderMap({
     renderStamps(ctx, stamps, selectedStampId);
   }
 
-  // 5. TEXT LABELS & BANNERS
+  // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
+  if (layerVisibility.atmosphere) {
+    renderAtmosphere(ctx, width, height, atmosphere);
+  }
+
+  // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
     renderTexts(ctx, texts, selectedTextId);
   }
 
-  // 6. GRID OVERLAY
+  // 7. GRID OVERLAY (Square, Hex, Isometric)
   if (layerVisibility.grid && grid.enabled) {
     renderGrid(ctx, width, height, grid);
-  }
-
-  // 7. ATMOSPHERE & POST-PROCESSING
-  if (layerVisibility.atmosphere) {
-    renderAtmosphere(ctx, width, height, atmosphere);
   }
 
   ctx.restore();
@@ -68,61 +74,73 @@ export function renderMap({
 
 /** Ocean / Sea background with navigational rhumb lines and ripples */
 function renderOceanBackground(ctx, width, height) {
-  // Gradient ocean base
-  const oceanGrad = ctx.createLinearGradient(0, 0, width, height);
-  oceanGrad.addColorStop(0, '#2b5175');
-  oceanGrad.addColorStop(0.5, '#204060');
-  oceanGrad.addColorStop(1, '#18314c');
-  ctx.fillStyle = oceanGrad;
-  ctx.fillRect(0, 0, width, height);
+  const bgKey = `${width}x${height}`;
+  if (!backgroundCache || lastBgKey !== bgKey) {
+    backgroundCache = document.createElement('canvas');
+    backgroundCache.width = width;
+    backgroundCache.height = height;
+    const bctx = backgroundCache.getContext('2d');
 
-  // Subtle wave contour ripples
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-  ctx.lineWidth = 1.5;
-  const waveSpacing = 70;
-  for (let y = 30; y < height; y += waveSpacing) {
-    ctx.beginPath();
-    for (let x = 0; x < width; x += 120) {
-      ctx.moveTo(x + 10, y);
-      ctx.quadraticCurveTo(x + 40, y - 6, x + 70, y);
-      ctx.quadraticCurveTo(x + 100, y + 6, x + 130, y);
+    // Gradient ocean base
+    const oceanGrad = bctx.createLinearGradient(0, 0, width, height);
+    oceanGrad.addColorStop(0, '#2b5175');
+    oceanGrad.addColorStop(0.5, '#204060');
+    oceanGrad.addColorStop(1, '#18314c');
+    bctx.fillStyle = oceanGrad;
+    bctx.fillRect(0, 0, width, height);
+
+    // Subtle wave contour ripples
+    bctx.save();
+    bctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    bctx.lineWidth = 1.5;
+    for (let y = 40; y < height; y += 75) {
+      bctx.beginPath();
+      for (let x = 0; x < width; x += 120) {
+        bctx.moveTo(x + 10, y);
+        bctx.quadraticCurveTo(x + 35, y - 6, x + 60, y);
+        bctx.moveTo(x + 70, y + 12);
+        bctx.quadraticCurveTo(x + 95, y + 6, x + 120, y + 12);
+      }
+      bctx.stroke();
     }
-    ctx.stroke();
+    bctx.restore();
+
+    // Navigational Rhumb Lines
+    bctx.save();
+    bctx.strokeStyle = 'rgba(212, 190, 141, 0.08)';
+    bctx.lineWidth = 1;
+    const centers = [
+      { x: width * 0.25, y: height * 0.3 },
+      { x: width * 0.75, y: height * 0.7 }
+    ];
+    for (const c of centers) {
+      for (let a = 0; a < 16; a++) {
+        const rad = (Math.PI * 2 / 16) * a;
+        bctx.beginPath();
+        bctx.moveTo(c.x, c.y);
+        bctx.lineTo(c.x + Math.cos(rad) * 2200, c.y + Math.sin(rad) * 2200);
+        bctx.stroke();
+      }
+    }
+    bctx.restore();
+
+    lastBgKey = bgKey;
   }
 
-  // Cartographic Rhumb navigation lines from center
-  ctx.strokeStyle = 'rgba(218, 195, 150, 0.045)';
-  ctx.lineWidth = 1;
-  const cx = width * 0.75;
-  const cy = height * 0.35;
-  for (let i = 0; i < 16; i++) {
-    const ang = (i * Math.PI * 2) / 16;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(ang) * width * 1.5, cy + Math.sin(ang) * width * 1.5);
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.drawImage(backgroundCache, 0, 0);
 }
 
-/** Void background for tactical battlemaps */
+/** Tactical Battlemap Dungeon Void */
 function renderDungeonVoid(ctx, width, height) {
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 0, width, height);
 
-  // Crosshatch dark pattern
+  // Subtle floor dust noise
   ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
   ctx.lineWidth = 1;
-  const step = 40;
-  for (let x = 0; x < width; x += step) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  for (let y = 0; y < height; y += step) {
+  for (let i = 0; i < 40; i++) {
+    const y = (i * 47) % height;
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(width, y);
@@ -131,9 +149,8 @@ function renderDungeonVoid(ctx, width, height) {
   ctx.restore();
 }
 
-/** Render landmasses with coastal rings and sand fringes */
+/** Render landmasses with true dual-layer sculpting, coastlines, and beach fringes */
 function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType) {
-  // If no landmasses, return
   if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
 
   // Pass 1: Coastal ripple rings (only for world maps)
@@ -142,7 +159,6 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
     for (const land of landmasses) {
       if (!land.points || land.points.length < 3) continue;
 
-      // Outer wave ripples
       const rippleDistances = [18, 10, 4];
       const rippleAlphas = [0.08, 0.16, 0.35];
 
@@ -166,7 +182,7 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
       ctx.beginPath();
       drawSmoothPolygon(ctx, land.points);
       ctx.strokeStyle = '#d4be8d'; // Sand color
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 12;
       ctx.lineJoin = 'round';
       ctx.stroke();
     }
@@ -176,12 +192,11 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
   // Pass 3: Landmass Core Fills
   for (const land of landmasses) {
     if (!land.points || land.points.length < 3) continue;
-    const biome = getBiomeById(land.biome || 'grassland');
 
     ctx.save();
     ctx.beginPath();
     drawSmoothPolygon(ctx, land.points);
-    ctx.fillStyle = biome.color;
+    ctx.fillStyle = getBiomePattern(ctx, land.biome || 'grassland');
     ctx.fill();
 
     // Coastline border line
@@ -198,37 +213,61 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
     ctx.save();
     for (const stroke of brushStrokes) {
       if (!stroke.points || stroke.points.length === 0) continue;
-      const biome = getBiomeById(stroke.biome || 'grassland');
+      const isWater = stroke.mode === 'water';
 
-      ctx.beginPath();
-      ctx.strokeStyle = stroke.mode === 'water' ? '#204060' : biome.color;
+      ctx.save();
+      ctx.globalAlpha = stroke.opacity || 0.85;
+
+      if (isWater) {
+        // Water carving mode
+        ctx.strokeStyle = mapType === 'world' ? '#204060' : '#0f172a';
+        ctx.fillStyle = ctx.strokeStyle;
+      } else {
+        ctx.strokeStyle = getBiomePattern(ctx, stroke.biome || 'grassland');
+        ctx.fillStyle = ctx.strokeStyle;
+      }
+
       ctx.lineWidth = stroke.size || 40;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.globalAlpha = stroke.opacity || 0.8;
 
       if (stroke.points.length === 1) {
+        ctx.beginPath();
         ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-        ctx.fillStyle = ctx.strokeStyle;
         ctx.fill();
       } else {
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
+        ctx.beginPath();
+        drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
         ctx.stroke();
       }
+
+      // If sculpting new land in world map, add fine coastline edge
+      if (stroke.mode === 'land' && mapType === 'world') {
+        ctx.strokeStyle = 'rgba(74, 59, 44, 0.3)';
+        ctx.lineWidth = (stroke.size || 40) + 4;
+        ctx.stroke();
+      }
+
+      ctx.restore();
     }
     ctx.restore();
   }
 }
 
-function drawSmoothPolygon(ctx, points) {
-  if (points.length < 3) return;
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 0; i < points.length; i++) {
+/**
+ * C1-continuous closed spline smoothing starting at midpoint of (points[N-1], points[0])
+ * Completely eliminates corner pinch / cusps at vertex 0!
+ */
+export function drawSmoothPolygon(ctx, points) {
+  if (!points || points.length < 3) return;
+  const n = points.length;
+  const startMidX = (points[n - 1][0] + points[0][0]) / 2;
+  const startMidY = (points[n - 1][1] + points[0][1]) / 2;
+
+  ctx.moveTo(startMidX, startMidY);
+  for (let i = 0; i < n; i++) {
     const curr = points[i];
-    const next = points[(i + 1) % points.length];
+    const next = points[(i + 1) % n];
     const midX = (curr[0] + next[0]) / 2;
     const midY = (curr[1] + next[1]) / 2;
     ctx.quadraticCurveTo(curr[0], curr[1], midX, midY);
@@ -236,33 +275,55 @@ function drawSmoothPolygon(ctx, points) {
   ctx.closePath();
 }
 
+/** Smooth polyline with midpoint quadratic interpolation for rivers and roads */
+export function drawSmoothPolyline(ctx, points) {
+  if (!points || points.length < 2) return;
+  if (points.length === 2) {
+    ctx.moveTo(points[0][0], points[0][1]);
+    ctx.lineTo(points[1][0], points[1][1]);
+    return;
+  }
+
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const midX = (p0[0] + p1[0]) / 2;
+    const midY = (p0[1] + p1[1]) / 2;
+    ctx.quadraticCurveTo(p0[0], p0[1], midX, midY);
+  }
+  const last = points[points.length - 1];
+  ctx.lineTo(last[0], last[1]);
+}
+
 /** Render rivers, roads, and walls */
-function renderPaths(ctx, paths) {
+function renderPaths(ctx, paths, selectedPathId) {
   if (!paths || paths.length === 0) return;
 
   for (const path of paths) {
     if (!path.points || path.points.length < 2) continue;
 
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(path.points[0][0], path.points[0][1]);
-    for (let i = 1; i < path.points.length; i++) {
-      ctx.lineTo(path.points[i][0], path.points[i][1]);
-    }
 
     if (path.type === 'river') {
-      // River: outer shoreline banks + inner blue
+      // River: outer shoreline banks + inner blue watercourse
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points);
       ctx.strokeStyle = '#1e3a5f';
-      ctx.lineWidth = (path.width || 12) + 3;
+      ctx.lineWidth = (path.width || 12) + 4;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
 
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points);
       ctx.strokeStyle = path.color || '#3b82f6';
       ctx.lineWidth = path.width || 12;
       ctx.stroke();
     } else if (path.type === 'road') {
       // Road: dashed or dirt trail
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points);
       ctx.strokeStyle = path.color || '#78350f';
       ctx.lineWidth = path.width || 6;
       ctx.lineCap = 'round';
@@ -273,14 +334,26 @@ function renderPaths(ctx, paths) {
       ctx.stroke();
     } else if (path.type === 'wall') {
       // Dungeon wall: thick masonry outline
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points);
       ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = (path.width || 14) + 6;
       ctx.lineCap = 'square';
       ctx.lineJoin = 'miter';
       ctx.stroke();
 
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points);
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = path.width || 14;
+      ctx.stroke();
+    }
+
+    // Path selection indicator
+    if (path.id === selectedPathId) {
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
       ctx.stroke();
     }
 
@@ -288,11 +361,11 @@ function renderPaths(ctx, paths) {
   }
 }
 
-/** Render stamps with Y-sorting (stamps behind are drawn before stamps in front) */
+/** Render stamps with true aspect ratio centering, handles, and isometric Y-sorting */
 function renderStamps(ctx, stamps, selectedStampId) {
   if (!stamps || stamps.length === 0) return;
 
-  // Clone and sort by (zIndex || 0) and then by y position for depth
+  // Strict isometric Y-sorting
   const sorted = [...stamps].sort((a, b) => {
     const za = a.zIndex || 0;
     const zb = b.zIndex || 0;
@@ -302,7 +375,13 @@ function renderStamps(ctx, stamps, selectedStampId) {
 
   for (const s of sorted) {
     const def = getStampById(s.stampId);
-    if (!def) continue;
+    if (!def && !s.customImage) continue;
+
+    const aspect = (def && def.aspect) ? def.aspect : 1.0;
+    const baseSize = 80;
+    const finalSize = baseSize * (s.scale || 1.0);
+    const finalW = finalSize * aspect;
+    const finalH = finalSize;
 
     ctx.save();
     ctx.translate(s.x, s.y);
@@ -313,42 +392,57 @@ function renderStamps(ctx, stamps, selectedStampId) {
       ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
     }
 
-    const baseSize = 80;
-    const finalSize = baseSize * (s.scale || 1.0);
+    // Centered translation about the true visual origin
+    ctx.translate(-finalW / 2, -finalH / 2);
 
-    // Custom image stamp or vector stamp
+    // Custom image stamp or procedural vector stamp
     if (s.customImage) {
-      ctx.drawImage(s.customImage, -finalSize / 2, -finalSize / 2, finalSize, finalSize);
-    } else if (def.render) {
-      // Vector rendered stamp centered at origin
-      ctx.translate(-finalSize / 2, -finalSize / 2);
+      if (typeof s.customImage === 'string') {
+        // Base64 string fallback
+        const img = new Image();
+        img.src = s.customImage;
+        s.customImage = img; // hydrate for next frame
+      }
+      if (s.customImage.complete || s.customImage.tagName === 'IMG') {
+        ctx.drawImage(s.customImage, 0, 0, finalW, finalH);
+      }
+    } else if (def && def.render) {
       def.render(ctx, finalSize, s.color, s.fill);
     }
 
-    // Selection box highlight
+    // Selection box highlight & transform handles
     if (s.id === selectedStampId) {
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2.5;
       ctx.setLineDash([6, 4]);
-      if (def.render && !s.customImage) {
-        ctx.strokeRect(-4, -4, finalSize + 8, finalSize + 8);
-      } else {
-        ctx.strokeRect(-finalSize / 2 - 4, -finalSize / 2 - 4, finalSize + 8, finalSize + 8);
-      }
+      ctx.strokeRect(-4, -4, finalW + 8, finalH + 8);
+      ctx.setLineDash([]);
 
-      // Corner handles
+      // Corner handles (TL, TR, BL, BR)
       ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(-finalSize / 2 - 8, -finalSize / 2 - 8, 8, 8);
-      ctx.fillRect(finalSize / 2, -finalSize / 2 - 8, 8, 8);
-      ctx.fillRect(-finalSize / 2 - 8, finalSize / 2, 8, 8);
-      ctx.fillRect(finalSize / 2, finalSize / 2, 8, 8);
+      ctx.fillRect(-8, -8, 8, 8);
+      ctx.fillRect(finalW, -8, 8, 8);
+      ctx.fillRect(-8, finalH, 8, 8);
+      ctx.fillRect(finalW, finalH, 8, 8);
+
+      // Top Rotation Handle Stem
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(finalW / 2, -4);
+      ctx.lineTo(finalW / 2, -22);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(finalW / 2, -22, 5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
   }
 }
 
-/** Render text labels with thick fantasy outline & shadow */
+/** Render text labels with curvature and fantasy outlines */
 function renderTexts(ctx, texts, selectedTextId) {
   if (!texts || texts.length === 0) return;
 
@@ -359,31 +453,67 @@ function renderTexts(ctx, texts, selectedTextId) {
       ctx.rotate(t.rotation);
     }
 
-    ctx.font = `bold ${t.size || 24}px "${t.font || 'Cinzel'}", serif`;
+    const fontSize = t.size || 28;
+    const fontName = t.font || 'Cinzel';
+    ctx.font = `bold ${fontSize}px "${fontName}", serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Drop shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillText(t.text, 2, 3);
+    const curvature = t.curvature || 0; // -0.5 to +0.5
 
-    // Thick contrast stroke outline
-    if (t.stroke) {
-      ctx.strokeStyle = t.stroke;
-      ctx.lineWidth = Math.max(3, (t.size || 24) * 0.16);
-      ctx.lineJoin = 'round';
-      ctx.strokeText(t.text, 0, 0);
+    if (Math.abs(curvature) > 0.02) {
+      // Arched curved text along circular radius
+      const chars = t.text.split('');
+      const totalW = ctx.measureText(t.text).width;
+      const radius = totalW / (curvature * Math.PI);
+      let curX = -totalW / 2;
+
+      for (let i = 0; i < chars.length; i++) {
+        const char = chars[i];
+        const charW = ctx.measureText(char).width;
+        const charMidX = curX + charW / 2;
+        const theta = charMidX / radius;
+
+        ctx.save();
+        ctx.rotate(theta);
+        ctx.translate(0, -radius);
+
+        // Shadow & Stroke & Fill
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillText(char, 2, 3);
+        if (t.stroke) {
+          ctx.strokeStyle = t.stroke;
+          ctx.lineWidth = Math.max(3, fontSize * 0.16);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(char, 0, 0);
+        }
+        ctx.fillStyle = t.color || '#271b12';
+        ctx.fillText(char, 0, 0);
+
+        ctx.restore();
+        curX += charW;
+      }
+    } else {
+      // Standard linear text
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillText(t.text, 2, 3);
+
+      if (t.stroke) {
+        ctx.strokeStyle = t.stroke;
+        ctx.lineWidth = Math.max(3, fontSize * 0.16);
+        ctx.lineJoin = 'round';
+        ctx.strokeText(t.text, 0, 0);
+      }
+
+      ctx.fillStyle = t.color || '#271b12';
+      ctx.fillText(t.text, 0, 0);
     }
-
-    // Main text fill
-    ctx.fillStyle = t.color || '#271b12';
-    ctx.fillText(t.text, 0, 0);
 
     // Selection highlight
     if (t.id === selectedTextId) {
       const metrics = ctx.measureText(t.text);
       const textW = metrics.width;
-      const textH = (t.size || 24) * 1.2;
+      const textH = fontSize * 1.3;
 
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
@@ -395,27 +525,59 @@ function renderTexts(ctx, texts, selectedTextId) {
   }
 }
 
-/** Render square or hexagonal coordinate grid */
+/** Render Square, Hexagonal (Flat & Pointy), or Isometric grid */
 function renderGrid(ctx, width, height, grid) {
   const size = grid.size || 60;
+  const offX = grid.offsetX || 0;
+  const offY = grid.offsetY || 0;
+
   ctx.save();
   ctx.strokeStyle = grid.color || '#ffffff';
   ctx.globalAlpha = grid.opacity || 0.15;
   ctx.lineWidth = 1.2;
 
+  ctx.beginPath();
+
   if (grid.type === 'square') {
-    ctx.beginPath();
-    for (let x = 0; x <= width; x += size) {
+    for (let x = offX % size; x <= width; x += size) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
-    for (let y = 0; y <= height; y += size) {
+    for (let y = offY % size; y <= height; y += size) {
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
     }
-    ctx.stroke();
-  } else if (grid.type === 'hex_flat' || grid.type === 'hex_pointy') {
-    // Hexagonal grid
+  } else if (grid.type === 'isometric') {
+    // 30-degree / 60-degree Diamond Isometric Grid
+    const stepX = size * 2;
+    for (let x = -height; x <= width + height; x += stepX) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + height * 2, height);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x - height * 2, height);
+    }
+  } else if (grid.type === 'hex_pointy') {
+    // Pointy-topped hexes
+    const r = size;
+    const hStep = r * 1.5;
+    const wStep = r * Math.sqrt(3);
+
+    for (let row = 0; row * hStep < height + r * 2; row++) {
+      for (let col = 0; col * wStep < width + wStep * 2; col++) {
+        const cx = col * wStep + (row % 2 === 1 ? wStep / 2 : 0) + offX;
+        const cy = row * hStep + offY;
+
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i + Math.PI / 6;
+          const hx = cx + r * Math.cos(angle);
+          const hy = cy + r * Math.sin(angle);
+          if (i === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+      }
+    }
+  } else {
+    // Flat-topped hexes (default hex_flat)
     const r = size;
     const h = r * Math.sqrt(3);
     const wStep = r * 1.5;
@@ -423,10 +585,9 @@ function renderGrid(ctx, width, height, grid) {
 
     for (let col = 0; col * wStep < width + r * 2; col++) {
       for (let row = 0; row * hStep < height + h * 2; row++) {
-        const cx = col * wStep;
-        const cy = row * hStep + (col % 2 === 1 ? hStep / 2 : 0);
+        const cx = col * wStep + offX;
+        const cy = row * hStep + (col % 2 === 1 ? hStep / 2 : 0) + offY;
 
-        ctx.beginPath();
         for (let i = 0; i < 6; i++) {
           const angle = (Math.PI / 3) * i;
           const hx = cx + r * Math.cos(angle);
@@ -434,20 +595,73 @@ function renderGrid(ctx, width, height, grid) {
           if (i === 0) ctx.moveTo(hx, hy);
           else ctx.lineTo(hx, hy);
         }
-        ctx.closePath();
-        ctx.stroke();
       }
     }
   }
 
+  // Single GPU draw call for all lines
+  ctx.stroke();
   ctx.restore();
 }
 
-/** Atmospheric post-processing: Vignette and Parchment fibers */
+/** Atmospheric post-processing: Vignette, Parchment Grain, Sepia warmth, and Brightness */
 function renderAtmosphere(ctx, width, height, atmosphere) {
   ctx.save();
 
-  // 1. Vignette gradient
+  // 1. Procedural Parchment Grain noise pattern
+  if (atmosphere.parchmentGrain > 0) {
+    if (!noisePatternCache) {
+      const nSize = 128;
+      const nCanvas = document.createElement('canvas');
+      nCanvas.width = nSize;
+      nCanvas.height = nSize;
+      const nctx = nCanvas.getContext('2d');
+
+      const imgData = nctx.createImageData(nSize, nSize);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const val = 120 + Math.floor(Math.random() * 80);
+        imgData.data[i] = val;
+        imgData.data[i + 1] = val - 10;
+        imgData.data[i + 2] = val - 20;
+        imgData.data[i + 3] = 45; // subtle alpha
+      }
+      nctx.putImageData(imgData, 0, 0);
+      noisePatternCache = ctx.createPattern(nCanvas, 'repeat');
+    }
+
+    if (noisePatternCache) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1.0, atmosphere.parchmentGrain * 0.45);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = noisePatternCache;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+  }
+
+  // 2. Sepia Warmth Tint
+  if (atmosphere.sepia > 0) {
+    ctx.fillStyle = `rgba(196, 154, 108, ${atmosphere.sepia * 0.28})`;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // 3. Brightness / Exposure overlay
+  if (atmosphere.brightness !== undefined && atmosphere.brightness !== 1.0) {
+    if (atmosphere.brightness > 1.0) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${(atmosphere.brightness - 1.0) * 0.4})`;
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      ctx.fillStyle = `rgba(0, 0, 0, ${(1.0 - atmosphere.brightness) * 0.6})`;
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillRect(0, 0, width, height);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // 4. Vignette radial gradient
   if (atmosphere.vignette > 0) {
     const maxDim = Math.max(width, height);
     const grad = ctx.createRadialGradient(
@@ -462,13 +676,30 @@ function renderAtmosphere(ctx, width, height, atmosphere) {
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 2. Parchment Warmth / Sepia Tint
-  if (atmosphere.sepia > 0) {
-    ctx.fillStyle = `rgba(196, 154, 108, ${atmosphere.sepia * 0.25})`;
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
   ctx.restore();
+}
+
+/** Grid snapping helper for battlemaps and tactical alignments */
+export function snapToGrid(x, y, grid) {
+  if (!grid || !grid.enabled) return { x, y };
+  const size = grid.size || 60;
+  const offX = grid.offsetX || 0;
+  const offY = grid.offsetY || 0;
+
+  if (grid.type === 'square' || grid.type === 'isometric') {
+    const snappedX = Math.round((x - offX) / size) * size + offX;
+    const snappedY = Math.round((y - offY) / size) * size + offY;
+    return { x: snappedX, y: snappedY };
+  } else {
+    // Hex center snapping
+    const h = size * Math.sqrt(3);
+    const wStep = size * 1.5;
+    const col = Math.round((x - offX) / wStep);
+    const rowOffset = col % 2 === 1 ? h / 2 : 0;
+    const row = Math.round((y - offY - rowOffset) / h);
+    return {
+      x: col * wStep + offX,
+      y: row * h + rowOffset + offY
+    };
+  }
 }
