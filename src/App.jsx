@@ -15,6 +15,22 @@ import {
 import { renderMap } from './engine/renderer';
 import './App.css';
 
+const DEFAULT_COASTLINE = {
+  ripplesEnabled: true,
+  rippleCount: 3,
+  rippleSpacing: 9,
+  rippleColor: '#38bdf8',
+  rippleOpacity: 0.28,
+  sandEnabled: true,
+  sandWidth: 7,
+  sandColor: '#d4b276',
+  outlineColor: '#2b2318',
+  outlineWidth: 2.5,
+  shadowEnabled: true,
+  shadowBlur: 14,
+  shadowColor: 'rgba(5, 18, 38, 0.45)'
+};
+
 export default function App() {
   const defaultPreset = PRESET_MAPS[0]; // The Shattered Archipelago
 
@@ -30,6 +46,7 @@ export default function App() {
   const [texts, setTexts] = useState(defaultPreset.texts || []);
   const [grid, setGrid] = useState(defaultPreset.grid);
   const [atmosphere, setAtmosphere] = useState(defaultPreset.atmosphere);
+  const [coastline, setCoastline] = useState(defaultPreset.coastline || DEFAULT_COASTLINE);
 
   // Undo / Redo history initialized directly
   const [history, setHistory] = useState([
@@ -49,9 +66,15 @@ export default function App() {
 
   // Tool Specific Options
   const [maskMode, setMaskMode] = useState('land');
+  const [maskShape, setMaskShape] = useState('rough');
+  const [maskRoughness, setMaskRoughness] = useState(0.5);
+
   const [brushSize, setBrushSize] = useState(60);
   const [activeBiome, setActiveBiome] = useState('grassland');
   const [brushOpacity, setBrushOpacity] = useState(0.85);
+  const [brushTarget, setBrushTarget] = useState('foreground');
+  const [brushSoftness, setBrushSoftness] = useState(0.4);
+  const [brushBlendMode, setBrushBlendMode] = useState('source-over');
 
   const [activeStampId, setActiveStampId] = useState('mountain_grand');
   const [stampScale, setStampScale] = useState(1.0);
@@ -309,6 +332,7 @@ export default function App() {
     setTexts(found.texts || []);
     setGrid(found.grid);
     setAtmosphere(found.atmosphere);
+    setCoastline(found.coastline || DEFAULT_COASTLINE);
     setSelectedStampId(null);
     setSelectedTextId(null);
     setSelectedPathId(null);
@@ -435,6 +459,7 @@ export default function App() {
       texts,
       grid: { ...grid, enabled: includeGrid && grid.enabled },
       atmosphere,
+      coastline,
       selectedStampId: null,
       selectedTextId: null
     });
@@ -456,7 +481,8 @@ export default function App() {
         paths,
         texts,
         grid,
-        atmosphere
+        atmosphere,
+        coastline
       },
       scaleFactor,
       includeGrid,
@@ -498,7 +524,8 @@ export default function App() {
       paths,
       texts,
       grid,
-      atmosphere
+      atmosphere,
+      coastline
     };
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     exportToJson(projectData, `${safeTitle}.inkforge`);
@@ -519,6 +546,7 @@ export default function App() {
         setTexts(data.texts || []);
         if (data.grid) setGrid(data.grid);
         if (data.atmosphere) setAtmosphere(data.atmosphere);
+        if (data.coastline) setCoastline(data.coastline);
         setSelectedStampId(null);
         setSelectedTextId(null);
         setSelectedPathId(null);
@@ -583,12 +611,24 @@ export default function App() {
             activeTool={activeTool}
             maskMode={maskMode}
             setMaskMode={setMaskMode}
+            maskShape={maskShape}
+            setMaskShape={setMaskShape}
+            maskRoughness={maskRoughness}
+            setMaskRoughness={setMaskRoughness}
+            coastlineConfig={coastline}
+            setCoastlineConfig={setCoastline}
             brushSize={brushSize}
             setBrushSize={setBrushSize}
             activeBiome={activeBiome}
             setActiveBiome={setActiveBiome}
             brushOpacity={brushOpacity}
             setBrushOpacity={setBrushOpacity}
+            brushTarget={brushTarget}
+            setBrushTarget={setBrushTarget}
+            brushSoftness={brushSoftness}
+            setBrushSoftness={setBrushSoftness}
+            brushBlendMode={brushBlendMode}
+            setBrushBlendMode={setBrushBlendMode}
             activeStampId={activeStampId}
             stampScale={stampScale}
             setStampScale={setStampScale}
@@ -647,11 +687,17 @@ export default function App() {
             texts={texts}
             grid={grid}
             atmosphere={atmosphere}
+            coastline={coastline}
             activeTool={activeTool}
             maskMode={maskMode}
+            maskShape={maskShape}
+            maskRoughness={maskRoughness}
             brushSize={brushSize}
             activeBiome={activeBiome}
             brushOpacity={brushOpacity}
+            brushTarget={brushTarget}
+            brushSoftness={brushSoftness}
+            brushBlendMode={brushBlendMode}
             activeStampId={activeStampId}
             stampScale={stampScale}
             stampRotation={stampRotation}
@@ -685,6 +731,12 @@ export default function App() {
           activeStampId={activeStampId}
           setActiveStampId={setActiveStampId}
           onUploadCustomStamp={handleUploadCustomStamp}
+          gridConfig={grid}
+          setGridConfig={setGrid}
+          atmosphereConfig={atmosphere}
+          setAtmosphereConfig={setAtmosphere}
+          coastlineConfig={coastline}
+          setCoastlineConfig={setCoastline}
         />
       </div>
     </div>

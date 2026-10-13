@@ -52,6 +52,7 @@ export function exportToHighResPng({
     texts,
     grid: { ...grid, enabled: includeGrid && grid.enabled },
     atmosphere,
+    coastline: mapState.coastline,
     selectedStampId: null,
     selectedTextId: null,
     selectedPathId: null

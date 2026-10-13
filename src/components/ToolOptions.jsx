@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Trash2,
   Copy,
@@ -9,7 +9,13 @@ import {
   FlipHorizontal,
   FlipVertical,
   Magnet,
-  Type as TypeIcon
+  Type as TypeIcon,
+  Waves,
+  CircleDot,
+  Square,
+  SlidersHorizontal,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { BIOMES } from '../engine/biomesCatalog';
 import { getStampById } from '../engine/stampsCatalog';
@@ -19,6 +25,12 @@ export default function ToolOptions({
   // Mask options
   maskMode,
   setMaskMode,
+  maskShape = 'rough',
+  setMaskShape,
+  maskRoughness = 0.5,
+  setMaskRoughness,
+  coastlineConfig,
+  setCoastlineConfig,
   brushSize,
   setBrushSize,
   // Biome brush options
@@ -26,6 +38,12 @@ export default function ToolOptions({
   setActiveBiome,
   brushOpacity,
   setBrushOpacity,
+  brushTarget = 'foreground',
+  setBrushTarget,
+  brushSoftness = 0.4,
+  setBrushSoftness,
+  brushBlendMode = 'source-over',
+  setBrushBlendMode,
   // Stamp options
   activeStampId,
   stampScale,
@@ -78,6 +96,7 @@ export default function ToolOptions({
   onBringToFront,
   onSendToBack
 }) {
+  const [isCoastlineOpen, setIsCoastlineOpen] = useState(false);
   const activeStampDef = getStampById(activeStampId);
 
   return (
@@ -89,9 +108,9 @@ export default function ToolOptions({
           {selectedStamp && (
             <div className="flex-row gap-3 items-center">
               <span className="selected-tag">{getStampById(selectedStamp.stampId)?.name || 'Stamp'}</span>
-              
+
               <label className="option-label">
-                Scale: {Math.round((selectedStamp.scale || 1.0) * 100)}%
+                Scale: <span className="val-badge">{Math.round((selectedStamp.scale || 1.0) * 100)}%</span>
                 <input
                   type="range"
                   min="0.3"
@@ -103,7 +122,7 @@ export default function ToolOptions({
               </label>
 
               <label className="option-label">
-                Rot: {Math.round(((selectedStamp.rotation || 0) * 180) / Math.PI)}°
+                Rot: <span className="val-badge">{Math.round(((selectedStamp.rotation || 0) * 180) / Math.PI)}°</span>
                 <input
                   type="range"
                   min="-3.14"
@@ -113,6 +132,14 @@ export default function ToolOptions({
                   onChange={(e) => onUpdateSelectedStamp?.({ rotation: parseFloat(e.target.value) })}
                 />
               </label>
+
+              <button
+                className="btn-small"
+                onClick={() => onUpdateSelectedStamp?.({ rotation: 0 })}
+                title="Reset Rotation to 0°"
+              >
+                <RotateCcw size={13} /> 0°
+              </button>
 
               <button
                 className="btn-small"
@@ -161,7 +188,7 @@ export default function ToolOptions({
               </select>
 
               <label className="option-label">
-                Size: {selectedText.size || 28}px
+                Size: <span className="val-badge">{selectedText.size || 28}px</span>
                 <input
                   type="range"
                   min="14"
@@ -172,7 +199,7 @@ export default function ToolOptions({
               </label>
 
               <label className="option-label">
-                Arc: {Math.round((selectedText.curvature || 0) * 100)}%
+                Arc: <span className="val-badge">{Math.round((selectedText.curvature || 0) * 100)}%</span>
                 <input
                   type="range"
                   min="-0.5"
@@ -183,11 +210,19 @@ export default function ToolOptions({
                 />
               </label>
 
-              <label className="color-picker-label" title="Text Color">
+              <label className="color-picker-label" title="Text Fill Color">
                 <input
                   type="color"
                   value={selectedText.color || '#271b12'}
                   onChange={(e) => onUpdateSelectedText?.({ color: e.target.value })}
+                />
+              </label>
+
+              <label className="color-picker-label" title="Text Outline Stroke">
+                <input
+                  type="color"
+                  value={selectedText.stroke || '#ffffff'}
+                  onChange={(e) => onUpdateSelectedText?.({ stroke: e.target.value })}
                 />
               </label>
 
@@ -201,7 +236,7 @@ export default function ToolOptions({
             <div className="flex-row gap-3 items-center">
               <span className="selected-tag">{selectedPath.type.toUpperCase()}</span>
               <label className="option-label">
-                Width: {selectedPath.width || 12}px
+                Width: <span className="val-badge">{selectedPath.width || 12}px</span>
                 <input
                   type="range"
                   min="4"
@@ -250,8 +285,49 @@ export default function ToolOptions({
             </button>
           </div>
 
+          <span className="segment-divider" />
+
+          <span className="segment-label">Brush Shape:</span>
+          <div className="btn-group">
+            <button
+              className={`btn-toggle ${maskShape === 'circle' ? 'active' : ''}`}
+              onClick={() => setMaskShape?.('circle')}
+              title="Smooth Circular Stroke"
+            >
+              <CircleDot size={13} /> Circle
+            </button>
+            <button
+              className={`btn-toggle ${maskShape === 'rough' ? 'active amber' : ''}`}
+              onClick={() => setMaskShape?.('rough')}
+              title="Fractal Jagged Coastline (Natural Fjords & Cliffs)"
+            >
+              <SlidersHorizontal size={13} /> Rough Edgy
+            </button>
+            <button
+              className={`btn-toggle ${maskShape === 'block' ? 'active' : ''}`}
+              onClick={() => setMaskShape?.('block')}
+              title="Blocky Regional Stroke"
+            >
+              <Square size={13} /> Block
+            </button>
+          </div>
+
+          {maskShape === 'rough' && (
+            <label className="option-label">
+              Roughness: <span className="val-badge">{Math.round((maskRoughness ?? 0.5) * 100)}%</span>
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                value={maskRoughness ?? 0.5}
+                onChange={(e) => setMaskRoughness?.(parseFloat(e.target.value))}
+              />
+            </label>
+          )}
+
           <label className="option-label">
-            Brush Size: {brushSize}px
+            Size: <span className="val-badge">{brushSize}px</span>
             <input
               type="range"
               min="15"
@@ -262,7 +338,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Flow: {Math.round(brushOpacity * 100)}%
+            Flow: <span className="val-badge">{Math.round(brushOpacity * 100)}%</span>
             <input
               type="range"
               min="0.1"
@@ -272,6 +348,25 @@ export default function ToolOptions({
               onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
             />
           </label>
+
+          <span className="segment-divider" />
+
+          <div className="popover-anchor">
+            <button
+              className={`btn-toggle ${isCoastlineOpen ? 'active cyan' : ''}`}
+              onClick={() => setIsCoastlineOpen((v) => !v)}
+              title="Configure coastal ripples, shallow sand border, and ocean depth shadow"
+            >
+              <Waves size={14} /> Coastline FX
+            </button>
+            {isCoastlineOpen && coastlineConfig && (
+              <CoastlinePopover
+                config={coastlineConfig}
+                setConfig={setCoastlineConfig}
+                onClose={() => setIsCoastlineOpen(false)}
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -291,8 +386,47 @@ export default function ToolOptions({
             ))}
           </select>
 
+          <span className="segment-divider" />
+
+          <span className="segment-label">Target:</span>
+          <div className="btn-group">
+            <button
+              className={`btn-toggle ${brushTarget === 'foreground' ? 'active green' : ''}`}
+              onClick={() => setBrushTarget?.('foreground')}
+              title="Paint strictly onto landmasses (Mask Foreground)"
+            >
+              Land (FG)
+            </button>
+            <button
+              className={`btn-toggle ${brushTarget === 'background' ? 'active blue' : ''}`}
+              onClick={() => setBrushTarget?.('background')}
+              title="Paint strictly in oceans and water (Mask Background)"
+            >
+              Water (BG)
+            </button>
+            <button
+              className={`btn-toggle ${brushTarget === 'both' ? 'active' : ''}`}
+              onClick={() => setBrushTarget?.('both')}
+              title="Paint across entire canvas"
+            >
+              Both
+            </button>
+          </div>
+
           <label className="option-label">
-            Size: {brushSize}px
+            Softness: <span className="val-badge">{Math.round((brushSoftness ?? 0.4) * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={brushSoftness ?? 0.4}
+              onChange={(e) => setBrushSoftness?.(parseFloat(e.target.value))}
+            />
+          </label>
+
+          <label className="option-label">
+            Size: <span className="val-badge">{brushSize}px</span>
             <input
               type="range"
               min="15"
@@ -303,7 +437,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Opacity: {Math.round(brushOpacity * 100)}%
+            Opacity: <span className="val-badge">{Math.round(brushOpacity * 100)}%</span>
             <input
               type="range"
               min="0.1"
@@ -313,6 +447,18 @@ export default function ToolOptions({
               onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
             />
           </label>
+
+          <select
+            className="select-input"
+            value={brushBlendMode ?? 'source-over'}
+            onChange={(e) => setBrushBlendMode?.(e.target.value)}
+            title="Blend Mode for rich biome tinting"
+          >
+            <option value="source-over">Normal</option>
+            <option value="multiply">Multiply (Shadows / Dirt)</option>
+            <option value="overlay">Overlay (Vibrant Pop)</option>
+            <option value="soft-light">Soft Light (Subtle Tint)</option>
+          </select>
         </div>
       )}
 
@@ -323,19 +469,26 @@ export default function ToolOptions({
           <span className="selected-tag">{activeStampDef?.name || 'Stamp'}</span>
 
           <label className="option-label">
-            Scale: {Math.round(stampScale * 100)}%
+            Scale: <span className="val-badge">{Math.round(stampScale * 100)}%</span>
             <input
               type="range"
-              min="0.4"
+              min="0.3"
               max="2.5"
               step="0.05"
               value={stampScale}
               onChange={(e) => setStampScale(parseFloat(e.target.value))}
             />
           </label>
+          <button
+            className="btn-small"
+            onClick={() => setStampScale(1.0)}
+            title="Reset Scale to 100%"
+          >
+            1x
+          </button>
 
           <label className="option-label">
-            Rot: {Math.round((stampRotation * 180) / Math.PI)}°
+            Rot: <span className="val-badge">{Math.round((stampRotation * 180) / Math.PI)}°</span>
             <input
               type="range"
               min="-3.14"
@@ -345,11 +498,18 @@ export default function ToolOptions({
               onChange={(e) => setStampRotation(parseFloat(e.target.value))}
             />
           </label>
+          <button
+            className="btn-small"
+            onClick={() => setStampRotation(0)}
+            title="Reset Rotation to 0°"
+          >
+            <RotateCcw size={13} />
+          </button>
 
           <button
             className={`btn-toggle ${stampJitter ? 'active' : ''}`}
             onClick={() => setStampJitter(!stampJitter)}
-            title="Randomize size and rotation for natural clusters"
+            title="Randomize size and rotation for natural organic clusters"
           >
             <Shuffle size={14} /> Jitter
           </button>
@@ -364,10 +524,10 @@ export default function ToolOptions({
 
           <div className="btn-group">
             <button className="btn-small" onClick={() => onFlipStamp('x')} title="Flip Horizontal">
-              <FlipHorizontal size={14} />
+              <FlipHorizontal size={14} /> Flip X
             </button>
             <button className="btn-small" onClick={() => onFlipStamp('y')} title="Flip Vertical">
-              <FlipVertical size={14} />
+              <FlipVertical size={14} /> Flip Y
             </button>
           </div>
         </div>
@@ -411,7 +571,7 @@ export default function ToolOptions({
           </div>
 
           <label className="option-label">
-            Width: {pathWidth}px
+            Width: <span className="val-badge">{pathWidth}px</span>
             <input
               type="range"
               min="4"
@@ -466,7 +626,7 @@ export default function ToolOptions({
           </select>
 
           <label className="option-label">
-            Size: {textSize}px
+            Size: <span className="val-badge">{textSize}px</span>
             <input
               type="range"
               min="16"
@@ -477,7 +637,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Arc: {Math.round((textCurvature || 0) * 100)}%
+            Arc: <span className="val-badge">{Math.round((textCurvature || 0) * 100)}%</span>
             <input
               type="range"
               min="-0.5"
@@ -534,7 +694,7 @@ export default function ToolOptions({
           </select>
 
           <label className="option-label">
-            Size: {gridConfig.size}px
+            Size: <span className="val-badge">{gridConfig.size}px</span>
             <input
               type="range"
               min="24"
@@ -545,7 +705,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Opacity: {Math.round(gridConfig.opacity * 100)}%
+            Opacity: <span className="val-badge">{Math.round(gridConfig.opacity * 100)}%</span>
             <input
               type="range"
               min="0.05"
@@ -578,7 +738,7 @@ export default function ToolOptions({
       {activeTool === 'atmosphere' && (
         <div className="options-segment">
           <label className="option-label">
-            Vignette: {Math.round(atmosphereConfig.vignette * 100)}%
+            Vignette: <span className="val-badge">{Math.round(atmosphereConfig.vignette * 100)}%</span>
             <input
               type="range"
               min="0"
@@ -590,7 +750,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Parchment Grain: {Math.round((atmosphereConfig.parchmentGrain || 0) * 100)}%
+            Grain: <span className="val-badge">{Math.round((atmosphereConfig.parchmentGrain || 0) * 100)}%</span>
             <input
               type="range"
               min="0"
@@ -602,7 +762,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Sepia Warmth: {Math.round(atmosphereConfig.sepia * 100)}%
+            Warmth: <span className="val-badge">{Math.round(atmosphereConfig.sepia * 100)}%</span>
             <input
               type="range"
               min="0"
@@ -614,7 +774,7 @@ export default function ToolOptions({
           </label>
 
           <label className="option-label">
-            Brightness: {Math.round((atmosphereConfig.brightness ?? 1.0) * 100)}%
+            Brightness: <span className="val-badge">{Math.round((atmosphereConfig.brightness ?? 1.0) * 100)}%</span>
             <input
               type="range"
               min="0.5"
@@ -626,6 +786,173 @@ export default function ToolOptions({
           </label>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Floating Coastline & Shoreline FX Panel
+ */
+function CoastlinePopover({ config, setConfig, onClose }) {
+  return (
+    <div className="coastline-fx-popover">
+      <div className="popover-header">
+        <div className="flex-row items-center gap-2">
+          <Waves size={16} className="text-cyan-400" />
+          <h4>Coastline & Shore Effects</h4>
+        </div>
+        <button className="btn-icon-tiny" onClick={onClose} title="Close">
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="popover-body">
+        {/* Section 1: Ripples */}
+        <div className="popover-section">
+          <div className="section-title-row">
+            <label className="checkbox-label font-semibold">
+              <input
+                type="checkbox"
+                checked={config.ripplesEnabled}
+                onChange={(e) => setConfig((prev) => ({ ...prev, ripplesEnabled: e.target.checked }))}
+              />
+              Shallow Water Ripples
+            </label>
+            <label className="color-picker-label" title="Ripple Wave Color">
+              <input
+                type="color"
+                value={config.rippleColor || '#38bdf8'}
+                onChange={(e) => setConfig((prev) => ({ ...prev, rippleColor: e.target.value }))}
+              />
+            </label>
+          </div>
+
+          {config.ripplesEnabled && (
+            <div className="section-sliders">
+              <label className="option-label-compact">
+                Waves: <span className="val-badge">{config.rippleCount || 3}</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="6"
+                  value={config.rippleCount || 3}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, rippleCount: parseInt(e.target.value) }))}
+                />
+              </label>
+              <label className="option-label-compact">
+                Spacing: <span className="val-badge">{config.rippleSpacing || 9}px</span>
+                <input
+                  type="range"
+                  min="4"
+                  max="24"
+                  value={config.rippleSpacing || 9}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, rippleSpacing: parseInt(e.target.value) }))}
+                />
+              </label>
+              <label className="option-label-compact">
+                Opacity: <span className="val-badge">{Math.round((config.rippleOpacity ?? 0.28) * 100)}%</span>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.8"
+                  step="0.05"
+                  value={config.rippleOpacity ?? 0.28}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, rippleOpacity: parseFloat(e.target.value) }))}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Section 2: Sand & Outline */}
+        <div className="popover-section">
+          <div className="section-title-row">
+            <label className="checkbox-label font-semibold">
+              <input
+                type="checkbox"
+                checked={config.sandEnabled}
+                onChange={(e) => setConfig((prev) => ({ ...prev, sandEnabled: e.target.checked }))}
+              />
+              Beach Sand Rim
+            </label>
+            <label className="color-picker-label" title="Beach Sand Color">
+              <input
+                type="color"
+                value={config.sandColor || '#d4b276'}
+                onChange={(e) => setConfig((prev) => ({ ...prev, sandColor: e.target.value }))}
+              />
+            </label>
+          </div>
+
+          {config.sandEnabled && (
+            <div className="section-sliders">
+              <label className="option-label-compact">
+                Sand Width: <span className="val-badge">{config.sandWidth || 7}px</span>
+                <input
+                  type="range"
+                  min="2"
+                  max="22"
+                  value={config.sandWidth || 7}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, sandWidth: parseInt(e.target.value) }))}
+                />
+              </label>
+            </div>
+          )}
+
+          <div className="section-title-row mt-2">
+            <span className="font-semibold text-xs text-slate-300">Land Outline:</span>
+            <label className="color-picker-label" title="Outline Color">
+              <input
+                type="color"
+                value={config.outlineColor || '#2b2318'}
+                onChange={(e) => setConfig((prev) => ({ ...prev, outlineColor: e.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="section-sliders">
+            <label className="option-label-compact">
+              Width: <span className="val-badge">{config.outlineWidth || 2.5}px</span>
+              <input
+                type="range"
+                min="1"
+                max="8"
+                step="0.5"
+                value={config.outlineWidth || 2.5}
+                onChange={(e) => setConfig((prev) => ({ ...prev, outlineWidth: parseFloat(e.target.value) }))}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Section 3: Ocean Depth Shadow */}
+        <div className="popover-section">
+          <div className="section-title-row">
+            <label className="checkbox-label font-semibold">
+              <input
+                type="checkbox"
+                checked={config.shadowEnabled}
+                onChange={(e) => setConfig((prev) => ({ ...prev, shadowEnabled: e.target.checked }))}
+              />
+              Continental Elevation Shadow
+            </label>
+          </div>
+
+          {config.shadowEnabled && (
+            <div className="section-sliders">
+              <label className="option-label-compact">
+                Drop Blur: <span className="val-badge">{config.shadowBlur || 14}px</span>
+                <input
+                  type="range"
+                  min="4"
+                  max="35"
+                  value={config.shadowBlur || 14}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, shadowBlur: parseInt(e.target.value) }))}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

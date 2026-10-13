@@ -22,6 +22,7 @@ export function renderMap({
   texts = [],
   grid = { enabled: true, type: 'hex_flat', size: 60, opacity: 0.15, color: '#1e293b', offsetX: 0, offsetY: 0 },
   atmosphere = { vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1.0 },
+  coastline = { ripplesEnabled: true, rippleCount: 4, rippleSpacing: 11, rippleColor: '#bae6fd', rippleOpacity: 0.35, sandEnabled: true, sandWidth: 14, sandColor: '#d4be8d', outlineColor: '#3d2b1f', outlineWidth: 2.5, shadowEnabled: true, shadowBlur: 10 },
   selectedStampId = null,
   selectedTextId = null,
   selectedPathId = null,
@@ -41,7 +42,7 @@ export function renderMap({
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType);
+    renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline);
   }
 
   // 3. PATHS, RIVERS & WALLS
@@ -154,8 +155,24 @@ function renderDungeonVoid(ctx, width, height) {
  * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
  * Inkarnate clipping and non-destructive water carving.
  */
-function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType) {
+function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline) {
   if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
+
+  const cl = {
+    ripplesEnabled: true,
+    rippleCount: 4,
+    rippleSpacing: 11,
+    rippleColor: '#bae6fd',
+    rippleOpacity: 0.35,
+    sandEnabled: true,
+    sandWidth: 14,
+    sandColor: '#d4be8d',
+    outlineColor: '#3d2b1f',
+    outlineWidth: 2.5,
+    shadowEnabled: true,
+    shadowBlur: 10,
+    ...(coastline || {})
+  };
 
   // 1. Build the Offscreen Land Mask Canvas
   const maskCanvas = document.createElement('canvas');
@@ -191,35 +208,57 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
     mctx.lineCap = 'round';
     mctx.lineJoin = 'round';
 
-    if (stroke.points.length === 1) {
-      mctx.beginPath();
-      mctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-      mctx.fill();
+    if (stroke.shape === 'rough') {
+      // Fractal jagged coastline brush (Inkarnate Edgy/Rough brush style)
+      const r = (stroke.size || 40) / 2;
+      const roughness = stroke.roughness || 0.6;
+      for (const pt of stroke.points) {
+        mctx.beginPath();
+        const numSides = 10;
+        for (let a = 0; a < Math.PI * 2; a += (Math.PI * 2) / numSides) {
+          const pseudoNoise = (Math.sin(pt.x * 0.05 + a * 4) * Math.cos(pt.y * 0.05 + a * 3)) * roughness;
+          const rad = r * (1.0 + pseudoNoise * 0.4);
+          const jx = pt.x + Math.cos(a) * rad;
+          const jy = pt.y + Math.sin(a) * rad;
+          if (a === 0) mctx.moveTo(jx, jy);
+          else mctx.lineTo(jx, jy);
+        }
+        mctx.closePath();
+        mctx.fill();
+      }
     } else {
-      mctx.beginPath();
-      drawSmoothPolyline(mctx, stroke.points.map(p => [p.x, p.y]));
-      mctx.stroke();
+      // Smooth round brush
+      if (stroke.points.length === 1) {
+        mctx.beginPath();
+        mctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+        mctx.fill();
+      } else {
+        mctx.beginPath();
+        drawSmoothPolyline(mctx, stroke.points.map(p => [p.x, p.y]));
+        mctx.stroke();
+      }
     }
     mctx.restore();
   }
 
   // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
-  if (mapType === 'world') {
+  if (mapType === 'world' && cl.ripplesEnabled) {
     ctx.save();
-    // Multi-tier water-line ripple echoes
-    const rippleOffsets = [36, 22, 12, 5];
-    const rippleAlphas = [0.08, 0.16, 0.28, 0.42];
+    const count = Math.min(6, Math.max(1, cl.rippleCount || 4));
+    const spacing = cl.rippleSpacing || 11;
+    const baseOpacity = cl.rippleOpacity || 0.35;
 
-    for (let i = 0; i < rippleOffsets.length; i++) {
-      const dist = rippleOffsets[i];
-      const alpha = rippleAlphas[i];
+    for (let i = count - 1; i >= 0; i--) {
+      const dist = 5 + i * spacing;
+      const alpha = baseOpacity * Math.exp(-0.55 * i);
 
-      // Draw dilated mask edge as ripple contour
+      // Draw dilated polygon boundaries as ripple echoes
       for (const land of landmasses) {
         if (!land.points || land.points.length < 3) continue;
         ctx.beginPath();
         drawSmoothPolygon(ctx, land.points);
-        ctx.strokeStyle = `rgba(186, 230, 253, ${alpha})`;
+        ctx.strokeStyle = cl.rippleColor || '#bae6fd';
+        ctx.globalAlpha = alpha;
         ctx.lineWidth = dist * 2;
         ctx.lineJoin = 'round';
         ctx.stroke();
@@ -234,7 +273,8 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
           } else {
             drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
           }
-          ctx.strokeStyle = `rgba(186, 230, 253, ${alpha * 0.7})`;
+          ctx.strokeStyle = cl.rippleColor || '#bae6fd';
+          ctx.globalAlpha = alpha * 0.7;
           ctx.lineWidth = (stroke.size || 40) + dist * 2;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
@@ -246,15 +286,56 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
   }
 
   // 3. 3D Land Elevation Drop Shadow
-  ctx.save();
-  ctx.shadowColor = mapType === 'world' ? 'rgba(15, 23, 42, 0.45)' : 'rgba(0, 0, 0, 0.6)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetX = 3;
-  ctx.shadowOffsetY = 5;
-  ctx.drawImage(maskCanvas, 0, 0);
-  ctx.restore();
+  if (cl.shadowEnabled) {
+    ctx.save();
+    ctx.shadowColor = mapType === 'world' ? 'rgba(15, 23, 42, 0.45)' : 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = cl.shadowBlur || 10;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 5;
+    ctx.drawImage(maskCanvas, 0, 0);
+    ctx.restore();
+  }
 
-  // 4. Build the Offscreen Terrain Buffer (Base Biomes + Brush Strokes)
+  // 4a. Draw Background / Water Brush Strokes (Clipped outside land)
+  const waterBrushStrokes = (brushStrokes || []).filter(s => s.type === 'brush' && s.target === 'background');
+  if (waterBrushStrokes.length > 0) {
+    const waterCanvas = document.createElement('canvas');
+    waterCanvas.width = width;
+    waterCanvas.height = height;
+    const wctx = waterCanvas.getContext('2d');
+
+    for (const stroke of waterBrushStrokes) {
+      if (!stroke.points || stroke.points.length === 0) continue;
+      wctx.save();
+      wctx.globalAlpha = stroke.opacity || 0.85;
+      wctx.globalCompositeOperation = stroke.blendMode || 'source-over';
+      wctx.strokeStyle = getBiomePattern(wctx, stroke.biome || 'deep_ocean');
+      wctx.fillStyle = wctx.strokeStyle;
+      wctx.lineWidth = stroke.size || 40;
+      wctx.lineCap = 'round';
+      wctx.lineJoin = 'round';
+      if (stroke.points.length === 1) {
+        wctx.beginPath();
+        wctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+        wctx.fill();
+      } else {
+        wctx.beginPath();
+        drawSmoothPolyline(wctx, stroke.points.map(p => [p.x, p.y]));
+        wctx.stroke();
+      }
+      wctx.restore();
+    }
+
+    // Clip to outside land
+    wctx.save();
+    wctx.globalCompositeOperation = 'destination-out';
+    wctx.drawImage(maskCanvas, 0, 0);
+    wctx.restore();
+
+    ctx.drawImage(waterCanvas, 0, 0);
+  }
+
+  // 4b. Build the Offscreen Terrain Buffer (Base Biomes + FG Brush Strokes)
   const terrainCanvas = document.createElement('canvas');
   terrainCanvas.width = width;
   terrainCanvas.height = height;
@@ -275,27 +356,44 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
     tctx.restore();
   }
 
-  // Paint Freehand Biome Brush Strokes
-  for (const stroke of (brushStrokes || [])) {
-    if (stroke.type !== 'brush') continue;
+  // Paint Freehand Foreground Biome Brush Strokes
+  const fgBrushStrokes = (brushStrokes || []).filter(s => s.type === 'brush' && s.target !== 'background');
+  for (const stroke of fgBrushStrokes) {
     if (!stroke.points || stroke.points.length === 0) continue;
 
     tctx.save();
     tctx.globalAlpha = stroke.opacity || 0.85;
-    tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
-    tctx.fillStyle = tctx.strokeStyle;
-    tctx.lineWidth = stroke.size || 40;
-    tctx.lineCap = 'round';
-    tctx.lineJoin = 'round';
+    tctx.globalCompositeOperation = stroke.blendMode || 'source-over';
 
-    if (stroke.points.length === 1) {
-      tctx.beginPath();
-      tctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-      tctx.fill();
+    if (stroke.softness && stroke.softness > 0.1) {
+      // Soft-falloff feathered airbrush dabs
+      const pat = getBiomePattern(tctx, stroke.biome || 'grassland');
+      const r = (stroke.size || 40) / 2;
+      for (const pt of stroke.points) {
+        const grad = tctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
+        grad.addColorStop(0, typeof pat === 'string' ? pat : '#658d4a');
+        grad.addColorStop(1, 'transparent');
+        tctx.fillStyle = grad;
+        tctx.beginPath();
+        tctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        tctx.fill();
+      }
     } else {
-      tctx.beginPath();
-      drawSmoothPolyline(tctx, stroke.points.map(p => [p.x, p.y]));
-      tctx.stroke();
+      tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
+      tctx.fillStyle = tctx.strokeStyle;
+      tctx.lineWidth = stroke.size || 40;
+      tctx.lineCap = 'round';
+      tctx.lineJoin = 'round';
+
+      if (stroke.points.length === 1) {
+        tctx.beginPath();
+        tctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+        tctx.fill();
+      } else {
+        tctx.beginPath();
+        drawSmoothPolyline(tctx, stroke.points.map(p => [p.x, p.y]));
+        tctx.stroke();
+      }
     }
     tctx.restore();
   }
@@ -310,9 +408,8 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
   ctx.drawImage(terrainCanvas, 0, 0);
 
   // 6. Beach / Sand Fringe along inner coastlines
-  if (mapType === 'world') {
+  if (mapType === 'world' && cl.sandEnabled && cl.sandWidth > 0) {
     ctx.save();
-    // Clip beach drawing strictly inside the land
     for (const land of landmasses) {
       if (!land.points || land.points.length < 3) continue;
       ctx.save();
@@ -321,8 +418,8 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
       ctx.clip();
       ctx.beginPath();
       drawSmoothPolygon(ctx, land.points);
-      ctx.strokeStyle = '#d4be8d'; // Natural sand beach
-      ctx.lineWidth = 14;
+      ctx.strokeStyle = cl.sandColor || '#d4be8d'; // Natural sand beach
+      ctx.lineWidth = cl.sandWidth;
       ctx.lineJoin = 'round';
       ctx.stroke();
       ctx.restore();
@@ -331,33 +428,35 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType)
   }
 
   // 7. Crisp Ink Coastline Contour
-  ctx.save();
-  for (const land of landmasses) {
-    if (!land.points || land.points.length < 3) continue;
-    ctx.beginPath();
-    drawSmoothPolygon(ctx, land.points);
-    ctx.strokeStyle = mapType === 'world' ? '#3d2b1f' : '#1e293b';
-    ctx.lineWidth = mapType === 'world' ? 2.5 : 4;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-  }
-  // Also outline additive mask strokes
-  for (const stroke of (brushStrokes || [])) {
-    if (stroke.type === 'mask' && stroke.mode === 'land' && stroke.points && stroke.points.length > 0) {
+  if (cl.outlineWidth > 0) {
+    ctx.save();
+    for (const land of landmasses) {
+      if (!land.points || land.points.length < 3) continue;
       ctx.beginPath();
-      if (stroke.points.length === 1) {
-        ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-      } else {
-        drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
-      }
-      ctx.strokeStyle = mapType === 'world' ? '#3d2b1f' : '#1e293b';
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
+      drawSmoothPolygon(ctx, land.points);
+      ctx.strokeStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
+      ctx.lineWidth = cl.outlineWidth;
       ctx.lineJoin = 'round';
       ctx.stroke();
     }
+    // Also outline additive mask strokes
+    for (const stroke of (brushStrokes || [])) {
+      if (stroke.type === 'mask' && stroke.mode === 'land' && stroke.points && stroke.points.length > 0) {
+        ctx.beginPath();
+        if (stroke.points.length === 1) {
+          ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+        } else {
+          drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
+        }
+        ctx.strokeStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
+        ctx.lineWidth = cl.outlineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 /**
@@ -580,9 +679,10 @@ function renderTexts(ctx, texts, selectedTextId) {
     const curvature = t.curvature || 0; // -0.5 to +0.5
 
     if (Math.abs(curvature) > 0.02) {
-      // Arched curved text along circular radius
+      // Arched curved text along circular radius anchored at (t.x, t.y)
       const chars = t.text.split('');
-      const totalW = ctx.measureText(t.text).width;
+      const tracking = t.tracking || 0;
+      const totalW = ctx.measureText(t.text).width + (chars.length - 1) * tracking;
       const radius = totalW / (curvature * Math.PI);
       let curX = -totalW / 2;
 
@@ -593,11 +693,14 @@ function renderTexts(ctx, texts, selectedTextId) {
         const theta = charMidX / radius;
 
         ctx.save();
+        // Displace along circle such that the center character anchors at (0, 0)
+        const charX = Math.sin(theta) * radius;
+        const charY = radius - Math.cos(theta) * radius;
+        ctx.translate(charX, charY);
         ctx.rotate(theta);
-        ctx.translate(0, -radius);
 
         // Shadow & Stroke & Fill
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillText(char, 2, 3);
         if (t.stroke) {
           ctx.strokeStyle = t.stroke;
@@ -609,7 +712,7 @@ function renderTexts(ctx, texts, selectedTextId) {
         ctx.fillText(char, 0, 0);
 
         ctx.restore();
-        curX += charW;
+        curX += charW + tracking;
       }
     } else {
       // Standard linear text

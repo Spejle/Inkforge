@@ -13,12 +13,18 @@ export default function CanvasArea({
   texts,
   grid,
   atmosphere,
+  coastline,
   activeTool,
   // Tool parameters
   maskMode,
+  maskShape = 'rough',
+  maskRoughness = 0.6,
   brushSize,
   activeBiome,
   brushOpacity,
+  brushTarget = 'foreground',
+  brushSoftness = 0.5,
+  brushBlendMode = 'source-over',
   activeStampId,
   stampScale,
   stampRotation,
@@ -106,6 +112,7 @@ export default function CanvasArea({
       texts,
       grid,
       atmosphere,
+      coastline,
       selectedStampId,
       selectedTextId,
       selectedPathId
@@ -121,6 +128,7 @@ export default function CanvasArea({
     texts,
     grid,
     atmosphere,
+    coastline,
     selectedStampId,
     selectedTextId,
     selectedPathId
@@ -283,6 +291,8 @@ export default function CanvasArea({
         id: strokeId,
         type: 'mask',
         mode: maskMode, // 'land' or 'water'
+        shape: maskShape, // 'rough' or 'circle'
+        roughness: maskRoughness,
         size: brushSize,
         opacity: brushOpacity,
         points: [{ x: Math.round(x), y: Math.round(y) }]
@@ -297,9 +307,12 @@ export default function CanvasArea({
       const newStroke = {
         id: strokeId,
         type: 'brush',
+        target: brushTarget, // 'foreground' or 'background'
         biome: activeBiome,
         size: brushSize,
         opacity: brushOpacity,
+        softness: brushSoftness,
+        blendMode: brushBlendMode,
         points: [{ x: Math.round(x), y: Math.round(y) }]
       };
       activeStrokeRef.current = newStroke;

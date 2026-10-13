@@ -2,6 +2,25 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.2.0] - 2026-10-13
+
+### Added & Elevated
+- **Mask Tool Full Parity & Fractal Rough Brush**: Added brush shape selector (`Circle`, `Rough Edgy`, `Block`) with procedural noise roughness slider (0.1 to 1.0) so users can carve natural jagged fjords, rias, bays, and cliffs without smooth "potato island" artifacts.
+- **Interactive Coastline FX Settings Popover**: Dedicated popover modal directly attached to the tool ribbon allowing granular control over:
+  - *Shallow Water Ripples*: Wave count (1-6), ripple spacing (4-24px), color picker, and wave opacity.
+  - *Beach Sand Rim*: Sand border toggle, width (2-22px), and sand color.
+  - *Coastline Contour Outline*: Width (1-8px) and ink stroke color.
+  - *Continental Shelf Elevation Shadow*: 3D ocean drop shadow with customizable blur (4-35px) for realistic cartographic depth.
+- **Brush Tool Parity (Foreground / Background / Softness / Blend Modes)**:
+  - Added *Target* selector: Paint exclusively on `Land (FG)` (clipped to landmask), `Water (BG)` (painted in oceans/lakes), or `Both` (global canvas).
+  - Added *Softness / Feathering* slider (0-100%) with procedural radial gradient edge falloff for smooth biome transitions.
+  - Added *Blend Modes*: `Normal`, `Multiply` (for shading and dirtying rocks), `Overlay` (for vibrant biomes), and `Soft Light` (for subtle tinting).
+- **Multi-Tab Sidebar Creative Suite (`[ Stamps ]` vs `[ Layers & FX ]`)**:
+  - Reorganized right sidebar into dual studio tabs.
+  - `Layers & FX` tab houses Atmospheric Filter Shader controls, live Coastline & Shallow Sea toggles, and Tactical Battle Grid settings with cell snapping.
+- **Fixed Curved Typography Math**: Resolved a projection bug in circular arc text rendering that caused labels to translate offscreen. Letters now accurately follow `(sin(theta) * R, R - cos(theta) * R)` with dual stroke outlines and shadows.
+- **Stamp Dynamics & Placement Quality-of-Life**: Added quick rotation/scale reset buttons (1x, 0°), horizontal and vertical stamp flipping (`Flip X`, `Flip Y`), and placement jitter.
+
 ## [1.1.0] - 2026-10-13
 
 ### Fixed & Overhauled

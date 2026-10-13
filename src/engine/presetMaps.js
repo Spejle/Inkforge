@@ -10,6 +10,21 @@ export const PRESET_MAPS = [
     height: 1080,
     grid: { enabled: true, type: 'hex_flat', size: 64, opacity: 0.12, color: '#1e293b', offsetX: 0, offsetY: 0, snap: false },
     atmosphere: { vignette: 0.42, parchmentGrain: 0.32, sepia: 0.18, brightness: 1.02 },
+    coastline: {
+      ripplesEnabled: true,
+      rippleCount: 4,
+      rippleSpacing: 10,
+      rippleColor: '#38bdf8',
+      rippleOpacity: 0.32,
+      sandEnabled: true,
+      sandWidth: 8,
+      sandColor: '#d4b276',
+      outlineColor: '#2b2318',
+      outlineWidth: 2.5,
+      shadowEnabled: true,
+      shadowBlur: 16,
+      shadowColor: 'rgba(4, 18, 38, 0.48)'
+    },
     landmasses: [
       // 1. Great Continental Mainland of Valoria (with bays, fjords, and peninsulas)
       {
@@ -171,6 +186,21 @@ export const PRESET_MAPS = [
     height: 1080,
     grid: { enabled: true, type: 'hex_pointy', size: 64, opacity: 0.15, color: '#1e293b', offsetX: 0, offsetY: 0, snap: false },
     atmosphere: { vignette: 0.52, parchmentGrain: 0.4, sepia: 0.25, brightness: 0.95 },
+    coastline: {
+      ripplesEnabled: true,
+      rippleCount: 3,
+      rippleSpacing: 12,
+      rippleColor: '#f97316',
+      rippleOpacity: 0.28,
+      sandEnabled: true,
+      sandWidth: 6,
+      sandColor: '#78350f',
+      outlineColor: '#1c1917',
+      outlineWidth: 2.5,
+      shadowEnabled: true,
+      shadowBlur: 16,
+      shadowColor: 'rgba(20, 10, 5, 0.6)'
+    },
     landmasses: [
       {
         id: 'caldera_main',
