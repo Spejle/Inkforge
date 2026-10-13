@@ -2,6 +2,18 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.1.0] - 2026-10-13
+
+### Fixed & Overhauled
+- **Studio Workspace Flex Layout**: Fixed critical CSS layout defect where `.studio-workspace` and `.center-stage` lacked flex styling, eliminating the 3800px vertical page overflow and docking the toolbar, center canvas stage, and right stamp drawer into a pixel-perfect 1080p desktop layout.
+- **True Dual-Buffer Land Mask Architecture**: Rewrote `renderLandmasses` to decouple the Land Mask Buffer from the Terrain Buffer. Adding land expands the mask; carving water performs authentic `destination-out` clipping without ugly blue overlapping strokes.
+- **Automated Masterclass Coastlines**: Added 4-tier concentric water-line ripple echoes ($6\text{px}, 14\text{px}, 26\text{px}, 42\text{px}$) with exponential alpha falloff, 3D land elevation drop shadows cast onto the ocean, inner sandy beach fringes, and crisp ink coastline contours.
+- **Clipped Biome Brushes**: Biome textures now render into an offscreen terrain buffer clipped strictly to the Land Mask (`destination-in`), preventing ground painting from bleeding into the sea.
+- **Fluid Stroke Interpolation**: Added distance-based point interpolation in `CanvasArea.jsx` so rapid mouse gestures create unbroken, continuous brush and mask strokes without gaps.
+- **Procedural Texture Synthesis**: Upgraded `biomesCatalog.js` with high-resolution 128px patterns including beveled flagstone pavers with corner cracks and mortar, staggered wood grain planks with nail rivets, interlocking cobblestones, desert wind ripples, incandescent molten magma fissures, and glacial frost.
+- **Eduard Imhof 315° NW Cartographic Lighting**: Added directional top-left sunlight and southeast contact drop shadows (`shadowColor: rgba(20, 15, 10, 0.35)`) under all mountain, castle, tree, and tower stamps to firmly ground them into the landscape.
+- **Masterclass Starter Preset Maps**: Completely overhauled `The Realm of Valoria & The Shattered Reach` with natural fractal coastlines, a sweeping 15-peak tectonic mountain spine, hydrologically realistic glacial rivers with tributaries and deltas, dense clustered forest canopies, strategic ports, and curved kingdom banners.
+
 ## [1.0.0] - 2026-10-13
 
 ### Added

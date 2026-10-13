@@ -363,9 +363,27 @@ export default function CanvasArea({
       return;
     }
 
-    // Handle Brush / Mask freehand sculpting
+    // Handle Brush / Mask freehand sculpting with distance interpolation
     if ((activeTool === 'mask' || activeTool === 'brush') && activeStrokeRef.current) {
-      activeStrokeRef.current.points.push({ x: Math.round(x), y: Math.round(y) });
+      const pts = activeStrokeRef.current.points;
+      const lastPt = pts[pts.length - 1];
+      const targetX = Math.round(x);
+      const targetY = Math.round(y);
+      const dist = Math.hypot(targetX - lastPt.x, targetY - lastPt.y);
+      const step = Math.max(4, Math.floor(brushSize / 4));
+
+      if (dist > step) {
+        const steps = Math.min(20, Math.floor(dist / step));
+        for (let i = 1; i <= steps; i++) {
+          pts.push({
+            x: Math.round(lastPt.x + (targetX - lastPt.x) * (i / steps)),
+            y: Math.round(lastPt.y + (targetY - lastPt.y) * (i / steps))
+          });
+        }
+      } else {
+        pts.push({ x: targetX, y: targetY });
+      }
+
       onAddBrushStroke({ ...activeStrokeRef.current });
       return;
     }

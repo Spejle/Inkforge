@@ -1,6 +1,6 @@
 // InkForge Rendering Pipeline — High Performance Canvas 2D Engine
 import { getStampById } from './stampsCatalog.js';
-import { getBiomeById, getBiomePattern } from './biomesCatalog.js';
+import { getBiomePattern } from './biomesCatalog.js';
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -149,109 +149,215 @@ function renderDungeonVoid(ctx, width, height) {
   ctx.restore();
 }
 
-/** Render landmasses with true dual-layer sculpting, coastlines, and beach fringes */
+/**
+ * Render landmasses with true dual-layer sculpting, coastlines, and beach fringes.
+ * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
+ * Inkarnate clipping and non-destructive water carving.
+ */
 function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType) {
   if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
 
-  // Pass 1: Coastal ripple rings (only for world maps)
-  if (mapType === 'world') {
-    ctx.save();
-    for (const land of landmasses) {
-      if (!land.points || land.points.length < 3) continue;
+  // 1. Build the Offscreen Land Mask Canvas
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width = width;
+  maskCanvas.height = height;
+  const mctx = maskCanvas.getContext('2d');
 
-      const rippleDistances = [18, 10, 4];
-      const rippleAlphas = [0.08, 0.16, 0.35];
-
-      rippleDistances.forEach((d, idx) => {
-        ctx.beginPath();
-        drawSmoothPolygon(ctx, land.points);
-        ctx.strokeStyle = `rgba(164, 219, 232, ${rippleAlphas[idx]})`;
-        ctx.lineWidth = d * 2;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-      });
-    }
-    ctx.restore();
-  }
-
-  // Pass 2: Beach / Sand fringe
-  if (mapType === 'world') {
-    ctx.save();
-    for (const land of landmasses) {
-      if (!land.points || land.points.length < 3) continue;
-      ctx.beginPath();
-      drawSmoothPolygon(ctx, land.points);
-      ctx.strokeStyle = '#d4be8d'; // Sand color
-      ctx.lineWidth = 12;
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // Pass 3: Landmass Core Fills
+  // Draw preset polygon landmasses onto mask
+  mctx.fillStyle = '#ffffff';
   for (const land of landmasses) {
     if (!land.points || land.points.length < 3) continue;
+    mctx.beginPath();
+    drawSmoothPolygon(mctx, land.points);
+    mctx.fill();
+  }
 
+  // Apply Mask sculpting strokes (Add land or Carve water)
+  for (const stroke of (brushStrokes || [])) {
+    if (stroke.type !== 'mask') continue;
+    if (!stroke.points || stroke.points.length === 0) continue;
+
+    mctx.save();
+    if (stroke.mode === 'water') {
+      // True non-destructive water carving!
+      mctx.globalCompositeOperation = 'destination-out';
+    } else {
+      mctx.globalCompositeOperation = 'source-over';
+      mctx.fillStyle = '#ffffff';
+      mctx.strokeStyle = '#ffffff';
+    }
+
+    mctx.lineWidth = stroke.size || 40;
+    mctx.lineCap = 'round';
+    mctx.lineJoin = 'round';
+
+    if (stroke.points.length === 1) {
+      mctx.beginPath();
+      mctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+      mctx.fill();
+    } else {
+      mctx.beginPath();
+      drawSmoothPolyline(mctx, stroke.points.map(p => [p.x, p.y]));
+      mctx.stroke();
+    }
+    mctx.restore();
+  }
+
+  // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
+  if (mapType === 'world') {
     ctx.save();
-    ctx.beginPath();
-    drawSmoothPolygon(ctx, land.points);
-    ctx.fillStyle = getBiomePattern(ctx, land.biome || 'grassland');
-    ctx.fill();
+    // Multi-tier water-line ripple echoes
+    const rippleOffsets = [36, 22, 12, 5];
+    const rippleAlphas = [0.08, 0.16, 0.28, 0.42];
 
-    // Coastline border line
-    ctx.strokeStyle = mapType === 'world' ? '#4a3b2c' : '#1e293b';
-    ctx.lineWidth = mapType === 'world' ? 2.5 : 4;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+    for (let i = 0; i < rippleOffsets.length; i++) {
+      const dist = rippleOffsets[i];
+      const alpha = rippleAlphas[i];
 
+      // Draw dilated mask edge as ripple contour
+      for (const land of landmasses) {
+        if (!land.points || land.points.length < 3) continue;
+        ctx.beginPath();
+        drawSmoothPolygon(ctx, land.points);
+        ctx.strokeStyle = `rgba(186, 230, 253, ${alpha})`;
+        ctx.lineWidth = dist * 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+
+      // Also render ripples for additive mask strokes
+      for (const stroke of (brushStrokes || [])) {
+        if (stroke.type === 'mask' && stroke.mode === 'land' && stroke.points && stroke.points.length > 0) {
+          ctx.beginPath();
+          if (stroke.points.length === 1) {
+            ctx.arc(stroke.points[0].x, stroke.points[0].y, ((stroke.size || 40) + dist * 2) / 2, 0, Math.PI * 2);
+          } else {
+            drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
+          }
+          ctx.strokeStyle = `rgba(186, 230, 253, ${alpha * 0.7})`;
+          ctx.lineWidth = (stroke.size || 40) + dist * 2;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+        }
+      }
+    }
     ctx.restore();
   }
 
-  // Pass 4: Freehand Brush Strokes (Terrain sculpting / biomes)
-  if (brushStrokes && brushStrokes.length > 0) {
+  // 3. 3D Land Elevation Drop Shadow
+  ctx.save();
+  ctx.shadowColor = mapType === 'world' ? 'rgba(15, 23, 42, 0.45)' : 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 5;
+  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.restore();
+
+  // 4. Build the Offscreen Terrain Buffer (Base Biomes + Brush Strokes)
+  const terrainCanvas = document.createElement('canvas');
+  terrainCanvas.width = width;
+  terrainCanvas.height = height;
+  const tctx = terrainCanvas.getContext('2d');
+
+  // Default base terrain wash
+  tctx.fillStyle = getBiomePattern(tctx, 'grassland');
+  tctx.fillRect(0, 0, width, height);
+
+  // Paint landmass-specific base biomes
+  for (const land of landmasses) {
+    if (!land.points || land.points.length < 3) continue;
+    tctx.save();
+    tctx.beginPath();
+    drawSmoothPolygon(tctx, land.points);
+    tctx.fillStyle = getBiomePattern(tctx, land.biome || 'grassland');
+    tctx.fill();
+    tctx.restore();
+  }
+
+  // Paint Freehand Biome Brush Strokes
+  for (const stroke of (brushStrokes || [])) {
+    if (stroke.type !== 'brush') continue;
+    if (!stroke.points || stroke.points.length === 0) continue;
+
+    tctx.save();
+    tctx.globalAlpha = stroke.opacity || 0.85;
+    tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
+    tctx.fillStyle = tctx.strokeStyle;
+    tctx.lineWidth = stroke.size || 40;
+    tctx.lineCap = 'round';
+    tctx.lineJoin = 'round';
+
+    if (stroke.points.length === 1) {
+      tctx.beginPath();
+      tctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+      tctx.fill();
+    } else {
+      tctx.beginPath();
+      drawSmoothPolyline(tctx, stroke.points.map(p => [p.x, p.y]));
+      tctx.stroke();
+    }
+    tctx.restore();
+  }
+
+  // 5. CLIP Terrain Buffer to Land Mask Buffer (True Masking!)
+  tctx.save();
+  tctx.globalCompositeOperation = 'destination-in';
+  tctx.drawImage(maskCanvas, 0, 0);
+  tctx.restore();
+
+  // Draw the clipped terrain onto the destination canvas
+  ctx.drawImage(terrainCanvas, 0, 0);
+
+  // 6. Beach / Sand Fringe along inner coastlines
+  if (mapType === 'world') {
     ctx.save();
-    for (const stroke of brushStrokes) {
-      if (!stroke.points || stroke.points.length === 0) continue;
-      const isWater = stroke.mode === 'water';
-
+    // Clip beach drawing strictly inside the land
+    for (const land of landmasses) {
+      if (!land.points || land.points.length < 3) continue;
       ctx.save();
-      ctx.globalAlpha = stroke.opacity || 0.85;
-
-      if (isWater) {
-        // Water carving mode
-        ctx.strokeStyle = mapType === 'world' ? '#204060' : '#0f172a';
-        ctx.fillStyle = ctx.strokeStyle;
-      } else {
-        ctx.strokeStyle = getBiomePattern(ctx, stroke.biome || 'grassland');
-        ctx.fillStyle = ctx.strokeStyle;
-      }
-
-      ctx.lineWidth = stroke.size || 40;
-      ctx.lineCap = 'round';
+      ctx.beginPath();
+      drawSmoothPolygon(ctx, land.points);
+      ctx.clip();
+      ctx.beginPath();
+      drawSmoothPolygon(ctx, land.points);
+      ctx.strokeStyle = '#d4be8d'; // Natural sand beach
+      ctx.lineWidth = 14;
       ctx.lineJoin = 'round';
-
-      if (stroke.points.length === 1) {
-        ctx.beginPath();
-        ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
-        ctx.stroke();
-      }
-
-      // If sculpting new land in world map, add fine coastline edge
-      if (stroke.mode === 'land' && mapType === 'world') {
-        ctx.strokeStyle = 'rgba(74, 59, 44, 0.3)';
-        ctx.lineWidth = (stroke.size || 40) + 4;
-        ctx.stroke();
-      }
-
+      ctx.stroke();
       ctx.restore();
     }
     ctx.restore();
   }
+
+  // 7. Crisp Ink Coastline Contour
+  ctx.save();
+  for (const land of landmasses) {
+    if (!land.points || land.points.length < 3) continue;
+    ctx.beginPath();
+    drawSmoothPolygon(ctx, land.points);
+    ctx.strokeStyle = mapType === 'world' ? '#3d2b1f' : '#1e293b';
+    ctx.lineWidth = mapType === 'world' ? 2.5 : 4;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
+  // Also outline additive mask strokes
+  for (const stroke of (brushStrokes || [])) {
+    if (stroke.type === 'mask' && stroke.mode === 'land' && stroke.points && stroke.points.length > 0) {
+      ctx.beginPath();
+      if (stroke.points.length === 1) {
+        ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+      } else {
+        drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
+      }
+      ctx.strokeStyle = mapType === 'world' ? '#3d2b1f' : '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /**
@@ -395,6 +501,12 @@ function renderStamps(ctx, stamps, selectedStampId) {
     // Centered translation about the true visual origin
     ctx.translate(-finalW / 2, -finalH / 2);
 
+    // Cartographic 315° Northwest illumination & contact drop shadow
+    ctx.shadowColor = 'rgba(20, 15, 10, 0.35)';
+    ctx.shadowBlur = Math.max(3, 6 * (s.scale || 1.0));
+    ctx.shadowOffsetX = 2 * (s.scale || 1.0);
+    ctx.shadowOffsetY = 4 * (s.scale || 1.0);
+
     // Custom image stamp or procedural vector stamp
     if (s.customImage) {
       if (typeof s.customImage === 'string') {
@@ -409,6 +521,12 @@ function renderStamps(ctx, stamps, selectedStampId) {
     } else if (def && def.render) {
       def.render(ctx, finalSize, s.color, s.fill);
     }
+
+    // Reset shadow before drawing selection indicator
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     // Selection box highlight & transform handles
     if (s.id === selectedStampId) {
