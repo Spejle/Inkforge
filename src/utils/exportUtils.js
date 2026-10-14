@@ -87,7 +87,10 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     paths,
     texts,
     grid,
-    atmosphere
+    atmosphere,
+    coastline,
+    layerVisibility,
+    layerStyle
   } = mapState;
 
   const gridSize = grid.size || 60;
@@ -159,6 +162,9 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     texts,
     grid: { ...grid, enabled: false },
     atmosphere,
+    coastline,
+    ...(layerVisibility && { layerVisibility }),
+    layerStyle,
     selectedStampId: null,
     selectedTextId: null
   });

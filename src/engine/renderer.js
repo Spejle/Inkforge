@@ -7,6 +7,28 @@ let backgroundCache = null;
 let lastBgKey = '';
 let noisePatternCache = null;
 
+// Custom stamp images: decoded once per data URL, never written back onto the stamp.
+// The canvas repaints via onImageLoad when a still-loading image arrives.
+const imageCache = new Map();
+const watched = new WeakSet();
+let imageLoadHandler = null;
+export function onImageLoad(fn) {
+  imageLoadHandler = fn;
+}
+function stampImage(src) {
+  let img = typeof src === 'string' ? imageCache.get(src) : src;
+  if (!img) {
+    img = new Image();
+    img.src = src;
+    imageCache.set(src, img);
+  }
+  if (!img.complete && !watched.has(img)) {
+    watched.add(img);
+    img.addEventListener('load', () => imageLoadHandler && imageLoadHandler(), { once: true });
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
+
 /**
  * Main draw loop: renders the composite map into destination canvas.
  */
@@ -638,15 +660,8 @@ function renderStamps(ctx, stamps, selectedStampId) {
 
     // Custom image stamp or procedural vector stamp
     if (s.customImage) {
-      if (typeof s.customImage === 'string') {
-        // Base64 string fallback
-        const img = new Image();
-        img.src = s.customImage;
-        s.customImage = img; // hydrate for next frame
-      }
-      if (s.customImage.complete || s.customImage.tagName === 'IMG') {
-        ctx.drawImage(s.customImage, 0, 0, finalW, finalH);
-      }
+      const img = stampImage(s.customImage);
+      if (img) ctx.drawImage(img, 0, 0, finalW, finalH);
     } else if (def && def.render) {
       def.render(ctx, finalSize, s.color, s.fill);
     }

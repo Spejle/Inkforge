@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import ToolBar from './components/ToolBar';
 import ToolOptions from './components/ToolOptions';
@@ -62,17 +62,26 @@ export default function App() {
   };
   const layerStyle = layers;
 
-  // Undo / Redo history initialized directly
-  const [history, setHistory] = useState([
-    {
-      landmasses: defaultPreset.landmasses || [],
-      brushStrokes: [],
-      stamps: defaultPreset.stamps || [],
-      paths: defaultPreset.paths || [],
-      texts: defaultPreset.texts || []
-    }
-  ]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+  // Undo / Redo history: one object so index and list always move together
+  const [hist, setHist] = useState({
+    list: [
+      {
+        landmasses: defaultPreset.landmasses || [],
+        brushStrokes: [],
+        stamps: defaultPreset.stamps || [],
+        paths: defaultPreset.paths || [],
+        texts: defaultPreset.texts || []
+      }
+    ],
+    index: 0
+  });
+  const history = hist.list;
+  const historyIndex = hist.index;
+  const resetHistory = (snapshot) => {
+    clearTimeout(pendingRef.current);
+    pendingRef.current = null;
+    setHist({ list: [snapshot], index: 0 });
+  };
 
   // Active Tool & UI States
   const [activeTool, setActiveTool] = useState('select');
@@ -117,185 +126,176 @@ export default function App() {
   const [zoom, setZoom] = useState(0.65);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
-  // Record history snapshot helper
-  const recordHistory = useCallback(
-    (newState) => {
-      const snapshot = {
-        landmasses: newState?.landmasses ?? landmasses,
-        brushStrokes: newState?.brushStrokes ?? brushStrokes,
-        stamps: newState?.stamps ?? stamps,
-        paths: newState?.paths ?? paths,
-        texts: newState?.texts ?? texts
-      };
+  // Latest document state, readable from timers and handlers without stale closures
+  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts });
+  useEffect(() => {
+    docRef.current = { landmasses, brushStrokes, stamps, paths, texts };
+  });
+  const pendingRef = useRef(null);
 
-      setHistory((prev) => {
-        const sliced = prev.slice(0, historyIndex + 1);
-        return [...sliced, snapshot];
-      });
-      setHistoryIndex((prev) => prev + 1);
-    },
-    [landmasses, brushStrokes, stamps, paths, texts, historyIndex]
-  );
+  // Record a snapshot; no-op when nothing changed (e.g. a click that only selected)
+  const recordHistory = useCallback((newState) => {
+    const snapshot = { ...docRef.current, ...newState };
+    setHist((h) => {
+      const cur = h.list[h.index];
+      if (Object.keys(snapshot).every((k) => snapshot[k] === cur[k])) return h;
+      const list = [...h.list.slice(0, h.index + 1), snapshot];
+      return { list, index: list.length - 1 };
+    });
+  }, []);
+
+  // Slider/colour edits fire many updates; fold them into one undo step
+  const flushPending = useCallback(() => {
+    if (pendingRef.current === null) return;
+    clearTimeout(pendingRef.current);
+    pendingRef.current = null;
+    recordHistory();
+  }, [recordHistory]);
+  const scheduleCommit = useCallback(() => {
+    clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(() => {
+      pendingRef.current = null;
+      recordHistory();
+    }, 400);
+  }, [recordHistory]);
 
   // Atomic commit on mouse release
   const handleCommitAction = useCallback(() => {
+    flushPending();
     recordHistory();
-  }, [recordHistory]);
+  }, [flushPending, recordHistory]);
 
   // Undo / Redo handlers
+  const histRef = useRef(hist);
+  useEffect(() => {
+    histRef.current = hist;
+  });
+
+  const restore = useCallback((snap) => {
+    setLandmasses(snap.landmasses);
+    setBrushStrokes(snap.brushStrokes);
+    setStamps(snap.stamps);
+    setPaths(snap.paths);
+    setTexts(snap.texts);
+    setSelectedStampId(null);
+    setSelectedTextId(null);
+    setSelectedPathId(null);
+  }, []);
+
   const handleUndo = useCallback(() => {
-    if (historyIndex > 0) {
-      const prev = history[historyIndex - 1];
-      setLandmasses(prev.landmasses);
-      setBrushStrokes(prev.brushStrokes);
-      setStamps(prev.stamps);
-      setPaths(prev.paths);
-      setTexts(prev.texts);
-      setHistoryIndex(historyIndex - 1);
-      setSelectedStampId(null);
-      setSelectedTextId(null);
-      setSelectedPathId(null);
+    const { list, index } = histRef.current;
+    if (pendingRef.current !== null) {
+      // unrecorded edits: undo drops them back to the last recorded state
+      clearTimeout(pendingRef.current);
+      pendingRef.current = null;
+      restore(list[index]);
+    } else if (index > 0) {
+      restore(list[index - 1]);
+      setHist({ list, index: index - 1 });
     }
-  }, [historyIndex, history]);
+  }, [restore]);
 
   const handleRedo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const next = history[historyIndex + 1];
-      setLandmasses(next.landmasses);
-      setBrushStrokes(next.brushStrokes);
-      setStamps(next.stamps);
-      setPaths(next.paths);
-      setTexts(next.texts);
-      setHistoryIndex(historyIndex + 1);
+    const { list, index } = histRef.current;
+    if (index < list.length - 1) {
+      restore(list[index + 1]);
+      setHist({ list, index: index + 1 });
     }
-  }, [historyIndex, history]);
+  }, [restore]);
 
-  // Selection mutations
+  // Selection mutations: compute the new array from current state, then set + record (no side effects in updaters)
+  const commitStamps = (updated) => {
+    setStamps(updated);
+    recordHistory({ stamps: updated });
+  };
+  const commitTexts = (updated) => {
+    setTexts(updated);
+    recordHistory({ texts: updated });
+  };
+
   const handleDeleteSelected = useCallback(() => {
+    const { stamps: st, texts: tx, paths: pa } = docRef.current;
     if (selectedStampId) {
-      setStamps((prev) => {
-        const updated = prev.filter((s) => s.id !== selectedStampId);
-        recordHistory({ stamps: updated });
-        return updated;
-      });
+      const updated = st.filter((s) => s.id !== selectedStampId);
+      setStamps(updated);
+      recordHistory({ stamps: updated });
       setSelectedStampId(null);
     } else if (selectedTextId) {
-      setTexts((prev) => {
-        const updated = prev.filter((t) => t.id !== selectedTextId);
-        recordHistory({ texts: updated });
-        return updated;
-      });
+      const updated = tx.filter((t) => t.id !== selectedTextId);
+      setTexts(updated);
+      recordHistory({ texts: updated });
       setSelectedTextId(null);
     } else if (selectedPathId) {
-      setPaths((prev) => {
-        const updated = prev.filter((p) => p.id !== selectedPathId);
-        recordHistory({ paths: updated });
-        return updated;
-      });
+      const updated = pa.filter((p) => p.id !== selectedPathId);
+      setPaths(updated);
+      recordHistory({ paths: updated });
       setSelectedPathId(null);
     }
   }, [selectedStampId, selectedTextId, selectedPathId, recordHistory]);
 
-  const handleDuplicateSelected = useCallback(() => {
+  const handleDuplicateSelected = () => {
     if (selectedStampId) {
       const target = stamps.find((s) => s.id === selectedStampId);
       if (!target) return;
-      const clone = {
-        ...target,
-        id: 'stamp_' + Date.now(),
-        x: target.x + 35,
-        y: target.y + 35
-      };
-      setStamps((prev) => {
-        const updated = [...prev, clone];
-        recordHistory({ stamps: updated });
-        return updated;
-      });
+      const clone = { ...target, id: 'stamp_' + Date.now(), x: target.x + 35, y: target.y + 35 };
+      commitStamps([...stamps, clone]);
       setSelectedStampId(clone.id);
     } else if (selectedTextId) {
       const target = texts.find((t) => t.id === selectedTextId);
       if (!target) return;
-      const clone = {
-        ...target,
-        id: 'text_' + Date.now(),
-        x: target.x + 30,
-        y: target.y + 30
-      };
-      setTexts((prev) => {
-        const updated = [...prev, clone];
-        recordHistory({ texts: updated });
-        return updated;
-      });
+      const clone = { ...target, id: 'text_' + Date.now(), x: target.x + 30, y: target.y + 30 };
+      commitTexts([...texts, clone]);
       setSelectedTextId(clone.id);
     }
-  }, [selectedStampId, selectedTextId, stamps, texts, recordHistory]);
+  };
 
-  const handleBringToFront = useCallback(() => {
-    if (selectedStampId) {
-      setStamps((prev) => {
-        const target = prev.find((s) => s.id === selectedStampId);
-        if (!target) return prev;
-        const maxZ = Math.max(...prev.map((s) => s.zIndex || 0), 0);
-        const updated = prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: maxZ + 1 } : s));
-        recordHistory({ stamps: updated });
-        return updated;
-      });
-    }
-  }, [selectedStampId, recordHistory]);
+  const handleBringToFront = () => {
+    if (!selectedStampId) return;
+    const maxZ = Math.max(...stamps.map((s) => s.zIndex || 0), 0);
+    commitStamps(stamps.map((s) => (s.id === selectedStampId ? { ...s, zIndex: maxZ + 1 } : s)));
+  };
 
-  const handleSendToBack = useCallback(() => {
-    if (selectedStampId) {
-      setStamps((prev) => {
-        const target = prev.find((s) => s.id === selectedStampId);
-        if (!target) return prev;
-        const minZ = Math.min(...prev.map((s) => s.zIndex || 0), 0);
-        const updated = prev.map((s) => (s.id === selectedStampId ? { ...s, zIndex: minZ - 1 } : s));
-        recordHistory({ stamps: updated });
-        return updated;
-      });
-    }
-  }, [selectedStampId, recordHistory]);
+  const handleSendToBack = () => {
+    if (!selectedStampId) return;
+    const minZ = Math.min(...stamps.map((s) => s.zIndex || 0), 0);
+    commitStamps(stamps.map((s) => (s.id === selectedStampId ? { ...s, zIndex: minZ - 1 } : s)));
+  };
 
-  const handleFlipStamp = useCallback(
-    (axis) => {
-      if (selectedStampId) {
-        setStamps((prev) => {
-          const updated = prev.map((s) => {
-            if (s.id === selectedStampId) {
-              return axis === 'x' ? { ...s, flipX: !s.flipX } : { ...s, flipY: !s.flipY };
-            }
-            return s;
-          });
-          recordHistory({ stamps: updated });
-          return updated;
-        });
-      }
-    },
-    [selectedStampId, recordHistory]
-  );
+  const handleFlipStamp = (axis) => {
+    if (!selectedStampId) return;
+    commitStamps(
+      stamps.map((s) =>
+        s.id !== selectedStampId ? s : axis === 'x' ? { ...s, flipX: !s.flipX } : { ...s, flipY: !s.flipY }
+      )
+    );
+  };
 
   const handleUpdateSelectedStamp = useCallback((updates) => {
     setStamps((prev) =>
       prev.map((s) => (s.id === selectedStampId ? { ...s, ...updates } : s))
     );
-  }, [selectedStampId]);
+    scheduleCommit();
+  }, [selectedStampId, scheduleCommit]);
 
   const handleUpdateSelectedText = useCallback((updates) => {
     setTexts((prev) =>
       prev.map((t) => (t.id === selectedTextId ? { ...t, ...updates } : t))
     );
-  }, [selectedTextId]);
+    scheduleCommit();
+  }, [selectedTextId, scheduleCommit]);
 
   const handleUpdateSelectedPath = useCallback((updates) => {
     setPaths((prev) =>
       prev.map((p) => (p.id === selectedPathId ? { ...p, ...updates } : p))
     );
-  }, [selectedPathId]);
+    scheduleCommit();
+  }, [selectedPathId, scheduleCommit]);
 
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      const mod = e.ctrlKey || e.metaKey || e.altKey;
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -304,23 +304,23 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
-      } else if (e.key.toLowerCase() === 'v') {
+      } else if (!mod && e.key.toLowerCase() === 'v') {
         setActiveTool('select');
-      } else if (e.key.toLowerCase() === 'm') {
+      } else if (!mod && e.key.toLowerCase() === 'm') {
         setActiveTool('mask');
-      } else if (e.key.toLowerCase() === 'b') {
+      } else if (!mod && e.key.toLowerCase() === 'b') {
         setActiveTool('brush');
-      } else if (e.key.toLowerCase() === 's') {
+      } else if (!mod && e.key.toLowerCase() === 's') {
         setActiveTool('stamp');
-      } else if (e.key.toLowerCase() === 'p') {
+      } else if (!mod && e.key.toLowerCase() === 'p') {
         setActiveTool('path');
-      } else if (e.key.toLowerCase() === 't') {
+      } else if (!mod && e.key.toLowerCase() === 't') {
         setActiveTool('text');
-      } else if (e.key.toLowerCase() === 'g') {
+      } else if (!mod && e.key.toLowerCase() === 'g') {
         setActiveTool('grid');
-      } else if (e.key.toLowerCase() === 'a') {
+      } else if (!mod && e.key.toLowerCase() === 'a') {
         setActiveTool('atmosphere');
-      } else if (e.key.toLowerCase() === 'h') {
+      } else if (!mod && e.key.toLowerCase() === 'h') {
         setActiveTool('hand');
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         handleDeleteSelected();
@@ -351,16 +351,14 @@ export default function App() {
     setSelectedTextId(null);
     setSelectedPathId(null);
 
-    setHistory([
-      {
-        landmasses: found.landmasses || [],
-        brushStrokes: [],
-        stamps: found.stamps || [],
-        paths: found.paths || [],
-        texts: found.texts || []
-      }
-    ]);
-    setHistoryIndex(0);
+    setLayers(DEFAULT_LAYERS);
+    resetHistory({
+      landmasses: found.landmasses || [],
+      brushStrokes: [],
+      stamps: found.stamps || [],
+      paths: found.paths || [],
+      texts: found.texts || []
+    });
   };
 
   const handleNewMap = () => {
@@ -419,11 +417,7 @@ export default function App() {
       curvature: textCurvature
     };
 
-    setTexts((prev) => {
-      const updated = [...prev, newText];
-      recordHistory({ texts: updated });
-      return updated;
-    });
+    commitTexts([...texts, newText]);
     setSelectedTextId(newText.id);
     setSelectedStampId(null);
     setSelectedPathId(null);
@@ -523,7 +517,10 @@ export default function App() {
         paths,
         texts,
         grid,
-        atmosphere
+        atmosphere,
+        coastline,
+        layerVisibility,
+        layerStyle
       },
       filename: `${safeTitle}.dd2vtt`
     });
@@ -581,16 +578,13 @@ export default function App() {
         setSelectedTextId(null);
         setSelectedPathId(null);
 
-        setHistory([
-          {
-            landmasses: data.landmasses || [],
-            brushStrokes: data.brushStrokes || [],
-            stamps: data.stamps || [],
-            paths: data.paths || [],
-            texts: data.texts || []
-          }
-        ]);
-        setHistoryIndex(0);
+        resetHistory({
+          landmasses: data.landmasses || [],
+          brushStrokes: data.brushStrokes || [],
+          stamps: data.stamps || [],
+          paths: data.paths || [],
+          texts: data.texts || []
+        });
       }
     } catch {
       alert('Could not open file: invalid .inkforge JSON format.');

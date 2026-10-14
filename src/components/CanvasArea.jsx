@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { renderMap, snapToGrid, stampAspect } from '../engine/renderer';
+import { renderMap, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 
 export default function CanvasArea({
   mapWidth,
@@ -65,6 +65,12 @@ export default function CanvasArea({
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0, canvasX: 0, canvasY: 0, inside: false });
   const [spacePressed, setSpacePressed] = useState(false);
+  const [imageTick, setImageTick] = useState(0); // bumps when a custom stamp image finishes loading
+
+  useEffect(() => {
+    onImageLoad(() => setImageTick((n) => n + 1));
+    return () => onImageLoad(null);
+  }, []);
 
   // Key listeners for spacebar pan & shortcuts
   useEffect(() => {
@@ -137,29 +143,35 @@ export default function CanvasArea({
     selectedTextId,
     selectedPathId,
     layerVisibility,
-    layerStyle
+    layerStyle,
+    imageTick
   ]);
 
-  // Cursor-anchored mouse wheel zoom
-  const handleWheel = (e) => {
-    e.preventDefault();
+  // Cursor-anchored mouse wheel zoom. Native listener: React's onWheel is passive, so preventDefault would be ignored.
+  const viewRef = useRef({ zoom, setZoom, setPanOffset });
+  useEffect(() => {
+    viewRef.current = { zoom, setZoom, setPanOffset };
+  });
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - rect.width / 2;
-    const mouseY = e.clientY - rect.top - rect.height / 2;
-
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
-    const nextZoom = Math.min(4.0, Math.max(0.1, zoom * zoomFactor));
-    const ratio = nextZoom / zoom;
-
-    setPanOffset((prev) => ({
-      x: mouseX - (mouseX - prev.x) * ratio,
-      y: mouseY - (mouseY - prev.y) * ratio
-    }));
-    setZoom(nextZoom);
-  };
+    const onWheel = (e) => {
+      e.preventDefault();
+      const { zoom, setZoom, setPanOffset } = viewRef.current;
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left - rect.width / 2;
+      const mouseY = e.clientY - rect.top - rect.height / 2;
+      const nextZoom = Math.min(4.0, Math.max(0.1, zoom * (e.deltaY < 0 ? 1.12 : 0.88)));
+      const ratio = nextZoom / zoom;
+      setPanOffset((prev) => ({
+        x: mouseX - (mouseX - prev.x) * ratio,
+        y: mouseY - (mouseY - prev.y) * ratio
+      }));
+      setZoom(nextZoom);
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
 
   // Helper to place a single stamp with jitter & grid snapping
   const placeStampAt = (rawX, rawY) => {
@@ -450,14 +462,19 @@ export default function CanvasArea({
       }
     };
     window.addEventListener('pointerup', onWindowMouseUp);
-    return () => window.removeEventListener('pointerup', onWindowMouseUp);
+    window.addEventListener('pointercancel', onWindowMouseUp);
+    return () => {
+      window.removeEventListener('pointerup', onWindowMouseUp);
+      window.removeEventListener('pointercancel', onWindowMouseUp);
+    };
+    // handleMouseUp only reads refs and the latest onCommitAction
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onCommitAction]);
 
   return (
     <div
       ref={containerRef}
       className={`canvas-viewport ${spacePressed || activeTool === 'hand' ? 'grab-cursor' : ''}`}
-      onWheel={handleWheel}
       onPointerDown={handleMouseDown}
       onPointerMove={handleMouseMove}
       onPointerUp={handleMouseUp}

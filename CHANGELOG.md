@@ -2,6 +2,20 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.4.1] - 2026-10-14
+
+Bug-fix release from a code review.
+
+### Fixed
+- **Universal VTT export** now uses your coastline settings and respects hidden layers / layer opacity and blend (it used defaults and drew every layer).
+- **Undo history**: a click that changes nothing (e.g. selecting with the Select tool) no longer adds an undo step.
+- **Property edits are undoable**: size, scale, colour and similar sliders on a selected stamp, text or path now create an undo step (a drag of a slider is one step).
+- Delete / duplicate / flip / bring-to-front no longer record history from inside state updaters (double entries under React StrictMode in development).
+- **Custom stamps** no longer stay invisible until something else redraws: the canvas repaints when a stamp image finishes loading, and images are cached instead of being written back onto the stamp.
+- **New map / preset** resets the layer panel to defaults (the stamp library is kept).
+- Shortcut keys ignore Ctrl/Cmd/Alt combinations (Ctrl+P, Ctrl+S, Ctrl+A no longer switch tools) and typing in text areas.
+- Mouse-wheel zoom no longer scrolls the page (non-passive listener); a cancelled pointer gesture (touch) ends cleanly.
+
 ## [1.4.0] - 2026-10-14
 
 Cartographer's-study restyle (no wireframes were available, so this is a visual pass only).
