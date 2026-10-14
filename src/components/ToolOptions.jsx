@@ -272,14 +272,14 @@ export default function ToolOptions({
             <button
               className={`btn-toggle ${maskMode === 'land' ? 'active green' : ''}`}
               onClick={() => setMaskMode('land')}
-              title="Paint continents and islands"
+              title="Paint continents and islands (X swaps Add / Carve)"
             >
               Add Land
             </button>
             <button
               className={`btn-toggle ${maskMode === 'water' ? 'active blue' : ''}`}
               onClick={() => setMaskMode('water')}
-              title="Carve ocean, lakes, and fjords"
+              title="Carve ocean, lakes, and fjords (X swaps Add / Carve)"
             >
               Carve Water
             </button>

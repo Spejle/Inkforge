@@ -304,6 +304,10 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
+      } else if (!mod && e.key.toLowerCase() === 'x') {
+        // swap Add Land <-> Carve Water (jumps to the Landmass Sculptor if another tool is active)
+        setActiveTool('mask');
+        setMaskMode((m) => (m === 'land' ? 'water' : 'land'));
       } else if (!mod && e.key.toLowerCase() === 'v') {
         setActiveTool('select');
       } else if (!mod && e.key.toLowerCase() === 'm') {

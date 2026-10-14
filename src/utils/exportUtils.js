@@ -124,6 +124,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
         { x: Number(((d.x - 30 * half) / gridSize).toFixed(3)), y: Number((d.y / gridSize).toFixed(3)) },
         { x: Number(((d.x + 30 * half) / gridSize).toFixed(3)), y: Number((d.y / gridSize).toFixed(3)) }
       ],
+      rotation: 0,
       closed: true,
       freestanding: false
     });
@@ -140,7 +141,8 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
       },
       range: 6.0,
       intensity: 0.8,
-      color: 'ff9933'
+      color: 'ffff9933',
+      shadows: true
     });
   }
 
@@ -172,7 +174,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
   const base64Data = vttCanvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
 
   const uvttData = {
-    format: 0.2,
+    format: 0.3,
     resolution: {
       map_origin: { x: 0, y: 0 },
       map_size: {
@@ -185,7 +187,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     portals: portals,
     environment: {
       baked_lighting: true,
-      ambient_light: '#ffffff'
+      ambient_light: 'ffffffff'
     },
     lights: lights,
     image: base64Data

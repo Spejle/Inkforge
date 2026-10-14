@@ -473,24 +473,33 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   // Draw the clipped terrain onto the destination canvas
   ctx.drawImage(terrainCanvas, 0, 0);
 
-  // 6. Beach / Sand Fringe along inner coastlines
+  // 6. Beach / Sand Fringe along the inner coastline of ALL land (presets, added land, carved bays):
+  // dilate the water (inverse mask) inward by half the beach width, keep the part that lies on land.
   if (mapType === 'world' && cl.sandEnabled && cl.sandWidth > 0) {
-    ctx.save();
-    for (const land of landmasses) {
-      if (!land.points || land.points.length < 3) continue;
-      ctx.save();
-      ctx.beginPath();
-      drawSmoothPolygon(ctx, land.points);
-      ctx.clip();
-      ctx.beginPath();
-      drawSmoothPolygon(ctx, land.points);
-      ctx.strokeStyle = cl.sandColor || '#d4be8d'; // Natural sand beach
-      ctx.lineWidth = cl.sandWidth;
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      ctx.restore();
+    const water = document.createElement('canvas');
+    water.width = width;
+    water.height = height;
+    const wc = water.getContext('2d');
+    wc.fillStyle = '#fff';
+    wc.fillRect(0, 0, width, height);
+    wc.globalCompositeOperation = 'destination-out';
+    wc.drawImage(maskCanvas, 0, 0);
+    const sand = document.createElement('canvas');
+    sand.width = width;
+    sand.height = height;
+    const sc = sand.getContext('2d');
+    const reach = cl.sandWidth / 2;
+    sc.drawImage(water, 0, 0);
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2;
+      sc.drawImage(water, Math.cos(ang) * reach, Math.sin(ang) * reach);
     }
-    ctx.restore();
+    sc.globalCompositeOperation = 'source-in';
+    sc.fillStyle = cl.sandColor || '#d4be8d';
+    sc.fillRect(0, 0, width, height);
+    sc.globalCompositeOperation = 'destination-in';
+    sc.drawImage(maskCanvas, 0, 0);
+    ctx.drawImage(sand, 0, 0);
   }
 
   // 7. Crisp Ink Coastline Contour: the true edge of the land mask (presets, added land and carved water)

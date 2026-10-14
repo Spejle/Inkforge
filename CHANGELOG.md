@@ -2,6 +2,15 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.4.3] - 2026-10-14
+
+### Added
+- **X swaps Add Land / Carve Water** (and jumps to the Landmass Sculptor if another tool is active).
+
+### Fixed
+- **Beach rim on sculpted land**: the sand fringe was only drawn for preset islands. It is now derived from the land mask, so painted land and carved bays/lakes get the same beach as the presets.
+- **Universal VTT**: format 0.3, `AARRGGBB` colour strings for ambient light and lights, `rotation` on portals, light shadows on. (Written from memory of the spec, not validated against Roll20/Foundry.)
+
 ## [1.4.2] - 2026-10-14
 
 ### Fixed
