@@ -249,6 +249,7 @@ export default function CanvasArea({
     };
     if (stampJitter) {
       // Per-instance variety so sprayed forests don't read as clones
+      newStamp.seed = Math.floor(Math.random() * 1e6);
       newStamp.flipX = Math.random() < 0.5;
       newStamp.tone = Number((0.94 + Math.random() * 0.12).toFixed(2));
       newStamp.hue = Math.round((Math.random() - 0.5) * 8);

@@ -709,7 +709,7 @@ function renderStamps(ctx, stamps, selectedStampId) {
       if (img) ctx.drawImage(img, 0, 0, finalW, finalH);
     } else if (def && def.render) {
       if (s.tone) ctx.filter = `brightness(${s.tone}) hue-rotate(${s.hue || 0}deg)`;
-      def.render(ctx, finalSize, s.color, s.fill);
+      def.render(ctx, finalSize, s.color, s.fill, s.seed);
       ctx.filter = 'none';
     }
 
