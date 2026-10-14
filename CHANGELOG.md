@@ -2,6 +2,13 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.6.2] - 2026-10-14
+
+### Changed
+- **One tool rail again**: Draw and Tools are a single column, split by a divider.
+- **Settings card is translucent** and floats over the canvas (blurred backdrop) instead of taking a column.
+- **Themed combo boxes** and inputs (dark, custom arrow, gold sliders) replace the white native controls.
+
 ## [1.6.1] - 2026-10-14
 
 ### Changed

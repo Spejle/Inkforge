@@ -28,35 +28,27 @@ export const TOOLS = [
 // Draw tools build the map; utility tools navigate, select, erase and adjust it.
 const DRAW_IDS = ['mask', 'brush', 'stamp', 'path', 'text'];
 
-function Rail({ label, tools, activeTool, setActiveTool }) {
-  return (
-    <aside className="tool-bar" aria-label={label}>
-      <div className="tool-rail-label">{label}</div>
-      <div className="tool-list">
-        {tools.map((tool) => {
-          const Icon = tool.icon;
-          return (
-            <button
-              key={tool.id}
-              className={`tool-button ${activeTool === tool.id ? 'active' : ''}`}
-              onClick={() => setActiveTool(tool.id)}
-              title={`${tool.name} (${tool.shortcut})\n${tool.desc}`}
-            >
-              <Icon size={20} className="tool-icon" />
-              <span className="tool-shortcut-badge">{tool.shortcut}</span>
-            </button>
-          );
-        })}
-      </div>
-    </aside>
-  );
-}
-
 export default function ToolBar({ activeTool, setActiveTool }) {
+  const group = (tools) =>
+    tools.map((tool) => {
+      const Icon = tool.icon;
+      return (
+        <button
+          key={tool.id}
+          className={`tool-button ${activeTool === tool.id ? 'active' : ''}`}
+          onClick={() => setActiveTool(tool.id)}
+          title={`${tool.name} (${tool.shortcut})\n${tool.desc}`}
+        >
+          <Icon size={20} className="tool-icon" />
+          <span className="tool-shortcut-badge">{tool.shortcut}</span>
+        </button>
+      );
+    });
   return (
-    <>
-      <Rail label="Draw" tools={TOOLS.filter((t) => DRAW_IDS.includes(t.id))} activeTool={activeTool} setActiveTool={setActiveTool} />
-      <Rail label="Tools" tools={TOOLS.filter((t) => !DRAW_IDS.includes(t.id))} activeTool={activeTool} setActiveTool={setActiveTool} />
-    </>
+    <aside className="tool-bar" aria-label="Tools">
+      <div className="tool-list">{group(TOOLS.filter((t) => DRAW_IDS.includes(t.id)))}</div>
+      <div className="tool-rail-divider" />
+      <div className="tool-list">{group(TOOLS.filter((t) => !DRAW_IDS.includes(t.id)))}</div>
+    </aside>
   );
 }

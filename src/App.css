@@ -1245,3 +1245,35 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   .tool-options-ribbon { width: 220px; min-width: 220px; }
   .center-stage > .tool-options-ribbon { height: auto; }
 }
+
+/* One rail, two groups; settings float over the canvas as a translucent card */
+.tool-rail-divider { width: 28px; height: 1px; background: var(--border-light); margin: 10px 0; opacity: 0.7; }
+.tool-options-ribbon {
+  position: absolute; left: 70px; top: 12px; z-index: 35;
+  height: auto; max-height: calc(100% - 24px); width: 264px; min-width: 0;
+  background: color-mix(in srgb, var(--bg-panel) 62%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15);
+  border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent); border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.tool-options-ribbon:empty { display: none; }
+
+/* Themed form controls (no more white comboboxes) */
+select, .select-input, .select-styled {
+  appearance: none; -webkit-appearance: none;
+  background-color: var(--bg-subtle); color: var(--text-main);
+  border: 1px solid var(--border-color); border-radius: 7px; padding: 6px 28px 6px 10px;
+  font: inherit; font-size: 12px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23b8a888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+select:hover { border-color: var(--border-light); background-color: var(--bg-panel-hover); }
+select:focus-visible { outline: 2px solid var(--primary-gold); outline-offset: 1px; }
+select option { background: var(--bg-raise); color: var(--text-main); }
+.tool-options-ribbon input[type='text'], .tool-options-ribbon .text-input, .tool-options-ribbon input:not([type]) {
+  background: color-mix(in srgb, var(--bg-subtle) 80%, transparent); color: var(--text-main);
+  border: 1px solid var(--border-color); border-radius: 7px; padding: 6px 10px;
+}
+.tool-options-ribbon input[type='color'] { background: transparent; border: 1px solid var(--border-light); border-radius: 6px; padding: 2px; }
+.tool-options-ribbon input[type='range'] { accent-color: var(--primary-gold); }
+.tool-bar { overflow-y: auto; scrollbar-width: none; }
