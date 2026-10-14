@@ -371,6 +371,22 @@ export default function ToolOptions({
       )}
 
       {/* 3. BIOME BRUSH OPTIONS */}
+      {activeTool === 'eraser' && (
+        <div className="options-segment">
+          <label className="option-label">
+            Size: <span className="val-badge">{brushSize}px</span>
+            <input
+              type="range"
+              min="15"
+              max="240"
+              value={brushSize}
+              onChange={(e) => setBrushSize(parseInt(e.target.value))}
+            />
+          </label>
+          <span className="segment-label">Removes whole brush / land strokes and paths under the ring</span>
+        </div>
+      )}
+
       {activeTool === 'brush' && (
         <div className="options-segment">
           <span className="segment-label">Biome:</span>

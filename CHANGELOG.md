@@ -2,15 +2,6 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
-## [Unreleased]
-
-### Added
-- **24 new procedural vector stamps**:
-  - **Nature & Land (8)**: Dead Tree (`tree_dead_barren`), Palm Tree (`tree_palm`), Desert Cactus (`cactus_saguaro`), Boulder Cluster (`boulder_cluster`), Freshwater Reeds (`nature_reeds`), Lily Pond (`nature_lily_pond`), Volcano (`volcano_lite`), Snowy Pine (`tree_snowy_pine`).
-  - **Settlements & Structures (8)**: Rustic Windmill (`windmill_rustic`), Coastal Lighthouse (`civ_lighthouse`), Ruined Tower (`ruined_tower`), Stone Arch Bridge (`bridge_stone`), Farm Homestead (`farm_homestead`), Port Dock (`port_dock`), Ancient Temple (`civ_temple`), Camp Tent (`camp_tent`).
-  - **Nautical & Icons (4)**: Giant Kraken (`nautical_kraken`), War Galleon (`ship_galleon`), Maelstrom Whirlpool (`nautical_whirlpool`), Sea Serpent Head (`sea_serpent_head`).
-  - **Furniture & Props (4)**: Dungeon Chest (`prop_chest_wood`), Barrel Stack (`prop_barrel_stack`), Ritual Stone Altar (`prop_altar_stone`), Library Bookshelf (`prop_bookshelf`).
-
 ## [1.5.0] - 2026-10-14
 
 Review-driven "bring it up to standard" release.
@@ -24,7 +15,11 @@ Review-driven "bring it up to standard" release.
 - **Paths**: Shift draws a straight segment (Alt snaps to 15°); select a path anywhere along its length (not only at vertices) and drag it to move it.
 - **Export**: Maximum 16K (8x, capped to the browser's canvas limit with a notice) and **layers as transparent PNGs in a ZIP** (flattened map plus one file per layer).
 - **Tests**: dependency-free `npm test` (node:test) for the print planner, PDF writer and ZIP writer.
-- 24 new stamps (see below if present).
+- **24 new procedural vector stamps**:
+  - **Nature & Land (8)**: Dead Tree (`tree_dead_barren`), Palm Tree (`tree_palm`), Desert Cactus (`cactus_saguaro`), Boulder Cluster (`boulder_cluster`), Freshwater Reeds (`nature_reeds`), Lily Pond (`nature_lily_pond`), Volcano (`volcano_lite`), Snowy Pine (`tree_snowy_pine`).
+  - **Settlements & Structures (8)**: Rustic Windmill (`windmill_rustic`), Coastal Lighthouse (`civ_lighthouse`), Ruined Tower (`ruined_tower`), Stone Arch Bridge (`bridge_stone`), Farm Homestead (`farm_homestead`), Port Dock (`port_dock`), Ancient Temple (`civ_temple`), Camp Tent (`camp_tent`).
+  - **Nautical & Icons (4)**: Giant Kraken (`nautical_kraken`), War Galleon (`ship_galleon`), Maelstrom Whirlpool (`nautical_whirlpool`), Sea Serpent Head (`sea_serpent_head`).
+  - **Furniture & Props (4)**: Dungeon Chest (`prop_chest_wood`), Barrel Stack (`prop_barrel_stack`), Ritual Stone Altar (`prop_altar_stone`), Library Bookshelf (`prop_bookshelf`).
 - A real README (the Vite template one is gone).
 
 ### Changed

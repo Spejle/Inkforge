@@ -8,11 +8,13 @@ import StampImportDialog from './components/StampImportDialog';
 import PrintDialog from './components/PrintDialog';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
 import { exportPrintPdf } from './utils/printUtils';
+import { saveAutosave, loadAutosave, hydrateStamps } from './utils/autosave';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
   exportToPng,
   exportToHighResPng,
   exportToUniversalVtt,
+  exportLayersZip,
   exportToJson,
   importFromJson
 } from './utils/exportUtils';
@@ -55,6 +57,7 @@ export default function App() {
   // Layer panel: per-layer visibility / opacity / blend, and the user's stamp library
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
   const [customStamps, setCustomStamps] = useState([]);
+  const [activeLayer, setActiveLayer] = useState(''); // custom layer new objects are drawn on ('' = built-in layers)
   const [dialog, setDialog] = useState(null); // 'stamps' | 'print' | null
   const layerVisibility = {
     ...Object.fromEntries(Object.entries(layers).map(([k, v]) => [k, v.visible])),
@@ -304,6 +307,20 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
+      } else if (e.key.startsWith('Arrow') && (selectedStampId || selectedTextId)) {
+        // nudge the selection by 1 px (10 with Shift)
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        const move = (o) => ({ x: o.x + dx, y: o.y + dy });
+        if (selectedStampId) handleUpdateSelectedStamp(move(docRef.current.stamps.find((t) => t.id === selectedStampId) || { x: 0, y: 0 }));
+        else handleUpdateSelectedText(move(docRef.current.texts.find((t) => t.id === selectedTextId) || { x: 0, y: 0 }));
+      } else if (!mod && (e.key === '[' || e.key === ']') && selectedStampId) {
+        // rotate the selected stamp (15°, 1° with Shift)
+        const st = docRef.current.stamps.find((t) => t.id === selectedStampId);
+        const deg = (e.shiftKey ? 1 : 15) * (e.key === ']' ? 1 : -1);
+        if (st) handleUpdateSelectedStamp({ rotation: Number(((st.rotation || 0) + (deg * Math.PI) / 180).toFixed(3)) });
       } else if (!mod && e.key.toLowerCase() === 'x') {
         // swap Add Land <-> Carve Water (jumps to the Landmass Sculptor if another tool is active)
         setActiveTool('mask');
@@ -324,6 +341,8 @@ export default function App() {
         setActiveTool('grid');
       } else if (!mod && e.key.toLowerCase() === 'a') {
         setActiveTool('atmosphere');
+      } else if (!mod && e.key.toLowerCase() === 'e') {
+        setActiveTool('eraser');
       } else if (!mod && e.key.toLowerCase() === 'h') {
         setActiveTool('hand');
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -332,7 +351,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleDeleteSelected]);
+  }, [handleUndo, handleRedo, handleDeleteSelected, selectedStampId, selectedTextId, handleUpdateSelectedStamp, handleUpdateSelectedText]);
 
   // Load a preset map
   const handleLoadPreset = (presetId) => {
@@ -382,8 +401,50 @@ export default function App() {
     });
   };
 
+  // Deleting a custom layer sends its objects back to the built-in layers
+  const handleDeleteLayer = (key) => {
+    const strip = (list) => list.map((o) => (o.layer === key ? { ...o, layer: undefined } : o));
+    const next = { stamps: strip(stamps), paths: strip(paths), texts: strip(texts) };
+    setStamps(next.stamps);
+    setPaths(next.paths);
+    setTexts(next.texts);
+    setLayers((p) => Object.fromEntries(Object.entries(p).filter(([k]) => k !== key)));
+    if (activeLayer === key) setActiveLayer('');
+    recordHistory(next);
+  };
+
+  const handleMoveSelectionTo = (key) => {
+    const tag = (o) => ({ ...o, layer: key || undefined });
+    if (selectedStampId) commitStamps(stamps.map((o) => (o.id === selectedStampId ? tag(o) : o)));
+    else if (selectedTextId) commitTexts(texts.map((o) => (o.id === selectedTextId ? tag(o) : o)));
+    else if (selectedPathId) {
+      const updated = paths.map((o) => (o.id === selectedPathId ? tag(o) : o));
+      setPaths(updated);
+      recordHistory({ paths: updated });
+    }
+  };
+
+  // Eraser: drop every brush/mask stroke and path that has a point within r of (x, y)
+  const handleEraseAt = (x, y, r) => {
+    const near = (pts, size = 0) => pts.some((pt) => {
+      const px = Array.isArray(pt) ? pt[0] : pt.x;
+      const py = Array.isArray(pt) ? pt[1] : pt.y;
+      return Math.hypot(px - x, py - y) <= r + size / 2;
+    });
+    setBrushStrokes((prev) => {
+      const kept = prev.filter((b) => !near(b.points || [], b.size || 0));
+      return kept.length === prev.length ? prev : kept;
+    });
+    setPaths((prev) => {
+      const kept = prev.filter((p) => !near(p.points || [], p.width || 0));
+      return kept.length === prev.length ? prev : kept;
+    });
+  };
+
+  const layerTag = () => (activeLayer && layers[activeLayer] ? { layer: activeLayer } : {});
+
   const handleAddStamp = (stamp) => {
-    setStamps((prev) => [...prev, stamp]);
+    setStamps((prev) => [...prev, { ...stamp, ...layerTag() }]);
   };
 
   const handleUpdateStamp = (id, updates) => {
@@ -400,10 +461,10 @@ export default function App() {
       const idx = prev.findIndex((p) => p.id === path.id);
       if (idx >= 0) {
         const copy = [...prev];
-        copy[idx] = path;
+        copy[idx] = { ...path, ...(prev[idx].layer ? { layer: prev[idx].layer } : {}) };
         return copy;
       }
-      return [...prev, path];
+      return [...prev, { ...path, ...layerTag() }];
     });
   };
 
@@ -418,7 +479,8 @@ export default function App() {
       font: textFont,
       color: textColor,
       stroke: textStroke,
-      curvature: textCurvature
+      curvature: textCurvature,
+      ...layerTag()
     };
 
     commitTexts([...texts, newText]);
@@ -508,6 +570,16 @@ export default function App() {
     });
   };
 
+  const handleExportLayers = (scaleFactor, includeGrid) => {
+    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    exportLayersZip({
+      mapState: { mapWidth, mapHeight, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle },
+      scaleFactor,
+      includeGrid,
+      filename: `${safeTitle}_layers.zip`
+    });
+  };
+
   const handleExportVtt = () => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     exportToUniversalVtt({
@@ -530,70 +602,107 @@ export default function App() {
     });
   };
 
+  const buildProject = () => ({
+    title: mapTitle,
+    type: mapType,
+    width: mapWidth,
+    height: mapHeight,
+    landmasses,
+    brushStrokes,
+    stamps: stamps.map((s) => ({
+      ...s,
+      customImage: s.dataUrl || (s.customImage && s.customImage.src) || null
+    })),
+    paths,
+    texts,
+    grid,
+    atmosphere,
+    coastline,
+    layers,
+    customStamps: customStamps.map(({ img: _img, ...c }) => c)
+  });
+
   const handleExportJson = () => {
-    const projectData = {
-      title: mapTitle,
-      type: mapType,
-      width: mapWidth,
-      height: mapHeight,
-      landmasses,
-      brushStrokes,
-      stamps: stamps.map((s) => ({
-        ...s,
-        customImage: s.dataUrl || (s.customImage && s.customImage.src) || null
-      })),
-      paths,
-      texts,
-      grid,
-      atmosphere,
-      coastline,
-      layers,
-      customStamps: customStamps.map(({ img: _img, ...c }) => c)
-    };
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportToJson(projectData, `${safeTitle}.inkforge`);
+    exportToJson(buildProject(), `${safeTitle}.inkforge`);
+  };
+
+  // Load a parsed project (from a file or from autosave) into state and reset history
+  const applyProject = (data) => {
+    setMapTitle(data.title || 'Imported Realm');
+    setMapType(data.type || 'world');
+    setMapWidth(data.width || 1920);
+    setMapHeight(data.height || 1080);
+    setLandmasses(data.landmasses || []);
+    setBrushStrokes(data.brushStrokes || []);
+    const loadedStamps = hydrateStamps(data.stamps || []);
+    setStamps(loadedStamps);
+    setPaths(data.paths || []);
+    setTexts(data.texts || []);
+    if (data.grid) setGrid(data.grid);
+    if (data.atmosphere) setAtmosphere(data.atmosphere);
+    if (data.coastline) setCoastline(data.coastline);
+    setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
+    setCustomStamps(
+      (data.customStamps || []).map((c) => {
+        const img = new Image();
+        img.src = c.dataUrl;
+        return { ...c, img };
+      })
+    );
+    setSelectedStampId(null);
+    setSelectedTextId(null);
+    setSelectedPathId(null);
+    resetHistory({
+      landmasses: data.landmasses || [],
+      brushStrokes: data.brushStrokes || [],
+      stamps: loadedStamps,
+      paths: data.paths || [],
+      texts: data.texts || []
+    });
   };
 
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
-      if (data) {
-        setMapTitle(data.title || 'Imported Realm');
-        setMapType(data.type || 'world');
-        setMapWidth(data.width || 1920);
-        setMapHeight(data.height || 1080);
-        setLandmasses(data.landmasses || []);
-        setBrushStrokes(data.brushStrokes || []);
-        setStamps(data.stamps || []);
-        setPaths(data.paths || []);
-        setTexts(data.texts || []);
-        if (data.grid) setGrid(data.grid);
-        if (data.atmosphere) setAtmosphere(data.atmosphere);
-        if (data.coastline) setCoastline(data.coastline);
-        setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
-        setCustomStamps(
-          (data.customStamps || []).map((c) => {
-            const img = new Image();
-            img.src = c.dataUrl;
-            return { ...c, img };
-          })
-        );
-        setSelectedStampId(null);
-        setSelectedTextId(null);
-        setSelectedPathId(null);
-
-        resetHistory({
-          landmasses: data.landmasses || [],
-          brushStrokes: data.brushStrokes || [],
-          stamps: data.stamps || [],
-          paths: data.paths || [],
-          texts: data.texts || []
-        });
-      }
+      if (data) applyProject(data);
     } catch {
       alert('Could not open file: invalid .inkforge JSON format.');
     }
   };
+
+  // Autosave to IndexedDB (debounced) and restore the last session on first load
+  const [autosaveStatus, setAutosaveStatus] = useState('');
+  const applyRef = useRef(null);
+  useEffect(() => {
+    applyRef.current = applyProject;
+  });
+  useEffect(() => {
+    let cancelled = false;
+    loadAutosave().then((data) => {
+      if (cancelled || !data) return;
+      applyRef.current(data);
+      setAutosaveStatus('Restored last session');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    // skip the very first run so the default preset never overwrites a saved session before it loads
+    if (!restoredRef.current) {
+      restoredRef.current = true;
+      return;
+    }
+    const t = setTimeout(() => {
+      saveAutosave(buildProject())
+        .then(() => setAutosaveStatus('Autosaved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
+        .catch(() => setAutosaveStatus('Autosave failed (storage full?)'));
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapTitle, mapType, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
 
   const fitToScreen = () => {
     setZoom(0.65);
@@ -623,6 +732,7 @@ export default function App() {
         setGridEnabled={(val) => setGrid((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
         onExportPng={handleExportPng}
         onExportHighRes={handleExportHighRes}
+        onExportLayers={handleExportLayers}
         onExportVtt={handleExportVtt}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
@@ -740,6 +850,7 @@ export default function App() {
             onAddStamp={handleAddStamp}
             onUpdateStamp={handleUpdateStamp}
             onAddPath={handleAddPath}
+            onEraseAt={handleEraseAt}
             onCommitAction={handleCommitAction}
             selectedStampId={selectedStampId}
             setSelectedStampId={setSelectedStampId}
@@ -754,6 +865,7 @@ export default function App() {
             layerVisibility={layerVisibility}
             layerStyle={layerStyle}
             customStamps={customStamps}
+            statusNote={autosaveStatus}
           />
         </div>
 
@@ -766,6 +878,11 @@ export default function App() {
           onOpenImport={() => setDialog('stamps')}
           layers={layers}
           setLayers={setLayers}
+          activeLayer={activeLayer}
+          setActiveLayer={setActiveLayer}
+          onDeleteLayer={handleDeleteLayer}
+          onMoveSelectionTo={handleMoveSelectionTo}
+          hasSelection={!!(selectedStampId || selectedTextId || selectedPathId)}
           gridConfig={grid}
           setGridConfig={setGrid}
           atmosphereConfig={atmosphere}

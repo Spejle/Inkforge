@@ -22,6 +22,11 @@ export default function StampDrawer({
   onOpenImport,
   layers,
   setLayers,
+  activeLayer,
+  setActiveLayer,
+  onDeleteLayer,
+  onMoveSelectionTo,
+  hasSelection,
   gridConfig,
   setGridConfig,
   atmosphereConfig,
@@ -163,7 +168,7 @@ export default function StampDrawer({
           {activeTab === 'fx' && (
             <div className="layers-fx-panel">
               {layers && (
-                <LayersPanel layers={layers} setLayers={setLayers} atmosphere={atmosphereConfig} setAtmosphere={setAtmosphereConfig} />
+                <LayersPanel layers={layers} setLayers={setLayers} atmosphere={atmosphereConfig} setAtmosphere={setAtmosphereConfig} activeLayer={activeLayer} setActiveLayer={setActiveLayer} onDeleteLayer={onDeleteLayer} onMoveSelectionTo={onMoveSelectionTo} hasSelection={hasSelection} />
               )}
               {/* Atmosphere Card */}
               {atmosphereConfig && setAtmosphereConfig && (

@@ -71,17 +71,32 @@ export function renderMap({
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    layerPass(ctx, st('land'), (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline));
+    layerPass(ctx, st('land'), (c) => landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline));
   }
+
+  // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
+  const onLayer = (key) => (o) => o.layer === key;
+  const onBase = (o) => !o.layer || !layerStyle[o.layer];
+  const customKeys = Object.keys(layerStyle).filter((k) => k.startsWith('c_'));
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    layerPass(ctx, st('paths'), (c) => renderPaths(c, paths, selectedPathId));
+    layerPass(ctx, st('paths'), (c) => renderPaths(c, paths.filter(onBase), selectedPathId));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
   if (layerVisibility.stamps) {
-    layerPass(ctx, st('stamps'), (c) => renderStamps(c, stamps, selectedStampId));
+    layerPass(ctx, st('stamps'), (c) => renderStamps(c, stamps.filter(onBase), selectedStampId));
+  }
+
+  // 4b. CUSTOM LAYERS, bottom to top: each draws its own paths, stamps and labels
+  for (const key of customKeys) {
+    if (layerVisibility[key] === false) continue;
+    layerPass(ctx, st(key), (c) => {
+      renderPaths(c, paths.filter(onLayer(key)), selectedPathId);
+      renderStamps(c, stamps.filter(onLayer(key)), selectedStampId);
+      renderTexts(c, texts.filter(onLayer(key)), selectedTextId);
+    });
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
@@ -91,7 +106,7 @@ export function renderMap({
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
-    layerPass(ctx, st('text'), (c) => renderTexts(c, texts, selectedTextId));
+    layerPass(ctx, st('text'), (c) => renderTexts(c, texts.filter(onBase), selectedTextId));
   }
 
   // 7. GRID OVERLAY (Square, Hex, Isometric)
@@ -100,6 +115,24 @@ export function renderMap({
   }
 
   ctx.restore();
+}
+
+// The land pass (mask, ripples, terrain, sand, outline) is the expensive one and does not change while
+// stamps, paths or labels are being dragged, so keep its last result keyed by the state it was built from.
+let landCache = null;
+function landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline) {
+  // only the 1:1 preview is cached; scaled exports render directly so they stay sharp
+  if (c.getTransform().a !== 1) return renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline);
+  const k = landCache;
+  if (!(k && k.landmasses === landmasses && k.brushStrokes === brushStrokes && k.coastline === coastline &&
+        k.mapType === mapType && k.width === width && k.height === height)) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    renderLandmasses(canvas.getContext('2d'), width, height, landmasses, brushStrokes, mapType, coastline);
+    landCache = { landmasses, brushStrokes, coastline, mapType, width, height, canvas };
+  }
+  c.drawImage(landCache.canvas, 0, 0);
 }
 
 /**

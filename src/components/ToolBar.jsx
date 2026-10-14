@@ -8,7 +8,8 @@ import {
   Type,
   Grid,
   SunMoon,
-  Hand
+  Hand,
+  Eraser
 } from 'lucide-react';
 
 export const TOOLS = [
@@ -20,6 +21,7 @@ export const TOOLS = [
   { id: 'text', name: 'Text & Banners', icon: Type, shortcut: 'T', desc: 'Add stylized fantasy kingdom labels and dungeon titles' },
   { id: 'grid', name: 'Grid & Alignment', icon: Grid, shortcut: 'G', desc: 'Configure square or hex grid, scale, and opacity' },
   { id: 'atmosphere', name: 'Atmosphere & Light', icon: SunMoon, shortcut: 'A', desc: 'Vignette, vintage parchment warmth, and grimdark lighting' },
+  { id: 'eraser', name: 'Eraser', icon: Eraser, shortcut: 'E', desc: 'Rub out brush strokes, sculpted land strokes and paths' },
   { id: 'hand', name: 'Pan Canvas', icon: Hand, shortcut: 'H', desc: 'Pan around map (or hold Spacebar)' }
 ];
 

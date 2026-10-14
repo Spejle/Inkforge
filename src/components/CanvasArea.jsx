@@ -1,6 +1,38 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 
+const HANDLE_R = 14;
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+} // canvas px
+
+/** Where a stamp's transform handles sit, in canvas space (same frame the renderer draws them in). */
+function stampFrame(s) {
+  const h = 80 * (s.scale || 1);
+  const w = h * stampAspect(s);
+  const rot = s.rotation || 0;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  const toCanvas = (u, v) => ({ x: s.x + u * cos - v * sin, y: s.y + u * sin + v * cos }); // u,v relative to the origin
+  const cv = s.anchor === 'base' ? -h / 2 : 0; // visual centre relative to origin
+  return {
+    w, h, center: toCanvas(0, cv), origin: { x: s.x, y: s.y },
+    corners: [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => toCanvas(a * (w / 2 + 4), cv + b * (h / 2 + 4))),
+    rotate: toCanvas(0, cv - h / 2 - 22)
+  };
+}
+
+function handleAt(s, x, y) {
+  const f = stampFrame(s);
+  if (Math.hypot(f.rotate.x - x, f.rotate.y - y) <= HANDLE_R) return 'rotate';
+  if (f.corners.some((c) => Math.hypot(c.x - x, c.y - y) <= HANDLE_R)) return 'scale';
+  return null;
+}
+
 export default function CanvasArea({
   mapWidth,
   mapHeight,
@@ -38,6 +70,7 @@ export default function CanvasArea({
   onAddStamp,
   onUpdateStamp,
   onAddPath,
+  onEraseAt,
   onCommitAction,
   selectedStampId,
   setSelectedStampId,
@@ -51,7 +84,8 @@ export default function CanvasArea({
   setPanOffset,
   layerVisibility,
   layerStyle,
-  customStamps = []
+  customStamps = [],
+  statusNote = ''
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -60,6 +94,7 @@ export default function CanvasArea({
   const panStartRef = useRef({ x: 0, y: 0 });
   const activeStrokeRef = useRef(null);
   const activePathRef = useRef(null);
+  const straightAnchorRef = useRef(null);
   const draggedObjectRef = useRef(null);
   const lastSprayPosRef = useRef({ x: -9999, y: -9999 });
 
@@ -92,6 +127,12 @@ export default function CanvasArea({
     };
   }, []);
 
+  // An object can be picked only when its layer is visible and unlocked
+  const pickable = (o, builtin) => {
+    const key = o.layer && layerStyle?.[o.layer] ? o.layer : builtin;
+    return layerVisibility?.[key] !== false && !layerStyle?.[key]?.locked;
+  };
+
   // Convert client viewport coordinates to canvas pixel space
   const clientToCanvas = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
@@ -108,7 +149,8 @@ export default function CanvasArea({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    renderMap({
+    // one repaint per frame, however many state updates landed in it
+    const raf = requestAnimationFrame(() => renderMap({
       ctx,
       width: mapWidth,
       height: mapHeight,
@@ -126,7 +168,8 @@ export default function CanvasArea({
       selectedPathId,
       layerVisibility,
       layerStyle
-    });
+    }));
+    return () => cancelAnimationFrame(raf);
   }, [
     mapWidth,
     mapHeight,
@@ -227,8 +270,22 @@ export default function CanvasArea({
 
     // 1. SELECT TOOL: Hit test stamps, texts, and paths
     if (activeTool === 'select') {
+      const sel = stamps.find((t) => t.id === selectedStampId && pickable(t, 'stamps'));
+      const handle = sel && handleAt(sel, x, y);
+      if (handle) {
+        const f = stampFrame(sel);
+        draggedObjectRef.current = {
+          type: handle,
+          id: sel.id,
+          scale0: sel.scale || 1,
+          dist0: Math.max(1, Math.hypot(x - f.center.x, y - f.center.y)),
+          center0: f.center,
+          origin: f.origin
+        };
+        return;
+      }
       // Sort stamps identically to the visual render order
-      const sortedStamps = [...stamps].sort((a, b) => {
+      const sortedStamps = stamps.filter((t) => pickable(t, 'stamps')).sort((a, b) => {
         const za = a.zIndex || 0;
         const zb = b.zIndex || 0;
         if (za !== zb) return za - zb;
@@ -268,7 +325,7 @@ export default function CanvasArea({
       }
 
       // Hit-test texts
-      const clickedText = [...texts].reverse().find((t) => {
+      const clickedText = texts.filter((t) => pickable(t, 'text')).reverse().find((t) => {
         const dist = Math.hypot(t.x - x, t.y - y);
         return dist <= (t.size || 28) * 1.6;
       });
@@ -288,15 +345,20 @@ export default function CanvasArea({
 
       // Hit-test paths (within 15px of any path point)
       if (setSelectedPathId) {
-        const clickedPath = [...paths].reverse().find((p) => {
+        const clickedPath = paths.filter((p) => pickable(p, 'paths')).reverse().find((p) => {
           if (!p.points) return false;
-          return p.points.some((pt) => Math.hypot(pt[0] - x, pt[1] - y) <= Math.max(16, (p.width || 12)));
+          const tol = Math.max(16, p.width || 12);
+          return p.points.some((pt, i) => {
+            const prev = p.points[i - 1] || pt;
+            return distToSegment(x, y, prev[0], prev[1], pt[0], pt[1]) <= tol;
+          });
         });
 
         if (clickedPath) {
           setSelectedPathId(clickedPath.id);
           setSelectedStampId(null);
           setSelectedTextId(null);
+          draggedObjectRef.current = { type: 'path', id: clickedPath.id, lastX: x, lastY: y };
           return;
         }
       }
@@ -342,6 +404,8 @@ export default function CanvasArea({
       onAddBrushStroke(newStroke);
     }
 
+    if (activeTool === 'eraser' && onEraseAt) onEraseAt(x, y, brushSize / 2);
+
     // 4. STAMP TOOL
     if (activeTool === 'stamp') {
       placeStampAt(x, y);
@@ -377,7 +441,47 @@ export default function CanvasArea({
       return;
     }
 
-    if (!isInteractingRef.current) return;
+    if (!isInteractingRef.current) {
+      if (activeTool === 'select' && containerRef.current) {
+        const sel = stamps.find((t) => t.id === selectedStampId);
+        const hit = sel && handleAt(sel, x, y);
+        containerRef.current.style.cursor = hit === 'rotate' ? 'alias' : hit === 'scale' ? 'nwse-resize' : '';
+      }
+      return;
+    }
+
+    if (activeTool === 'select' && draggedObjectRef.current && ['scale', 'rotate'].includes(draggedObjectRef.current.type)) {
+      const d = draggedObjectRef.current;
+      if (d.type === 'scale') {
+        const ratio = Math.hypot(x - d.center0.x, y - d.center0.y) / d.dist0;
+        onUpdateStamp(d.id, { scale: Number(Math.min(8, Math.max(0.15, d.scale0 * ratio)).toFixed(2)) });
+      } else {
+        let rot = Math.atan2(y - d.origin.y, x - d.origin.x) + Math.PI / 2;
+        if (e.shiftKey) rot = Math.round(rot / (Math.PI / 12)) * (Math.PI / 12); // 15° steps
+        onUpdateStamp(d.id, { rotation: Number(rot.toFixed(3)) });
+      }
+      return;
+    }
+
+    if (activeTool === 'select' && draggedObjectRef.current?.type === 'path') {
+      const d = draggedObjectRef.current;
+      const path = paths.find((p) => p.id === d.id);
+      if (path) {
+        const dx = Math.round(x - d.lastX);
+        const dy = Math.round(y - d.lastY);
+        if (dx || dy) {
+          onAddPath({ ...path, points: path.points.map(([px, py]) => [px + dx, py + dy]) });
+          d.lastX += dx;
+          d.lastY += dy;
+        }
+      }
+      return;
+    }
+
+    if (activeTool === 'eraser' && onEraseAt) {
+      onEraseAt(x, y, brushSize / 2);
+      return;
+    }
 
     // Handle Moving selected object
     if (activeTool === 'select' && draggedObjectRef.current) {
@@ -436,8 +540,27 @@ export default function CanvasArea({
 
     // Handle Path drawing
     if (activeTool === 'path' && activePathRef.current) {
-      activePathRef.current.points.push([Math.round(x), Math.round(y)]);
-      onAddPath({ ...activePathRef.current });
+      const pts = activePathRef.current.points;
+      if (e.shiftKey) {
+        // Shift: straight segment from the last committed point to the cursor (Alt snaps to 15°)
+        const anchor = straightAnchorRef.current || pts[pts.length - 1];
+        straightAnchorRef.current = anchor;
+        let tx = x;
+        let ty = y;
+        if (e.altKey) {
+          const ang = Math.round(Math.atan2(y - anchor[1], x - anchor[0]) / (Math.PI / 12)) * (Math.PI / 12);
+          const len = Math.hypot(x - anchor[0], y - anchor[1]);
+          tx = anchor[0] + Math.cos(ang) * len;
+          ty = anchor[1] + Math.sin(ang) * len;
+        }
+        const keep = pts.indexOf(anchor) + 1;
+        pts.length = keep;
+        pts.push([Math.round(tx), Math.round(ty)]);
+      } else {
+        straightAnchorRef.current = null;
+        pts.push([Math.round(x), Math.round(y)]);
+      }
+      onAddPath({ ...activePathRef.current, points: [...pts] });
       return;
     }
   };
@@ -451,6 +574,7 @@ export default function CanvasArea({
     isPanningRef.current = false;
     activeStrokeRef.current = null;
     activePathRef.current = null;
+    straightAnchorRef.current = null;
     draggedObjectRef.current = null;
   };
 
@@ -518,6 +642,12 @@ export default function CanvasArea({
         <span>Canvas: {mapWidth} × {mapHeight}</span>
         <span className="divider-dot">•</span>
         <span>Stamps: {stamps.length}</span>
+        {statusNote && (
+          <>
+            <span className="divider-dot">•</span>
+            <span>{statusNote}</span>
+          </>
+        )}
         {grid && grid.snap && (
           <>
             <span className="divider-dot">•</span>

@@ -35,6 +35,7 @@ export default function Header({
   setGridEnabled,
   onExportPng,
   onExportHighRes,
+  onExportLayers,
   onExportVtt,
   onExportJson,
   onImportJson,
@@ -323,6 +324,32 @@ export default function Header({
                 }}
               >
                 Print Quality 8K (4x Res)
+              </button>
+
+              <button
+                className="dropdown-item"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setShowExportMenu(false);
+                  onExportHighRes(8, includeGridInExport);
+                }}
+              >
+                Maximum 16K (8x Res, capped by browser)
+              </button>
+
+              <button
+                className="dropdown-item"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setShowExportMenu(false);
+                  onExportLayers(1, includeGridInExport);
+                }}
+              >
+                Layers as transparent PNGs (ZIP)
               </button>
 
               <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
