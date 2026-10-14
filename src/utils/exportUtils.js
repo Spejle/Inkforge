@@ -29,7 +29,9 @@ export function exportToHighResPng({
     paths,
     texts,
     grid,
-    atmosphere
+    atmosphere,
+    layerVisibility,
+    layerStyle
   } = mapState;
 
   const exportCanvas = document.createElement('canvas');
@@ -53,6 +55,8 @@ export function exportToHighResPng({
     grid: { ...grid, enabled: includeGrid && grid.enabled },
     atmosphere,
     coastline: mapState.coastline,
+    ...(layerVisibility && { layerVisibility }),
+    layerStyle,
     selectedStampId: null,
     selectedTextId: null,
     selectedPathId: null

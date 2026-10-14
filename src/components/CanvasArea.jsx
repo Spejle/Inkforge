@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { renderMap, snapToGrid } from '../engine/renderer';
-import { getStampById } from '../engine/stampsCatalog';
+import { renderMap, snapToGrid, stampAspect } from '../engine/renderer';
 
 export default function CanvasArea({
   mapWidth,
@@ -49,7 +48,10 @@ export default function CanvasArea({
   zoom,
   setZoom,
   panOffset,
-  setPanOffset
+  setPanOffset,
+  layerVisibility,
+  layerStyle,
+  customStamps = []
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -115,7 +117,9 @@ export default function CanvasArea({
       coastline,
       selectedStampId,
       selectedTextId,
-      selectedPathId
+      selectedPathId,
+      layerVisibility,
+      layerStyle
     });
   }, [
     mapWidth,
@@ -131,7 +135,9 @@ export default function CanvasArea({
     coastline,
     selectedStampId,
     selectedTextId,
-    selectedPathId
+    selectedPathId,
+    layerVisibility,
+    layerStyle
   ]);
 
   // Cursor-anchored mouse wheel zoom
@@ -184,6 +190,10 @@ export default function CanvasArea({
       rotation: Number(finalRot.toFixed(2)),
       zIndex: 0 // Stable default for isometric Y-sorting
     };
+    const custom = customStamps.find((c) => c.id === activeStampId);
+    if (custom) {
+      Object.assign(newStamp, { customImage: custom.img, dataUrl: custom.dataUrl, aspect: custom.aspect, anchor: custom.anchor });
+    }
 
     onAddStamp(newStamp);
     lastSprayPosRef.current = { x: finalX, y: finalY };
@@ -191,7 +201,8 @@ export default function CanvasArea({
 
   // Mouse Down handler
   const handleMouseDown = (e) => {
-    if (e.button === 1 || spacePressed || activeTool === 'hand') {
+    // Tablet: pencil/mouse draw, a finger pans
+    if (e.button === 1 || spacePressed || activeTool === 'hand' || e.pointerType === 'touch') {
       isPanningRef.current = true;
       panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
       return;
@@ -214,8 +225,7 @@ export default function CanvasArea({
 
       // Hit-test in reverse render order (top-most stamp first)
       const clickedStamp = sortedStamps.slice().reverse().find((s) => {
-        const def = getStampById(s.stampId);
-        const aspect = (def && def.aspect) ? def.aspect : 1.0;
+        const aspect = stampAspect(s);
         const baseSize = 80;
         const finalSize = baseSize * (s.scale || 1.0);
         const w = finalSize * aspect;
@@ -228,7 +238,8 @@ export default function CanvasArea({
         const localX = dx * Math.cos(rot) - dy * Math.sin(rot);
         const localY = dx * Math.sin(rot) + dy * Math.cos(rot);
 
-        return Math.abs(localX) <= w / 2 && Math.abs(localY) <= h / 2;
+        const cy = s.anchor === 'base' ? localY + h / 2 : localY;
+        return Math.abs(localX) <= w / 2 && Math.abs(cy) <= h / 2;
       });
 
       if (clickedStamp) {
@@ -438,8 +449,8 @@ export default function CanvasArea({
         handleMouseUp();
       }
     };
-    window.addEventListener('mouseup', onWindowMouseUp);
-    return () => window.removeEventListener('mouseup', onWindowMouseUp);
+    window.addEventListener('pointerup', onWindowMouseUp);
+    return () => window.removeEventListener('pointerup', onWindowMouseUp);
   }, [onCommitAction]);
 
   return (
@@ -447,10 +458,10 @@ export default function CanvasArea({
       ref={containerRef}
       className={`canvas-viewport ${spacePressed || activeTool === 'hand' ? 'grab-cursor' : ''}`}
       onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={() => {
+      onPointerDown={handleMouseDown}
+      onPointerMove={handleMouseMove}
+      onPointerUp={handleMouseUp}
+      onPointerLeave={() => {
         setMousePos((p) => ({ ...p, inside: false }));
       }}
     >

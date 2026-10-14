@@ -1,4 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+
+const THEMES = ['dark', 'parchment'];
+const readTheme = () => { try { return localStorage.getItem('inkforge-theme') || 'dark'; } catch { return 'dark'; } };
 import {
   Download,
   FolderOpen,
@@ -11,7 +14,8 @@ import {
   Grid as GridIcon,
   Compass,
   FilePlus,
-  ChevronDown
+  ChevronDown,
+  Printer
 } from 'lucide-react';
 import { PRESET_MAPS } from '../engine/presetMaps';
 
@@ -35,7 +39,8 @@ export default function Header({
   onExportJson,
   onImportJson,
   onLoadPreset,
-  onNewMap
+  onNewMap,
+  onPrint
 }) {
   const fileInputRef = useRef(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -48,6 +53,12 @@ export default function Header({
       e.target.value = '';
     }
   };
+
+  const [theme, setTheme] = useState(readTheme);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('inkforge-theme', theme); } catch { /* private mode */ }
+  }, [theme]);
 
   return (
     <header className="header-bar">
@@ -78,6 +89,15 @@ export default function Header({
           </button>
         </div>
       </div>
+
+      <button
+        className="theme-toggle"
+        onClick={() => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])}
+        title={`Theme: ${theme} (click for ${theme === 'dark' ? 'parchment' : 'candlelit'})`}
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? '☀' : '☾'}
+      </button>
 
       {/* Preset Map Selector */}
       <div className="preset-selector-group">
@@ -206,8 +226,8 @@ export default function Header({
                 top: '100%',
                 right: 0,
                 marginTop: '6px',
-                background: '#1e293b',
-                border: '1px solid #334155',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '8px',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
                 padding: '8px',
@@ -224,9 +244,9 @@ export default function Header({
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '12px',
-                  color: '#94a3b8',
+                  color: 'var(--text-muted)',
                   padding: '4px 8px',
-                  borderBottom: '1px solid #334155',
+                  borderBottom: '1px solid var(--border-color)',
                   marginBottom: '4px',
                   cursor: 'pointer'
                 }}
@@ -244,14 +264,14 @@ export default function Header({
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#f8fafc',
+                  color: 'var(--text-main)',
                   padding: '8px 10px',
                   textAlign: 'left',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontSize: '13px'
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#334155')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => {
                   setShowExportMenu(false);
@@ -266,14 +286,14 @@ export default function Header({
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#f8fafc',
+                  color: 'var(--text-main)',
                   padding: '8px 10px',
                   textAlign: 'left',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontSize: '13px'
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#334155')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => {
                   setShowExportMenu(false);
@@ -288,14 +308,14 @@ export default function Header({
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#f8fafc',
+                  color: 'var(--text-main)',
                   padding: '8px 10px',
                   textAlign: 'left',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontSize: '13px'
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#334155')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => {
                   setShowExportMenu(false);
@@ -305,14 +325,28 @@ export default function Header({
                 Print Quality 8K (4x Res)
               </button>
 
-              <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+              <button
+                className="dropdown-item"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setShowExportMenu(false);
+                  onPrint();
+                }}
+              >
+                <Printer size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+                Print at table scale (PDF)…
+              </button>
 
               <button
                 className="dropdown-item"
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#38bdf8',
+                  color: 'var(--accent-cyan)',
                   padding: '8px 10px',
                   textAlign: 'left',
                   borderRadius: '4px',
@@ -320,7 +354,7 @@ export default function Header({
                   fontSize: '13px',
                   fontWeight: 600
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#334155')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 onClick={() => {
                   setShowExportMenu(false);

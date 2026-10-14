@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LayersPanel from './LayersPanel';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
 import {
   Upload,
@@ -17,7 +18,10 @@ export default function StampDrawer({
   setIsOpen,
   activeStampId,
   setActiveStampId,
-  onUploadCustomStamp,
+  customStamps = [],
+  onOpenImport,
+  layers,
+  setLayers,
   gridConfig,
   setGridConfig,
   atmosphereConfig,
@@ -28,30 +32,15 @@ export default function StampDrawer({
   const [activeTab, setActiveTab] = useState('stamps'); // 'stamps' | 'fx'
   const [selectedCat, setSelectedCat] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const fileInputRef = React.useRef(null);
 
-  const filteredStamps = STAMPS.filter((stamp) => {
+  const filteredStamps = (selectedCat === 'mine' ? [] : STAMPS).filter((stamp) => {
     const matchesCat = selectedCat === 'all' || stamp.category === selectedCat;
     const matchesSearch = stamp.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
-
-  const handleCustomUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        const dataUrl = loadEvt.target.result;
-        const img = new Image();
-        img.onload = () => {
-          onUploadCustomStamp(img, file.name, dataUrl);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
-    }
-  };
+  const myStamps = customStamps.filter(
+    (c) => (selectedCat === 'all' || selectedCat === 'mine') && c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <aside className={`stamp-drawer ${isOpen ? 'open' : 'closed'}`}>
@@ -90,18 +79,11 @@ export default function StampDrawer({
                 </div>
                 <button
                   className="btn-upload-stamp"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload your own PNG or SVG stamp"
+                  onClick={onOpenImport}
+                  title="Add your own PNG or SVG stamps"
                 >
-                  <Upload size={14} /> Import PNG
+                  <Upload size={14} /> Add stamps
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/svg+xml,image/webp,image/jpeg"
-                  style={{ display: 'none' }}
-                  onChange={handleCustomUpload}
-                />
               </div>
 
               {/* Search bar */}
@@ -123,6 +105,14 @@ export default function StampDrawer({
                 >
                   All ({STAMPS.length})
                 </button>
+                {customStamps.length > 0 && (
+                  <button
+                    className={`chip ${selectedCat === 'mine' ? 'active' : ''}`}
+                    onClick={() => setSelectedCat('mine')}
+                  >
+                    My stamps ({customStamps.length})
+                  </button>
+                )}
                 {STAMP_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
@@ -136,6 +126,19 @@ export default function StampDrawer({
 
               {/* Stamp Grid */}
               <div className="stamp-grid">
+                {myStamps.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`stamp-card ${activeStampId === c.id ? 'selected' : ''}`}
+                    onClick={() => setActiveStampId(c.id)}
+                    title={`${c.name} · ${c.pack} · ${c.license}`}
+                  >
+                    <div className="stamp-preview-canvas-box">
+                      <img src={c.dataUrl} alt="" className="thumbnail-canvas" style={{ objectFit: 'contain' }} />
+                    </div>
+                    <span className="stamp-name-caption">{c.name}</span>
+                  </div>
+                ))}
                 {filteredStamps.map((stamp) => {
                   const isSelected = activeStampId === stamp.id;
 
@@ -159,6 +162,9 @@ export default function StampDrawer({
 
           {activeTab === 'fx' && (
             <div className="layers-fx-panel">
+              {layers && (
+                <LayersPanel layers={layers} setLayers={setLayers} atmosphere={atmosphereConfig} setAtmosphere={setAtmosphereConfig} />
+              )}
               {/* Atmosphere Card */}
               {atmosphereConfig && setAtmosphereConfig && (
                 <div className="fx-card">

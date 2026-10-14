@@ -2,6 +2,30 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.4.0] - 2026-10-14
+
+Cartographer's-study restyle (no wireframes were available, so this is a visual pass only).
+
+### Changed
+- Palette moved from slate/blue to warm ink, leather and brass; oxblood replaces blue for active states.
+- UI font Alegreya Sans, Cinzel headings, faint paper grain on the app background.
+- Two themes, **Candlelit** (default) and **Parchment**, toggled from the header (remembered per browser). All hard-coded colours now run through theme tokens.
+- Map title field is wider and the template selector shrinks instead of pushing Export off-screen; visible keyboard focus rings.
+
+## [1.3.0] - 2026-10-13
+
+Implements the Inkforge Wireframes (client-side parts: 3a, 3f, 3g, 3h, 3k).
+
+### Added
+- **Layers panel (3f)**: per-layer visibility, opacity and blend (Normal / Multiply / Overlay / Soft light) for Labels, Stamps, Rivers & roads, Land & terrain, Sea and Grid; saved in `.inkforge` files and applied to every export.
+- **Map style presets (3a)**: Parchment / Ink / Painted one-click atmosphere presets.
+- **Add stamps dialog (3g)**: multi-file PNG/SVG/WebP import, automatic trimming of empty edges, base/centre anchor, name, pack and license; new "My stamps" library tab. Base-anchored stamps stand on their placement point; custom stamps keep their own aspect ratio (previously squashed to a square).
+- **Print at table scale (3h)**: tiled PDF across A4 / Letter / A3 / Poster, true table scale (1 square = 0.5-2 in) or fit to one page, overlap, join marks and sheet numbers, grid and ink-saver options, assembly-guide page. No PDF library; JPEG pages at 150 dpi.
+- **Tablet (3k)**: pointer events (finger pans, pencil/mouse draws), 44 px tap targets, options bar moves to the bottom on coarse pointers / narrow screens.
+
+### Not built
+Rubylith mask painting per layer, Share/player view, gallery, lore editor, nested maps, generator (need a backend or are separate products); two-finger-tap undo.
+
 ## [1.2.0] - 2026-10-13
 
 ### Added & Elevated

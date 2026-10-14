@@ -10,6 +10,11 @@ let noisePatternCache = null;
 /**
  * Main draw loop: renders the composite map into destination canvas.
  */
+/** Width / height of a placed stamp: its own (custom uploads) or the catalogue definition's. */
+export function stampAspect(s) {
+  return s.aspect || getStampById(s.stampId)?.aspect || 1.0;
+}
+
 export function renderMap({
   ctx,
   width,
@@ -26,33 +31,35 @@ export function renderMap({
   selectedStampId = null,
   selectedTextId = null,
   selectedPathId = null,
-  layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true }
+  layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
+  layerStyle = {} // { [layerKey]: { opacity, blend } }
 }) {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
 
+  const st = (k) => layerStyle[k];
+
   // 1. BASE BACKGROUND (Ocean or Dungeon Void)
   if (layerVisibility.background) {
-    if (mapType === 'world') {
-      renderOceanBackground(ctx, width, height);
-    } else {
-      renderDungeonVoid(ctx, width, height);
-    }
+    layerPass(ctx, st('background'), (c) => {
+      if (mapType === 'world') renderOceanBackground(c, width, height);
+      else renderDungeonVoid(c, width, height);
+    });
   }
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline);
+    layerPass(ctx, st('land'), (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline));
   }
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    renderPaths(ctx, paths, selectedPathId);
+    layerPass(ctx, st('paths'), (c) => renderPaths(c, paths, selectedPathId));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
   if (layerVisibility.stamps) {
-    renderStamps(ctx, stamps, selectedStampId);
+    layerPass(ctx, st('stamps'), (c) => renderStamps(c, stamps, selectedStampId));
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
@@ -62,14 +69,36 @@ export function renderMap({
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
-    renderTexts(ctx, texts, selectedTextId);
+    layerPass(ctx, st('text'), (c) => renderTexts(c, texts, selectedTextId));
   }
 
   // 7. GRID OVERLAY (Square, Hex, Isometric)
   if (layerVisibility.grid && grid.enabled) {
-    renderGrid(ctx, width, height, grid);
+    layerPass(ctx, st('grid'), (c) => renderGrid(c, width, height, grid));
   }
 
+  ctx.restore();
+}
+
+/**
+ * Draws one layer through an offscreen buffer when it has non-default opacity or blend,
+ * so passes that set their own globalAlpha still honour the layer setting.
+ */
+function layerPass(ctx, style, draw) {
+  const opacity = style?.opacity ?? 1;
+  const blend = style?.blend || 'source-over';
+  if (opacity >= 1 && blend === 'source-over') return draw(ctx);
+  const off = document.createElement('canvas');
+  off.width = ctx.canvas.width;
+  off.height = ctx.canvas.height;
+  const octx = off.getContext('2d');
+  octx.setTransform(ctx.getTransform());
+  draw(octx);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = opacity;
+  ctx.globalCompositeOperation = blend;
+  ctx.drawImage(off, 0, 0);
   ctx.restore();
 }
 
@@ -582,7 +611,7 @@ function renderStamps(ctx, stamps, selectedStampId) {
     const def = getStampById(s.stampId);
     if (!def && !s.customImage) continue;
 
-    const aspect = (def && def.aspect) ? def.aspect : 1.0;
+    const aspect = stampAspect(s);
     const baseSize = 80;
     const finalSize = baseSize * (s.scale || 1.0);
     const finalW = finalSize * aspect;
@@ -598,7 +627,8 @@ function renderStamps(ctx, stamps, selectedStampId) {
     }
 
     // Centered translation about the true visual origin
-    ctx.translate(-finalW / 2, -finalH / 2);
+    // anchor 'base': the placement point is the bottom-centre, so the stamp stands on the ground
+    ctx.translate(-finalW / 2, s.anchor === 'base' ? -finalH : -finalH / 2);
 
     // Cartographic 315° Northwest illumination & contact drop shadow
     ctx.shadowColor = 'rgba(20, 15, 10, 0.35)';

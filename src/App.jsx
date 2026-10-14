@@ -4,6 +4,10 @@ import ToolBar from './components/ToolBar';
 import ToolOptions from './components/ToolOptions';
 import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
+import StampImportDialog from './components/StampImportDialog';
+import PrintDialog from './components/PrintDialog';
+import { DEFAULT_LAYERS } from './components/LayersPanel';
+import { exportPrintPdf } from './utils/printUtils';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
   exportToPng,
@@ -47,6 +51,16 @@ export default function App() {
   const [grid, setGrid] = useState(defaultPreset.grid);
   const [atmosphere, setAtmosphere] = useState(defaultPreset.atmosphere);
   const [coastline, setCoastline] = useState(defaultPreset.coastline || DEFAULT_COASTLINE);
+
+  // Layer panel: per-layer visibility / opacity / blend, and the user's stamp library
+  const [layers, setLayers] = useState(DEFAULT_LAYERS);
+  const [customStamps, setCustomStamps] = useState([]);
+  const [dialog, setDialog] = useState(null); // 'stamps' | 'print' | null
+  const layerVisibility = {
+    ...Object.fromEntries(Object.entries(layers).map(([k, v]) => [k, v.visible])),
+    atmosphere: true
+  };
+  const layerStyle = layers;
 
   // Undo / Redo history initialized directly
   const [history, setHistory] = useState([
@@ -417,27 +431,29 @@ export default function App() {
     setNewTextContent('');
   };
 
-  const handleUploadCustomStamp = (img, name, dataUrl) => {
-    const customId = 'custom_' + Date.now();
-    const newStamp = {
-      id: customId,
-      stampId: customId,
-      name: name.replace(/\.[^/.]+$/, ''),
-      customImage: img,
-      dataUrl: dataUrl,
-      x: Math.round(mapWidth / 2),
-      y: Math.round(mapHeight / 2),
-      scale: 1.0,
-      rotation: 0,
-      zIndex: 0
-    };
-    setStamps((prev) => {
-      const updated = [...prev, newStamp];
-      recordHistory({ stamps: updated });
-      return updated;
+  const handleAddCustomStamps = (list) => {
+    const added = list.map((x, i) => ({
+      id: 'custom_' + Date.now() + '_' + i,
+      name: x.name,
+      pack: x.pack,
+      license: x.license,
+      img: x.img,
+      dataUrl: x.dataUrl,
+      aspect: x.aspect,
+      anchor: x.anchor
+    }));
+    setCustomStamps((prev) => [...prev, ...added]);
+    setActiveStampId(added[0].id);
+    setActiveTool('stamp');
+  };
+
+  const handlePrint = (options) => {
+    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    exportPrintPdf({
+      mapState: { mapWidth, mapHeight, mapTitle, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle },
+      options,
+      filename: `${safeTitle}_print.pdf`
     });
-    setSelectedStampId(newStamp.id);
-    setActiveTool('select');
   };
 
   // Export handlers
@@ -461,7 +477,9 @@ export default function App() {
       atmosphere,
       coastline,
       selectedStampId: null,
-      selectedTextId: null
+      selectedTextId: null,
+      layerVisibility,
+      layerStyle
     });
 
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
@@ -482,7 +500,9 @@ export default function App() {
         texts,
         grid,
         atmosphere,
-        coastline
+        coastline,
+        layerVisibility,
+        layerStyle
       },
       scaleFactor,
       includeGrid,
@@ -525,7 +545,9 @@ export default function App() {
       texts,
       grid,
       atmosphere,
-      coastline
+      coastline,
+      layers,
+      customStamps: customStamps.map(({ img: _img, ...c }) => c)
     };
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     exportToJson(projectData, `${safeTitle}.inkforge`);
@@ -547,6 +569,14 @@ export default function App() {
         if (data.grid) setGrid(data.grid);
         if (data.atmosphere) setAtmosphere(data.atmosphere);
         if (data.coastline) setCoastline(data.coastline);
+        setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
+        setCustomStamps(
+          (data.customStamps || []).map((c) => {
+            const img = new Image();
+            img.src = c.dataUrl;
+            return { ...c, img };
+          })
+        );
         setSelectedStampId(null);
         setSelectedTextId(null);
         setSelectedPathId(null);
@@ -600,6 +630,7 @@ export default function App() {
         onImportJson={handleImportJson}
         onLoadPreset={handleLoadPreset}
         onNewMap={handleNewMap}
+        onPrint={() => setDialog('print')}
       />
 
       {/* Main Studio Workspace */}
@@ -722,6 +753,9 @@ export default function App() {
             setZoom={setZoom}
             panOffset={panOffset}
             setPanOffset={setPanOffset}
+            layerVisibility={layerVisibility}
+            layerStyle={layerStyle}
+            customStamps={customStamps}
           />
         </div>
 
@@ -730,7 +764,10 @@ export default function App() {
           setIsOpen={setIsStampDrawerOpen}
           activeStampId={activeStampId}
           setActiveStampId={setActiveStampId}
-          onUploadCustomStamp={handleUploadCustomStamp}
+          customStamps={customStamps}
+          onOpenImport={() => setDialog('stamps')}
+          layers={layers}
+          setLayers={setLayers}
           gridConfig={grid}
           setGridConfig={setGrid}
           atmosphereConfig={atmosphere}
@@ -739,6 +776,16 @@ export default function App() {
           setCoastlineConfig={setCoastline}
         />
       </div>
+      {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
+      {dialog === 'print' && (
+        <PrintDialog
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          gridSize={grid.size || 60}
+          onClose={() => setDialog(null)}
+          onPrint={handlePrint}
+        />
+      )}
     </div>
   );
 }
