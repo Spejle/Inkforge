@@ -37,7 +37,7 @@ const dk = (c, t = 0.4) => mix(c, '#1d1030', t);
 
 function pal(color, fill) {
   const f = fill || '#e2d9cc';
-  return { ink: color || '#271c19', hi: mix(f, '#fff6dc', 0.45), lit: mix(f, '#fff6dc', 0.18), mid: f, dk: mix(f, '#3a3150', 0.36), dd: mix(f, '#241c34', 0.58) };
+  return { ink: mix(color || '#271c19', '#8a7a68', 0.4), hi: mix(f, '#fff6dc', 0.45), lit: mix(f, '#fff6dc', 0.18), mid: f, dk: mix(f, '#3a3150', 0.36), dd: mix(f, '#241c34', 0.58) };
 }
 // Re-tint a stone palette (keeps `fill` as the base).
 function tone(P, col, t) {
@@ -50,14 +50,15 @@ const RED = '#b0372f', BLUE = '#3d5fa8', GREEN = '#3f8a56', TEAL = '#2f8f8a', PU
   WOOD = '#8a5a34', DWOOD = '#5c3a22', SLATE = '#56607a', ORANGE = '#e8802a', GLOW = '#ffd36a', VOID = '#150f1d';
 
 function shadow(c, cx, cy, rx, ry, a = 0.3) {
+  rx *= 1.2; ry = Math.max(ry * 1.9, rx * 0.17);
   c.save();
   c.translate(cx, cy); c.scale(1, ry / rx);
   const g = c.createRadialGradient(0, 0, 0, 0, 0, rx);
-  g.addColorStop(0, `rgba(30,20,40,${a})`); g.addColorStop(0.65, `rgba(30,20,40,${a * 0.65})`); g.addColorStop(1, 'rgba(30,20,40,0)');
+  g.addColorStop(0, `rgba(96,70,44,${a * 1.15})`); g.addColorStop(0.6, `rgba(96,70,44,${a * 0.8})`); g.addColorStop(1, 'rgba(96,70,44,0)');
   c.fillStyle = g; c.beginPath(); c.arc(0, 0, rx, 0, TAU); c.fill();
   c.restore();
 }
-function ink(c, P, lw = LW) { c.strokeStyle = P.ink; c.lineWidth = lw; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke(); }
+function ink(c, P, lw = LW) { c.strokeStyle = P.ink; c.lineWidth = Math.max(0.5, lw * 0.68); c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke(); }
 function hgrad(c, x, w, stops) {
   const g = c.createLinearGradient(x, 0, x + w, 0);
   stops.forEach(([o, col]) => g.addColorStop(o, col));
@@ -96,7 +97,15 @@ function merl(c, P, x, y, w, o = {}) {
   const S = o.S || P;
   const n = o.n || Math.max(3, Math.round(w / 5.2));
   const mh = o.h || 3.4, step = w / n, mw = step * 0.6;
-  c.fillStyle = S.mid; c.fillRect(x - 1, y - 1.6, w + 2, 2.6);
+  if (o.cyl) {
+    const rx = (w + 2) / 2, cx = x + w / 2, ry = rx * 0.32;
+    c.beginPath(); c.ellipse(cx, y - 3, rx, ry, 0, 0, TAU); c.fillStyle = S.hi; c.fill(); ink(c, P, 1.2);
+    c.beginPath(); c.ellipse(cx, y - 3.4, rx * 0.72, ry * 0.62, 0, 0, TAU); c.fillStyle = S.dk; c.fill();
+  } else {
+    const d = 3.2;
+    c.beginPath(); c.moveTo(x - 1, y - 1.6); c.lineTo(x + w + 1, y - 1.6); c.lineTo(x + w + 3, y - 1.6 - d); c.lineTo(x + 1, y - 1.6 - d); c.closePath();
+    c.fillStyle = hgrad(c, x, w, [[0, S.hi], [1, S.lit]]); c.fill(); ink(c, P, 1);
+  }
   c.fillStyle = hgrad(c, x - 1, w + 2, o.cyl ? CYL(S) : WALL(S)); c.fillRect(x - 1, y - 1.6, w + 2, 2.6);
   c.beginPath(); c.rect(x - 1, y - 1.6, w + 2, 2.6); ink(c, P, 1.4);
   for (let i = 0; i < n; i++) {
@@ -285,7 +294,7 @@ const mk = (id, name, group, groupName, aspect, scale, seed, draw) => (ALL.push(
 // ---------------------------------------------------------------- HUMAN
 const HUMAN = (id, name, aspect, scale, draw) => mk(id, name, 'human', 'Human Castles', aspect, scale, 11, draw);
 
-const humanKeep = HUMAN('human_keep', 'Human Keep', 1.0, 1.0, (c, P, W, H, r) => {
+const humanKeep = HUMAN('human_keep', 'Human Keep', 1.0, 1.05, (c, P, W, H, r) => {
   shadow(c, 56, 90, 40, 6);
   tufts(c, P, r, 14, 88, 90, 10);
   body(c, P, 30, 38, 40, 50, { rnd: r });
@@ -298,7 +307,7 @@ const humanKeep = HUMAN('human_keep', 'Human Keep', 1.0, 1.0, (c, P, W, H, r) =>
   flag(c, P, 29, 31, 9, BLUE, { swallow: true });
 });
 
-const humanCastle = HUMAN('human_castle', 'Human Castle', 1.2, 1.3, (c, P, W, H, r) => {
+const humanCastle = HUMAN('human_castle', 'Human Castle', 1.2, 1.2, (c, P, W, H, r) => {
   shadow(c, 66, 91, 52, 6);
   tufts(c, P, r, 6, 114, 91, 12);
   // keep behind
@@ -319,7 +328,7 @@ const humanCastle = HUMAN('human_castle', 'Human Castle', 1.2, 1.3, (c, P, W, H,
   flag(c, P, 60, 50, 11, GOLD, { swallow: true });
 });
 
-const humanFortress = HUMAN('human_fortress', 'Human Fortress', 1.2, 1.3, (c, P, W, H, r) => {
+const humanFortress = HUMAN('human_fortress', 'Human Fortress', 1.2, 1.2, (c, P, W, H, r) => {
   const Q = tone(P, '#8b93a6', 0.28);
   shadow(c, 66, 91, 54, 7);
   // moat
@@ -343,7 +352,7 @@ const humanFortress = HUMAN('human_fortress', 'Human Fortress', 1.2, 1.3, (c, P,
   flag(c, Q, 60, 46, 14, RED, { swallow: true });
 });
 
-const humanCitadel = HUMAN('human_citadel', 'Human Citadel', 1.3, 1.5, (c, P, W, H, r) => {
+const humanCitadel = HUMAN('human_citadel', 'Human Citadel', 1.3, 1.3, (c, P, W, H, r) => {
   shadow(c, 70, 92, 58, 6);
   tufts(c, P, r, 6, 124, 92, 14);
   // rear great keep with spires
@@ -387,7 +396,7 @@ function vineTower(c, P, cx, by, w, h, roof, o = {}) {
   return tip;
 }
 
-const elfCitadel = ELF('elf_citadel', 'Elven Citadel', 1.1, 1.3, (c, P, W, H, r) => {
+const elfCitadel = ELF('elf_citadel', 'Elven Citadel', 1.1, 1.2, (c, P, W, H, r) => {
   const E = ELFWHITE(P);
   shadow(c, 58, 91, 46, 6);
   tree(c, P, 14, 90, 36, { col: LEAF }); tree(c, P, 100, 90, 34, { col: '#58a860' });
@@ -508,7 +517,7 @@ const dwarfForge = DW('dwarf_forge_hold', 'Dwarven Forge Hold', 1.1, 1.3, (c, P,
 const dwarfGate = DW('dwarf_gate_hold', 'Dwarven Gate of Kings', 1.1, 1.3, (c, P, W, H, r) => {
   const D = DSTONE(P);
   shadow(c, 56, 92, 44, 5);
-  mount(c, P, 0, 90, 112, 72, ROCK, r, { apex: 0.5, snow: true });
+  mount(c, P, 0, 90, 112, 72, ROCK, r, { apex: 0.5 });
   body(c, D, 22, 50, 66, 40, { rnd: r, S: D, bh: 5, bw: 9 });
   // great doors
   gate(c, P, 55, 90, 24, 36, { glow: '#2a1a14' });
@@ -729,29 +738,24 @@ const darkCitadel = DARK('dark_citadel', 'Dark Citadel', 1.2, 1.4, (c, P, W, H, 
   // flying buttresses
   c.strokeStyle = P.ink; c.lineWidth = 1.3; c.beginPath(); c.moveTo(30, 72); c.quadraticCurveTo(36, 62, 46, 66); c.moveTo(90, 72); c.quadraticCurveTo(84, 62, 74, 66); c.stroke();
   flag(c, P, 22, 28, 9, '#5a1a30'); flag(c, P, 98, 28, 9, '#5a1a30', { dir: -1 });
-  bat(c, P, 10, 22, 4); bat(c, P, 108, 14, 4.4); bat(c, P, 30, 8, 3);
 });
 
 const drowSpire = DARK('drow_spire', 'Drow Spire', 0.95, 1.3, (c, P, W, H, r) => {
-  const N = tone(P, '#3a2c52', 0.7);
+  const N = tone(P, '#6a5894', 0.78);
   shadow(c, 48, 92, 36, 5, 0.4);
-  glowAt(c, 48, 88, 40, 'rgba(180,100,255,0.18)');
-  // rocky base
-  poly(c, P, [[8, 92], [14, 82], [26, 84], [38, 80], [58, 82], [74, 80], [86, 90], [88, 92]], '#4a3f5c', 1.5);
-  // fused fang spires
-  fang(c, P, 24, 84, 12, 40, -4, N, { glow: DROW });
-  fang(c, P, 70, 84, 12, 46, 4, N, { glow: DROW });
-  fang(c, P, 38, 84, 14, 62, 3, N, { glow: DROW, win: 3 });
-  fang(c, P, 56, 84, 16, 80, -3, N, { glow: DROW, win: 4 });
-  // webs
-  c.save(); c.strokeStyle = 'rgba(235,230,250,0.75)'; c.lineWidth = 0.7;
-  c.beginPath(); c.moveTo(24, 50); c.quadraticCurveTo(34, 60, 38, 46); c.moveTo(38, 36); c.quadraticCurveTo(48, 44, 53, 30); c.moveTo(60, 44); c.quadraticCurveTo(66, 52, 70, 40); c.moveTo(62, 70); c.quadraticCurveTo(48, 76, 38, 66); c.stroke();
-  c.beginPath(); c.moveTo(70, 84); c.lineTo(90, 56); c.moveTo(82, 84); c.lineTo(90, 56); c.moveTo(76, 76); c.quadraticCurveTo(84, 74, 88, 66); c.stroke(); c.restore();
-  // gate + spider
-  gate(c, P, 47, 84, 10, 14, { glow: '#2a103f' }); glowAt(c, 47, 80, 10, 'rgba(180,100,255,0.45)');
-  c.fillStyle = '#16101e'; c.beginPath(); c.arc(55, 7, 2.2, 0, TAU); c.fill(); c.strokeStyle = '#16101e'; c.lineWidth = 0.9; c.beginPath();
-  for (let i = -2; i <= 2; i++) { if (!i) continue; c.moveTo(55, 7); c.lineTo(55 + i * 3.2, 4 + Math.abs(i) * 0.6); c.moveTo(55, 7); c.lineTo(55 + i * 3.0, 11 - Math.abs(i) * 0.4); } c.stroke();
-  // glowing mushrooms
+  glowAt(c, 48, 86, 40, 'rgba(180,100,255,0.2)');
+  poly(c, P, [[6, 92], [12, 82], [26, 84], [38, 80], [58, 82], [74, 80], [88, 90], [90, 92]], '#7a6a98', 1.8);
+  fang(c, P, 22, 84, 12, 34, -4, N, { glow: DROW });
+  fang(c, P, 76, 84, 12, 40, 4, N, { glow: DROW });
+  fang(c, P, 36, 84, 14, 50, 3, N, { glow: DROW, win: 2 });
+  fang(c, P, 62, 84, 14, 56, -3, N, { glow: DROW, win: 3 });
+  fang(c, P, 49, 86, 16, 86, 0, N, { glow: DROW, win: 5 });
+  c.save(); c.strokeStyle = 'rgba(245,240,255,0.85)'; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(22, 56); c.quadraticCurveTo(30, 66, 36, 50); c.moveTo(62, 46); c.quadraticCurveTo(70, 56, 76, 46); c.moveTo(60, 74); c.quadraticCurveTo(50, 80, 38, 70); c.stroke();
+  c.beginPath(); c.moveTo(76, 84); c.lineTo(92, 56); c.moveTo(86, 84); c.lineTo(92, 56); c.moveTo(80, 76); c.quadraticCurveTo(88, 74, 91, 66); c.stroke(); c.restore();
+  gate(c, P, 49, 86, 11, 15, { glow: '#2a103f' }); glowAt(c, 49, 81, 11, 'rgba(180,100,255,0.5)');
+  c.fillStyle = '#16101e'; c.beginPath(); c.arc(49, 4, 2.2, 0, TAU); c.fill(); c.strokeStyle = '#16101e'; c.lineWidth = 0.9; c.beginPath();
+  for (let i = -2; i <= 2; i++) { if (!i) continue; c.moveTo(49, 4); c.lineTo(49 + i * 3.2, 1 + Math.abs(i) * 0.6); c.moveTo(49, 4); c.lineTo(49 + i * 3.0, 8 - Math.abs(i) * 0.4); } c.stroke();
   [[14, 91], [82, 92], [30, 92]].forEach(([x, y]) => { c.fillStyle = '#d8b8ff'; c.beginPath(); c.arc(x, y - 3, 3, Math.PI, 0); c.fill(); ink(c, P, 0.7); glowAt(c, x, y - 3, 6, 'rgba(200,140,255,0.4)'); });
 });
 
@@ -759,8 +763,8 @@ const tieflingKeep = DARK('tiefling_keep', 'Tiefling Infernal Keep', 1.1, 1.3, (
   const T = tone(P, '#6a2a2c', 0.62);
   shadow(c, 58, 92, 46, 5, 0.4);
   // lava moat
-  c.beginPath(); c.ellipse(55, 91, 50, 5, 0, 0, TAU); c.fillStyle = '#e8501e'; c.fill(); c.beginPath(); c.ellipse(52, 90.5, 38, 2.4, 0, 0, TAU); c.fillStyle = '#ffb040'; c.fill();
-  glowAt(c, 55, 88, 50, 'rgba(255,90,40,0.25)');
+  c.save(); c.translate(55, 91); c.scale(1, 0.1); const lg = c.createRadialGradient(0, 0, 0, 0, 0, 40); lg.addColorStop(0, 'rgba(255,170,60,0.85)'); lg.addColorStop(0.55, 'rgba(232,80,30,0.6)'); lg.addColorStop(1, 'rgba(232,80,30,0)'); c.fillStyle = lg; c.beginPath(); c.arc(0, 0, 40, 0, TAU); c.fill(); c.restore();
+  glowAt(c, 55, 88, 40, 'rgba(255,90,40,0.18)');
   const horn = (x, y, d, s) => { c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + d * s * 0.6, y - s * 0.2, x + d * s * 0.8, y - s * 0.8, x + d * s * 0.4, y - s * 1.3); c.bezierCurveTo(x + d * s * 0.45, y - s * 0.8, x + d * s * 0.2, y - s * 0.5, x - d * s * 0.2, y - s * 0.2); c.closePath(); c.fillStyle = '#2a1a1c'; c.fill(); ink(c, P, 1.1); };
   // central keep with horns
   body(c, T, 38, 36, 34, 52, { S: T, rnd: r }); merl(c, T, 38, 36, 34, { S: T, n: 6 });
@@ -811,9 +815,10 @@ function coins(c, P, cx, by, w, h, r) {
 
 const dragonLair = DRG('dragon_lair', 'Dragon Lair', 1.2, 1.4, (c, P, W, H, r) => {
   shadow(c, 66, 92, 54, 5);
-  const rock = '#7a6258';
-  mount(c, P, 4, 92, 112, 76, rock, r, { apex: 0.5 });
-  mount(c, P, 60, 92, 56, 50, '#6b544c', r, { apex: 0.5 });
+  mount(c, P, 4, 92, 112, 76, '#4a3a3c', r, { apex: 0.5 });
+  mount(c, P, 60, 92, 56, 50, '#3a2c30', r, { apex: 0.5 });
+  glowAt(c, 56, 24, 22, 'rgba(255,110,40,0.55)');
+  c.strokeStyle = '#ff8a2a'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(56, 17); c.lineTo(52, 30); c.lineTo(56, 40); c.lineTo(50, 54); c.moveTo(60, 20); c.lineTo(66, 34); c.lineTo(63, 46); c.moveTo(30, 66); c.lineTo(36, 58); c.moveTo(88, 70); c.lineTo(80, 60); c.stroke();
   // cave mouth
   c.beginPath(); c.moveTo(34, 92); c.quadraticCurveTo(32, 62, 56, 58); c.quadraticCurveTo(80, 62, 78, 92); c.closePath(); c.fillStyle = '#1a0f10'; c.fill(); ink(c, P, 1.8);
   glowAt(c, 56, 84, 26, 'rgba(255,140,40,0.35)');
@@ -822,7 +827,7 @@ const dragonLair = DRG('dragon_lair', 'Dragon Lair', 1.2, 1.4, (c, P, W, H, r) =
   for (let i = 0; i < 6; i++) { const x = 38 + i * 6.8; poly(c, P, [[x, 61 + Math.abs(i - 2.5) * 1.6], [x + 1.8, 69 + (i % 2) * 2], [x + 3.4, 61 + Math.abs(i - 2.5) * 1.6]], BONE, 0.7); }
   // bones + dragon on peak
   poly(c, P, [[20, 92], [26, 86], [30, 92]], BONE, 0.8); skull(c, P, 24, 90, 2.6);
-  dragon(c, P, 59, 40, 0.8, '#b8362e', 1);
+  dragon(c, P, 56, 24, 0.8, '#d04a30', 1);
   smoke(c, 74, 34, 1.6, 3, 'rgba(70,60,60,0.4)');
 });
 
@@ -846,23 +851,20 @@ const dragonTemple = DRG('dragon_temple', 'Dragonborn Temple', 1.1, 1.3, (c, P, 
 });
 
 const dragonRoost = DRG('dragon_roost', 'Dragon Roost Spire', 0.9, 1.3, (c, P, W, H, r) => {
-  shadow(c, 46, 92, 34, 5);
-  // tall rock spire
-  const pts = [[16, 92], [24, 70], [28, 50], [36, 30], [44, 22], [52, 32], [58, 52], [62, 72], [74, 92]];
-  poly(c, P, pts, '#8a7266', 1.8);
-  c.save(); poly(c, P, pts, null, 0); c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.clip();
-  c.fillStyle = 'rgba(40,25,40,0.4)'; c.beginPath(); c.moveTo(44, 22); c.lineTo(58, 52); c.lineTo(62, 72); c.lineTo(76, 92); c.lineTo(90, 92); c.lineTo(90, 10); c.closePath(); c.fill();
-  c.fillStyle = 'rgba(255,240,210,0.22)'; c.beginPath(); c.moveTo(44, 22); c.lineTo(36, 30); c.lineTo(28, 50); c.lineTo(22, 50); c.lineTo(34, 22); c.closePath(); c.fill();
-  c.strokeStyle = P.ink; c.globalAlpha = 0.3; c.lineWidth = 0.6; c.beginPath(); for (let i = 0; i < 12; i++) { const y = 34 + i * 5; c.moveTo(28 + r() * 8, y); c.lineTo(50 + r() * 8, y + 5); } c.stroke(); c.restore();
-  // nest
-  c.beginPath(); c.ellipse(44, 24, 16, 4.4, 0, 0, TAU); c.fillStyle = '#6a4a2c'; c.fill(); ink(c, P, 1.3);
-  c.strokeStyle = '#a07a4a'; c.lineWidth = 0.9; c.beginPath(); for (let i = 0; i < 9; i++) { c.moveTo(30 + i * 3.4, 25); c.lineTo(32 + i * 3.4, 21); } c.stroke();
-  [[36, 22], [50, 23]].forEach(([x, y]) => { c.beginPath(); c.ellipse(x, y - 1.6, 2.2, 3, 0, 0, TAU); c.fillStyle = '#cf5a3a'; c.fill(); ink(c, P, 0.8); });
-  dragon(c, P, 44, 21, 0.95, '#3d7f7a', -1);
-  // wind-blown stairs & watch posts
-  c.strokeStyle = '#4b301f'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(20, 86); c.lineTo(26, 76); c.lineTo(22, 66); c.lineTo(30, 58); c.lineTo(28, 48); c.stroke();
-  bat(c, P, 76, 28, 3.6); bat(c, P, 82, 40, 3);
-  for (let i = 0; i < 4; i++) { const x = 18 + i * 14; poly(c, P, [[x, 92], [x + 1.5, 84 - r() * 4], [x + 3, 92]], BONE, 0.7); }
+  shadow(c, 46, 92, 36, 5);
+  const pts = [[6, 92], [14, 70], [18, 50], [26, 32], [40, 24], [56, 32], [64, 52], [70, 72], [84, 92]];
+  poly(c, P, pts, '#b09a8a', 1.8);
+  c.save(); c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.clip();
+  c.fillStyle = 'rgba(50,30,40,0.4)'; c.beginPath(); c.moveTo(40, 24); c.lineTo(56, 32); c.lineTo(64, 52); c.lineTo(70, 72); c.lineTo(90, 92); c.lineTo(90, 10); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,245,220,0.3)'; c.beginPath(); c.moveTo(40, 24); c.lineTo(26, 32); c.lineTo(18, 50); c.lineTo(12, 50); c.lineTo(30, 22); c.closePath(); c.fill();
+  c.strokeStyle = P.ink; c.globalAlpha = 0.32; c.lineWidth = 0.7; c.beginPath(); for (let i = 0; i < 12; i++) { const y = 34 + i * 5; c.moveTo(18 + r() * 8, y); c.lineTo(46 + r() * 10, y + 5); } c.stroke(); c.restore();
+  // dark nest
+  c.beginPath(); c.ellipse(40, 25, 20, 5, 0, 0, TAU); c.fillStyle = '#4a3220'; c.fill(); ink(c, P, 1.5);
+  c.strokeStyle = '#8a6a3a'; c.lineWidth = 1; c.beginPath(); for (let i = 0; i < 11; i++) { c.moveTo(24 + i * 3.4, 26); c.lineTo(26 + i * 3.4, 21); } c.stroke();
+  [[32, 23], [48, 24]].forEach(([x, y]) => { c.beginPath(); c.ellipse(x, y - 1.6, 2.4, 3.2, 0, 0, TAU); c.fillStyle = '#e8d8a8'; c.fill(); ink(c, P, 0.8); });
+  dragon(c, P, 40, 22, 0.95, '#3d8f88', -1);
+  c.strokeStyle = '#4b301f'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(12, 86); c.lineTo(20, 76); c.lineTo(16, 66); c.lineTo(24, 58); c.lineTo(22, 48); c.stroke();
+  for (let i = 0; i < 4; i++) { const x = 12 + i * 16; poly(c, P, [[x, 92], [x + 1.5, 84 - r() * 4], [x + 3, 92]], BONE, 0.7); }
 });
 
 // ---------------------------------------------------------------- HALFLING / GNOME
@@ -1083,7 +1085,7 @@ const holyTemple = HOLY('temple', 'Temple of the Gods', 1.1, 1.3, (c, P, W, H, r
   [[8, 90], [102, 90]].forEach(([x, y]) => { c.fillStyle = M.dd; c.fillRect(x - 1.4, y - 9, 2.8, 8); glowAt(c, x, y - 11, 6, 'rgba(255,170,60,0.5)'); c.beginPath(); c.moveTo(x - 2, y - 9); c.quadraticCurveTo(x, y - 15, x + 2, y - 9); c.fillStyle = ORANGE; c.fill(); });
 });
 
-const holyShrine = HOLY('shrine', 'Wayside Shrine', 0.9, 1.0, (c, P, W, H, r) => {
+const holyShrine = HOLY('shrine', 'Wayside Shrine', 0.9, 1.3, (c, P, W, H, r) => {
   const Z = tone(P, '#b0b4a8', 0.25);
   shadow(c, 46, 92, 32, 4);
   tree(c, P, 14, 92, 30, { col: '#e88aa8' }); // blossom
@@ -1105,14 +1107,14 @@ const holyShrine = HOLY('shrine', 'Wayside Shrine', 0.9, 1.0, (c, P, W, H, r) =>
   tufts(c, P, r, 8, 84, 92, 8, '#4d8a40');
 });
 
-const holyStones = HOLY('standing_stones', 'Standing Stones', 1.0, 1.1, (c, P, W, H, r) => {
-  const Z = tone(P, '#9a968c', 0.3);
-  shadow(c, 50, 90, 42, 6, 0.22);
+const holyStones = HOLY('standing_stones', 'Standing Stones', 1.0, 1.45, (c, P, W, H, r) => {
+  const Z = tone(P, '#d4d2c4', 0.5);
+  shadow(c, 50, 90, 42, 6, 0.3);
   c.beginPath(); c.ellipse(50, 78, 44, 14, 0, 0, TAU); c.fillStyle = 'rgba(90,140,70,0.4)'; c.fill();
   const menhir = (x, by, w, h, lean) => {
     const L = x - w / 2, R = x + w / 2;
     c.beginPath(); c.moveTo(L, by); c.lineTo(L + lean + 0.8, by - h + 3); c.quadraticCurveTo(x + lean, by - h - 2, R + lean - 0.6, by - h + 4); c.lineTo(R, by); c.closePath();
-    c.fillStyle = hgrad(c, L, w, [[0, Z.hi], [0.4, Z.mid], [1, Z.dd]]); c.fill(); ink(c, P, 1.4);
+    c.fillStyle = hgrad(c, L, w, [[0, Z.hi], [0.4, Z.mid], [1, Z.dd]]); c.fill(); ink(c, P, 2.4);
     c.strokeStyle = P.ink; c.globalAlpha = 0.28; c.lineWidth = 0.6; c.beginPath(); c.moveTo(x - 1, by - h * 0.7); c.lineTo(x + 1, by - h * 0.4); c.moveTo(x + 1, by - h * 0.9); c.lineTo(x, by - h * 0.75); c.stroke(); c.globalAlpha = 1;
     c.fillStyle = 'rgba(70,130,60,0.6)'; c.beginPath(); c.ellipse(x, by - 0.5, w * 0.7, 1.4, 0, 0, TAU); c.fill();
   };
@@ -1141,7 +1143,7 @@ function ruinBody(c, P, x, by, w, h, r, S, o = {}) {
   c.stroke(); c.globalAlpha = 1;
   const g = c.createLinearGradient(0, by - 8, 0, by); g.addColorStop(0, 'rgba(60,110,50,0)'); g.addColorStop(1, 'rgba(60,110,50,0.4)'); c.fillStyle = g; c.fillRect(x, by - 8, w, 8);
   c.restore();
-  c.beginPath(); pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py))); c.closePath(); ink(c, P);
+  c.beginPath(); pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py))); c.closePath(); ink(c, P, 2.9);
   return pts;
 }
 function ivy(c, x, y0, y1, r) {
@@ -1152,8 +1154,8 @@ function rubble(c, P, r, x0, x1, y, n, S) {
   for (let i = 0; i < n; i++) { const x = x0 + r() * (x1 - x0), s = 1.4 + r() * 2.4; poly(c, P, [[x - s, y], [x - s * 0.6, y - s * 0.9], [x + s * 0.5, y - s], [x + s, y]], r() < 0.5 ? S.lit : S.mid, 0.8); }
 }
 
-const ruinCastle = RUIN('ruin_castle', 'Castle Ruins', 1.2, 1.3, (c, P, W, H, r) => {
-  const Z = tone(P, '#8f9488', 0.32);
+const ruinCastle = RUIN('ruin_castle', 'Castle Ruins', 1.2, 1.7, (c, P, W, H, r) => {
+  const Z = tone(P, '#d8d6c4', 0.5);
   shadow(c, 64, 92, 52, 5);
   tufts(c, P, r, 6, 114, 92, 12, '#4a7a3a');
   ruinBody(c, P, 40, 78, 44, 42, r, Z, { broken: 1.2 });
@@ -1172,8 +1174,8 @@ const ruinCastle = RUIN('ruin_castle', 'Castle Ruins', 1.2, 1.3, (c, P, W, H, r)
   bat(c, P, 24, 24, 4); bat(c, P, 52, 18, 3.4);
 });
 
-const ruinVillage = RUIN('ruin_village', 'Ruined Village', 1.1, 1.2, (c, P, W, H, r) => {
-  const Z = tone(P, '#a89a84', 0.3);
+const ruinVillage = RUIN('ruin_village', 'Ruined Village', 1.1, 1.55, (c, P, W, H, r) => {
+  const Z = tone(P, '#e0d6bc', 0.5);
   shadow(c, 56, 92, 46, 5);
   tufts(c, P, r, 6, 104, 90, 14, '#4a7a3a');
   const hut = (x, by, w, h) => {
@@ -1195,8 +1197,8 @@ const ruinVillage = RUIN('ruin_village', 'Ruined Village', 1.1, 1.2, (c, P, W, H
   smoke(c, 49, 40, 1.4, 3, 'rgba(100,95,100,0.35)');
 });
 
-const ruinTower = RUIN('ruin_tower', 'Ruined Tower', 0.8, 1.1, (c, P, W, H, r) => {
-  const Z = tone(P, '#8f9488', 0.32);
+const ruinTower = RUIN('ruin_tower', 'Ruined Tower', 0.8, 1.4, (c, P, W, H, r) => {
+  const Z = tone(P, '#d8d6c4', 0.5);
   shadow(c, 44, 92, 32, 5);
   tufts(c, P, r, 6, 80, 92, 10, '#4a7a3a');
   c.beginPath(); c.ellipse(40, 90, 22, 3, 0, 0, TAU); c.fillStyle = 'rgba(70,120,60,0.4)'; c.fill();
@@ -1228,6 +1230,11 @@ function blobPath(c, cx, cy, rx, ry, r, n = 16) {
   for (let i = 0; i < n; i++) { const e = m(pts[i], pts[(i + 1) % n]); c.quadraticCurveTo(pts[i][0], pts[i][1], e[0], e[1]); }
   c.closePath();
 }
+function foam(c, cx, cy, rx, ry, r) {
+  const st = r.toString(); void st;
+  c.save(); c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.5; c.setLineDash([5, 2.4]); blobPath(c, cx, cy, rx * 0.97, ry * 0.97, rng(5)); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 0.9; c.setLineDash([]); blobPath(c, cx, cy, rx * 1.01, ry * 1.01, rng(5)); c.stroke(); c.restore();
+}
 function water(c, P, cx, cy, rx, ry) {
   c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fillStyle = hgrad(c, cx - rx, rx * 2, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fill(); ink(c, P, 1.3);
 }
@@ -1244,7 +1251,7 @@ function rocks(c, P, r, x0, x1, y, n, col = '#7d7a76') {
   for (let i = 0; i < n; i++) { const x = x0 + (x1 - x0) * (i + r() * 0.5) / n, s = 3 + r() * 4; poly(c, P, [[x - s, y], [x - s * 0.7, y - s * 0.9], [x + s * 0.2, y - s * 1.2], [x + s * 0.9, y - s * 0.5], [x + s, y]], col, 1.1); }
 }
 
-const guardWatch = GUARD('watchtower', 'Watchtower', 0.7, 1.1, (c, P, W, H, r) => {
+const guardWatch = GUARD('watchtower', 'Watchtower', 0.7, 0.9, (c, P, W, H, r) => {
   shadow(c, 38, 92, 28, 4);
   tufts(c, P, r, 8, 64, 91, 8);
   tower(c, P, 35, 90, 22, 56, { rnd: r, slits: 3, cyl: false });
@@ -1279,7 +1286,6 @@ const guardOutpost = GUARD('outpost', 'Frontier Outpost', 1.0, 1.1, (c, P, W, H,
 
 const guardLight = GUARD('lighthouse', 'Lighthouse', 0.75, 1.15, (c, P, W, H, r) => {
   shadow(c, 42, 93, 32, 4);
-  c.beginPath(); c.ellipse(40, 92, 34, 6, 0, 0, TAU); c.fillStyle = WATER; c.fill(); waves(c, P, r, 10, 70, 90, 95, 6);
   // beams
   c.save(); const g = c.createLinearGradient(40, 16, 8, 14); g.addColorStop(0, 'rgba(255,240,150,0.7)'); g.addColorStop(1, 'rgba(255,240,150,0)');
   c.fillStyle = g; c.beginPath(); c.moveTo(40, 16); c.lineTo(0, 6); c.lineTo(0, 26); c.closePath(); c.fill();
@@ -1302,10 +1308,10 @@ const guardLight = GUARD('lighthouse', 'Lighthouse', 0.75, 1.15, (c, P, W, H, r)
   c.fillStyle = '#ffe9a0'; c.fillRect(33, 11, 14, 9); c.strokeStyle = P.ink; c.lineWidth = 1.2; c.strokeRect(33, 11, 14, 9); glowAt(c, 40, 15, 14, 'rgba(255,230,120,0.7)');
   c.beginPath(); c.moveTo(31, 11); c.lineTo(40, 3); c.lineTo(49, 11); c.closePath(); c.fillStyle = '#2f3440'; c.fill(); ink(c, P, 1.3);
   c.beginPath(); c.arc(40, 2.5, 1.5, 0, TAU); c.fillStyle = GOLD; c.fill();
-  waves(c, P, r, 6, 74, 88, 96, 8);
+  c.save(); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.4; c.beginPath(); c.ellipse(41, 91, 30, 4.6, 0, 0, TAU); c.stroke(); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(41, 91.6, 35, 5.6, 0, 0, TAU); c.stroke(); c.restore();
 });
 
-const guardBeacon = GUARD('beacon_tower', 'Beacon Tower', 0.7, 1.1, (c, P, W, H, r) => {
+const guardBeacon = GUARD('beacon_tower', 'Beacon Tower', 0.7, 0.9, (c, P, W, H, r) => {
   shadow(c, 36, 92, 26, 4);
   mount(c, P, 6, 92, 56, 22, '#8a8268', r, { apex: 0.5 });
   tower(c, P, 34, 76, 16, 46, { rnd: r, slits: 2, over: 1.6, n: 4 });
@@ -1326,13 +1332,13 @@ const PORT = (id, name, aspect, scale, draw) => mk(id, name, 'port', 'Ports & Ha
 
 const portHarbour = PORT('harbour_town', 'Harbour Town', 1.3, 1.4, (c, P, W, H, r) => {
   shadow(c, 56, 90, 46, 5);
-  c.save(); blobPath(c, 65, 58, 64, 38, r); c.clip();
-  c.fillStyle = hgrad(c, 0, 130, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fillRect(0, 0, 130, 100);
+  c.save(); blobPath(c, 65, 58, 64, 38, rng(5)); c.clip();
+  c.globalAlpha = 0.82; c.fillStyle = hgrad(c, 0, 130, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fillRect(0, 0, 130, 100); c.globalAlpha = 1;
   waves(c, P, r, 6, 124, 72, 94, 16);
-  c.beginPath(); c.moveTo(0, 10); c.lineTo(130, 10); c.lineTo(130, 52); c.bezierCurveTo(90, 58, 40, 62, 0, 66); c.closePath(); c.fillStyle = '#9bc27a'; c.fill(); ink(c, P, 1.5);
+  c.beginPath(); c.moveTo(0, 10); c.lineTo(130, 10); c.lineTo(130, 52); c.bezierCurveTo(90, 58, 40, 62, 0, 66); c.closePath(); c.fillStyle = '#9bc27a'; c.fill();
   const Z = tone(P, '#b0a490', 0.2);
   c.beginPath(); c.moveTo(0, 66); c.bezierCurveTo(40, 62, 90, 58, 130, 52); c.lineTo(130, 58); c.bezierCurveTo(90, 64, 40, 68, 0, 72); c.closePath(); c.fillStyle = hgrad(c, 0, 130, [[0, Z.lit], [1, Z.dk]]); c.fill(); ink(c, P, 1.3);
-  c.restore(); blobPath(c, 65, 58, 64, 38, r); ink(c, P, 1.8);
+  c.restore(); foam(c, 65, 58, 64, 38, r);
   // houses
   [[8, 54, 14, 14, RED], [26, 52, 16, 18, BLUE], [66, 46, 14, 14, RED], [84, 44, 18, 18, '#8a4b3a'], [106, 42, 14, 14, BLUE]].forEach(([x, by, w, h, col]) => house(c, P, x, by, w, h, col, { wall: '#e0d0aa', rh: 9 }));
   // harbour tower + keep
@@ -1349,11 +1355,11 @@ const portHarbour = PORT('harbour_town', 'Harbour Town', 1.3, 1.4, (c, P, W, H, 
 
 const portDock = PORT('fishing_pier', 'Fishing Pier', 1.1, 1.2, (c, P, W, H, r) => {
   shadow(c, 52, 90, 38, 4, 0.2);
-  c.save(); blobPath(c, 55, 56, 54, 40, r); c.clip();
-  c.fillStyle = hgrad(c, 0, 110, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fillRect(0, 0, 110, 100);
+  c.save(); blobPath(c, 55, 56, 54, 40, rng(5)); c.clip();
+  c.globalAlpha = 0.82; c.fillStyle = hgrad(c, 0, 110, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fillRect(0, 0, 110, 100); c.globalAlpha = 1;
   waves(c, P, r, 4, 104, 58, 94, 14);
-  c.beginPath(); c.moveTo(0, 10); c.lineTo(110, 10); c.lineTo(110, 46); c.bezierCurveTo(70, 52, 30, 48, 0, 54); c.closePath(); c.fillStyle = '#d6c58e'; c.fill(); ink(c, P, 1.5);
-  c.restore(); blobPath(c, 55, 56, 54, 40, r); ink(c, P, 1.8);
+  c.beginPath(); c.moveTo(0, 10); c.lineTo(110, 10); c.lineTo(110, 46); c.bezierCurveTo(70, 52, 30, 48, 0, 54); c.closePath(); c.fillStyle = '#d6c58e'; c.fill();
+  c.restore(); foam(c, 55, 56, 54, 40, r);
   tufts(c, P, r, 6, 100, 30, 8, '#7a9a4a');
   house(c, P, 10, 42, 20, 16, '#8a4b3a', { wall: '#c9a874', rh: 11 }); house(c, P, 40, 38, 16, 14, '#4f6a8a', { wall: '#d9c8a0', rh: 9 });
   // pier planks
@@ -1369,7 +1375,7 @@ const portDock = PORT('fishing_pier', 'Fishing Pier', 1.1, 1.2, (c, P, W, H, r) 
 
 const portFort = PORT('sea_fortress', 'Sea Fortress', 1.2, 1.3, (c, P, W, H, r) => {
   shadow(c, 62, 92, 50, 4, 0.2);
-  blobPath(c, 60, 82, 58, 20, r); c.fillStyle = hgrad(c, 0, 120, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fill(); ink(c, P, 1.6);
+  blobPath(c, 60, 82, 58, 20, rng(5)); c.globalAlpha = 0.8; c.fillStyle = hgrad(c, 0, 120, [[0, '#8bbbd2'], [1, '#5890b0']]); c.fill(); c.globalAlpha = 1; foam(c, 60, 82, 58, 20, r);
   waves(c, P, r, 10, 110, 70, 94, 12);
   // rocky island
   poly(c, P, [[14, 90], [20, 76], [34, 70], [86, 70], [102, 76], [108, 90], [90, 94], [30, 94]], '#8d8680', 1.6);
@@ -1466,8 +1472,8 @@ function floatIsle(c, P, cx, topY, w, depth, r) {
   c.beginPath(); c.ellipse(cx, topY, w / 2, w * 0.1, 0, 0, TAU); c.fillStyle = hgrad(c, cx - w / 2, w, [[0, '#a8d07a'], [1, '#5f9a48']]); c.fill(); ink(c, P, 1.5);
 }
 
-const skyFort = SKY('sky_fortress', 'Floating Fortress', 1.2, 1.4, (c, P, W, H, r) => {
-  cloud(c, 14, 70, 1.4, 0.85); cloud(c, 98, 82, 1.6, 0.8); cloud(c, 40, 92, 1.2, 0.75);
+const skyFort = SKY('sky_fortress', 'Floating Fortress', 1.2, 1.3, (c, P, W, H, r) => {
+  cloud(c, 98, 86, 1.0, 0.5);
   shadow(c, 64, 96, 30, 2.4, 0.12);
   // roots / waterfall
   c.strokeStyle = 'rgba(150,200,240,0.85)'; c.lineWidth = 2; c.beginPath(); c.moveTo(78, 58); c.lineTo(78, 92); c.stroke();
@@ -1489,7 +1495,7 @@ const skyFort = SKY('sky_fortress', 'Floating Fortress', 1.2, 1.4, (c, P, W, H, 
 const skySpire = SKY('sky_spire', 'Floating Spire', 0.9, 1.3, (c, P, W, H, r) => {
   c.translate(5, 10); c.scale(0.9, 0.9);
   const Z = tone(P, '#c8d0f0', 0.35);
-  cloud(c, 66, 76, 1.3, 0.85); cloud(c, 8, 62, 1.1, 0.8); cloud(c, 40, 94, 1.2, 0.75);
+  cloud(c, 62, 84, 0.9, 0.5);
   floatIsle(c, P, 44, 56, 54, 52, r);
   tree(c, P, 22, 58, 14, { col: '#6aa860' });
   tower(c, Z, 44, 58, 16, 40, { S: Z, rnd: r, roof: PURPLE, rh: 26, cv: 3, slits: 2, glow: ARCANE });
