@@ -2,6 +2,27 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.6.0] - 2026-10-14
+
+Art and usability release; most stamp and texture work was done by parallel agents and then art-reviewed round by round.
+
+### Added
+- **Settlements for every race**: 43 stamps (Human, Elf, Dwarf, Orc/Goblin, Halfling, Gnome, Dragonborn, Lizardfolk, Drow/Tiefling, Merfolk), hamlet → village → town → city → capital with growing walls.
+- **Castles and landmarks**: 47 stamps in 14 families (human/elf/dwarf/orc/dark/dragon/folk, wizard towers, temples and shrines, ruins, watchtowers and lighthouses, ports, mines and dungeons, sky fortresses).
+- **Trees rebuilt**: 31 new `tr_` trees (broadleaf, conifers, snowy, autumn, willow, birch, palms, savanna, dead, fantasy, groves) and 17 `veg_` undergrowth stamps (bushes, grass, ferns, reeds, bamboo, mushrooms, cacti, rocks, logs, stumps).
+- **Stamp groups**: families show as one tile with a variant count; click to unfold the variants.
+- **Jitter variety**: Jitter now also gives each stamp a random flip, tone, hue and seed so sprayed forests stop looking cloned.
+- **Biome textures**: every biome redrawn (seamless, seeded) plus new forest floor, savanna, tundra, jungle, ash waste and farmland.
+- **Showcase preset** "The Sundered Realms": 10 landmasses, 10 rivers, ~300 stamps, custom layers. Presets can now carry brush strokes and layers.
+- **Two tool rails** ("Draw" and "Tools") and **styled tooltips** with name, key chip and description.
+
+### Changed
+- **Rivers and paths** are drawn with a stabiliser (rope-follow), thinned and simplified on release, and end where the pen lifts, so they no longer wobble.
+- Old stamps are untouched; the new ones sit beside them.
+
+### Known issues
+- Fine brick detail on castles is noise below ~48 px; castle tops are only partly oblique; lava, grassland and savanna textures still show faint repeats when tiled.
+
 ## [1.5.0] - 2026-10-14
 
 Review-driven "bring it up to standard" release.

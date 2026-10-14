@@ -9,13 +9,13 @@ import { getStampById } from './stampsCatalog.js';
 // STAMP ID TABLE: every stamp id the showcase uses lives here. Swap an id (e.g. 'tree_oak' ->
 // 'tr_oak_a') and the whole map follows; nothing else in the builder names a stamp directly.
 const SS = {
-  forest:    ['tree_oak', 'tree_pine', 'tree_forest_cluster'],
-  snowPine:  'tree_snowy_pine',
-  palm:      'tree_palm',
-  dead:      'tree_dead',
-  autumn:    'tree_autumn',
-  cactus:    'cactus_saguaro',
-  reeds:     'nature_reeds',
+  forest:    ['tr_oak', 'tr_round', 'tr_pine', 'tr_elm', 'tr_spruce'],
+  snowPine:  ['tr_snowy_pine', 'tr_snowy_spruce'],
+  palm:      ['tr_palm', 'tr_palm_lean'],
+  dead:      'tr_dead',
+  autumn:    'tr_autumn_gold',
+  cactus:    'veg_cactus_saguaro',
+  reeds:     'veg_reeds',
   lily:      'nature_lily_pond',
   boulder:   'boulder_cluster',
   mtn:       ['mountain_grand', 'mountain_range'],
@@ -25,18 +25,18 @@ const SS = {
   volcanoS:  'volcano_lite',
   hills:     'hills_rolling',
   dunes:     'hills_dunes',
-  capital:   'castle_citadel',
-  fort:      'fortress_keep',
-  village:   'village_houses',
+  capital:   'set_human_capital',
+  fort:      'cas_human_castle',
+  village:   'set_human_village',
   mill:      'windmill',
   farm:      'farm_homestead',
   port:      'port_dock',
-  temple:    'civ_temple',
-  wizard:    'tower_wizard',
-  henge:     'ruins_stonehenge',
-  ruin:      'ruined_tower',
+  temple:    'cas_temple',
+  wizard:    'cas_wizard_spire',
+  henge:     'cas_standing_stones',
+  ruin:      'cas_ruin_tower',
   tent:      'camp_tent',
-  lighthouse:'civ_lighthouse',
+  lighthouse:'cas_lighthouse',
   bridge:    'bridge_stone',
   compass:   'compass_rose',
   ships:     ['ship_caravel', 'ship_galleon'],
@@ -317,29 +317,29 @@ export function buildSundered() {
   // 1) settlements first (they claim space)
   const sett = (key, stampId, scale, dx = 0, dy = 0) => place(stampId, P[key].x + dx, P[key].y + dy, scale, { free: true, z: 1, pad: 12 });
   sett('highcrown', SS.capital, 1.55);
-  sett('highcrown', SS.village, 0.95, -85, 30);
+  sett('highcrown', SS.village, 1.71, -85, 30);
   sett('highcrown', SS.mill, 0.85, 80, 38);
   sett('silverport', SS.port, 1.2);
-  sett('silverport', SS.village, 0.9, -70, -25);
+  sett('silverport', SS.village, 1.62, -70, -25);
   sett('silverport', SS.lighthouse, 1.0, 62, 30);
-  sett('stonebridge', SS.village, 0.85);
+  sett('stonebridge', SS.village, 1.53);
   sett('redcrag', SS.fort, 1.45);
   sett('thornwatch', SS.wizard, 1.3);
-  sett('oakhollow', SS.village, 1.0);
+  sett('oakhollow', SS.village, 1.8);
   sett('oakhollow', SS.farm, 0.95, 85, 30);
   sett('oakhollow', SS.mill, 0.8, -75, 35);
   sett('wyrdstones', SS.henge, 1.15);
   sett('fenwatch', SS.tent, 0.9);
   sett('fenwatch', SS.ruin, 1.0, 70, -20);
   sett('gullhaven', SS.port, 1.1);
-  sett('gullhaven', SS.village, 0.85, -60, 30);
+  sett('gullhaven', SS.village, 1.53, -60, 30);
   sett('frosthold', SS.fort, 1.45);
   sett('northhaven', SS.port, 1.05);
-  sett('northhaven', SS.village, 0.85, -60, 28);
+  sett('northhaven', SS.village, 1.53, -60, 28);
   sett('winterspire', SS.temple, 1.2);
   sett('sunspire', SS.temple, 1.4);
-  sett('sunspire', SS.village, 0.85, -70, 35);
-  sett('dunegate', SS.village, 0.95);
+  sett('sunspire', SS.village, 1.53, -70, 35);
+  sett('dunegate', SS.village, 1.71);
   sett('dunegate', SS.tent, 0.7, 60, 28);
   sett('oasis', SS.tent, 0.8);
   sett('sandport', SS.port, 1.1);
@@ -361,18 +361,18 @@ export function buildSundered() {
   scatter([[1880,1310],[1930,1340],[1900,1410],[1850,1400]], 2, [SS.volcanoS, SS.boulder], [0.8, 1.0], MTN);
   place(SS.ruin, 1205, 175, 1.0, { free: true, layer: T });
   place(SS.lighthouse, 640, 100, 0.9, { free: true, layer: T });
-  place(SS.snowPine, 600, 105, 0.6, { free: true, layer: T });
+  place(SS.snowPine[0], 600, 105, 0.6, { free: true, layer: T });
 
   // 3) forests: spray groves
   groves([[250,400],[340,360],[440,420],[470,520],[500,640],[470,740],[380,740],[300,700],[250,610]], 16, 12, 56, SS.forest, [0.6, 0.85], TREE);
   groves([[870,780],[980,760],[1090,800],[1130,880],[1050,930],[930,900]], 7, 8, 46, [SS.forest[0], SS.forest[1], SS.autumn], [0.6, 0.8], TREE);
-  groves([[1500,200],[1700,330],[1850,350],[2000,330],[2130,250],[1950,200],[1750,200]], 12, 7, 52, [SS.snowPine], [0.6, 0.85], TREE);
-  groves([[1580,380],[1760,420],[1950,370],[2100,330],[1900,310],[1700,340]], 6, 6, 50, [SS.snowPine], [0.6, 0.8], TREE);
+  groves([[1500,200],[1700,330],[1850,350],[2000,330],[2130,250],[1950,200],[1750,200]], 12, 7, 52, SS.snowPine, [0.6, 0.85], TREE);
+  groves([[1580,380],[1760,420],[1950,370],[2100,330],[1900,310],[1700,340]], 6, 6, 50, SS.snowPine, [0.6, 0.8], TREE);
   scatter([[1560,360],[1700,400],[1850,410],[2000,380]], 3, [SS.hills], [0.8, 1.0], MTN);
-  groves([[1800,850],[1900,850],[1900,920],[1800,920]], 2, 4, 28, [SS.palm], [0.55, 0.75], TREE);
+  groves([[1800,850],[1900,850],[1900,920],[1800,920]], 2, 4, 28, SS.palm, [0.55, 0.75], TREE);
   scatter([[1700,880],[2000,700],[2050,860],[1650,960]], 6, [SS.cactus], [0.5, 0.7], TREE);
   scatter([[1600,700],[1720,950],[2100,760],[2200,880]], 4, [SS.cactus], [0.5, 0.7], TREE);
-  for (const c of [[1405, 860], [1345, 1070]]) groves([[c[0]-50,c[1]-35],[c[0]+50,c[1]-35],[c[0]+50,c[1]+35],[c[0]-50,c[1]+35]], 1, 3, 30, [SS.palm], [0.55, 0.7], { layer: T, margin: 20 });
+  for (const c of [[1405, 860], [1345, 1070]]) groves([[c[0]-50,c[1]-35],[c[0]+50,c[1]-35],[c[0]+50,c[1]+35],[c[0]-50,c[1]+35]], 1, 3, 30, SS.palm, [0.55, 0.7], { layer: T, margin: 20 });
   // swamp
   const fens = [[400,960],[480,1000],[560,1000],[640,1060],[580,1120],[470,1100],[410,1040]];
   scatter(fens, 6, [SS.dead], [0.55, 0.75], TREE);
