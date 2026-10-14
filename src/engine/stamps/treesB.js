@@ -106,7 +106,7 @@ function blade(ctx, x, y, tx, ty, w, bend, body, outline, s) {
   ctx.fillStyle = g;
   ctx.fill();
   ctx.strokeStyle = outline;
-  ctx.lineWidth = lw(s, 0.025);
+  ctx.lineWidth = Math.max(1.3, s * 0.03);
   ctx.lineJoin = 'round';
   ctx.stroke();
 }
@@ -185,6 +185,21 @@ function pill(ctx, x, y, w, h, body, outline, s) {
   ctx.stroke();
 }
 
+// Horizontal rounded bar (cactus elbow)
+function bar(ctx, x, y, w, h, body, outline, s) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, h / 2);
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, sh(body, 0.35));
+  g.addColorStop(0.5, body);
+  g.addColorStop(1, sh(body, -0.45));
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = lw(s, 0.035);
+  ctx.stroke();
+}
+
 const OUT = '#1f2a1a';
 
 export const STAMPS_TREESB = [
@@ -247,14 +262,16 @@ export const STAMPS_TREESB = [
     aspect: 1.4,
     group: 'veg_bushes',
     groupName: 'Bushes & Shrubs',
-    render: (ctx, size, color = OUT, fill = '#6a9340') => {
+    render: (ctx, size, color = OUT, fill = '#7fae4c') => {
       ctx.save();
       const s = size;
       const w = s * 1.4;
-      groundShadow(ctx, w * 0.5, s * 0.78, w * 0.44, s * 0.1);
-      leafyDome(ctx, w * 0.26, s * 0.56, s * 0.2, s * 0.17, sh(fill, -0.12), color, s, 31, 9);
-      leafyDome(ctx, w * 0.74, s * 0.56, s * 0.2, s * 0.17, sh(fill, -0.18), color, s, 32, 9);
-      leafyDome(ctx, w * 0.5, s * 0.5, s * 0.26, s * 0.2, fill, color, s, 33, 16);
+      groundShadow(ctx, w * 0.5, s * 0.8, w * 0.44, s * 0.1);
+      leafyDome(ctx, w * 0.2, s * 0.6, s * 0.2, s * 0.19, sh(fill, -0.2), color, s, 31, 12);
+      leafyDome(ctx, w * 0.8, s * 0.6, s * 0.2, s * 0.19, sh(fill, -0.22), color, s, 32, 12);
+      leafyDome(ctx, w * 0.38, s * 0.52, s * 0.23, s * 0.22, sh(fill, -0.06), color, s, 34, 14);
+      leafyDome(ctx, w * 0.62, s * 0.52, s * 0.23, s * 0.22, sh(fill, -0.1), color, s, 35, 14);
+      leafyDome(ctx, w * 0.5, s * 0.42, s * 0.24, s * 0.22, fill, color, s, 33, 18);
       ctx.restore();
     }
   },
@@ -266,7 +283,7 @@ export const STAMPS_TREESB = [
     aspect: 1,
     group: 'veg_bushes',
     groupName: 'Bushes & Shrubs',
-    render: (ctx, size, color = '#2a1d14', fill = '#8a7a45') => {
+    render: (ctx, size, color = '#2a1d14', fill = '#a8975a') => {
       ctx.save();
       const s = size;
       groundShadow(ctx, s * 0.5, s * 0.82, s * 0.36, s * 0.09);
@@ -277,7 +294,7 @@ export const STAMPS_TREESB = [
         const a = -Math.PI / 2 + (i / 10 - 0.5) * 2.5 + (rnd() - 0.5) * 0.2;
         twigs.push({ a, l: s * (0.28 + rnd() * 0.2), c: (rnd() - 0.5) * 0.7 });
       }
-      for (const [col, wd] of [[color, lw(s, 0.075)], ['#6b4c30', lw(s, 0.04)], ['#a07a50', lw(s, 0.012)]]) {
+      for (const [col, wd] of [[color, Math.max(3, s * 0.085)], ['#7a5a3a', Math.max(1.6, s * 0.045)], ['#b8905e', Math.max(0.8, s * 0.014)]]) {
         ctx.strokeStyle = col;
         ctx.lineWidth = wd;
         for (const t of twigs) {
@@ -342,7 +359,7 @@ export const STAMPS_TREESB = [
     aspect: 1,
     group: 'veg_grass',
     groupName: 'Grass, Flowers & Ferns',
-    render: (ctx, size, color = '#2b2414', fill = '#b9b05a') => {
+    render: (ctx, size, color = '#2b2414', fill = '#d2c76a') => {
       ctx.save();
       const s = size;
       groundShadow(ctx, s * 0.5, s * 0.88, s * 0.3, s * 0.07);
@@ -419,7 +436,7 @@ export const STAMPS_TREESB = [
     aspect: 1,
     group: 'veg_grass',
     groupName: 'Grass, Flowers & Ferns',
-    render: (ctx, size, color = '#16281a', fill = '#3f8a46') => {
+    render: (ctx, size, color = '#16281a', fill = '#5aa75a') => {
       ctx.save();
       const s = size;
       const bx = s * 0.5;
@@ -447,11 +464,11 @@ export const STAMPS_TREESB = [
           for (const side of [-1, 1]) {
             const la = ang + side * 1.05;
             ctx.beginPath();
-            ctx.ellipse(x + Math.cos(la) * ll * 0.5, y + Math.sin(la) * ll * 0.5, ll * 0.55, s * 0.022, la, 0, TAU);
+            ctx.ellipse(x + Math.cos(la) * ll * 0.5, y + Math.sin(la) * ll * 0.5, ll * 0.55, s * 0.03, la, 0, TAU);
             ctx.fillStyle = side * Math.cos(ang) < 0 ? sh(body, 0.22) : sh(body, -0.12);
             ctx.fill();
-            ctx.strokeStyle = sh(body, -0.5);
-            ctx.lineWidth = Math.max(0.8, s * 0.011);
+            ctx.strokeStyle = sh(body, -0.62);
+            ctx.lineWidth = Math.max(1.1, s * 0.02);
             ctx.stroke();
           }
         }
@@ -483,12 +500,6 @@ export const STAMPS_TREESB = [
       ctx.save();
       const s = size;
       groundShadow(ctx, s * 0.5, s * 0.9, s * 0.34, s * 0.07);
-      // water ripple ring
-      ctx.strokeStyle = 'rgba(60,100,110,0.35)';
-      ctx.lineWidth = lw(s, 0.02);
-      ctx.beginPath();
-      ctx.ellipse(s * 0.5, s * 0.9, s * 0.38, s * 0.08, 0, 0, TAU);
-      ctx.stroke();
       bladeFan(ctx, s * 0.5, s * 0.9, 6, s * 0.4, s * 0.66, 1.3, fill, color, s, 81, s * 0.028);
       const stems = [[-0.2, 0.74], [0.0, 0.84], [0.2, 0.7], [-0.07, 0.6]];
       stems.forEach(([dx, h], i) => {
@@ -557,14 +568,20 @@ export const STAMPS_TREESB = [
         g.addColorStop(1, sh(fill, -0.45));
         ctx.fillStyle = g;
         ctx.fillRect(x - w, y0, w * 2, y1 - y0);
+        ctx.beginPath();
+        ctx.ellipse(x, y0, w, w * 0.55, 0, 0, TAU);
+        ctx.fillStyle = g;
+        ctx.fill();
         const nodes = 4;
         for (let n = 1; n <= nodes; n++) {
           const ny = y0 + ((y1 - y0) * n) / (nodes + 0.6);
-          ctx.fillStyle = sh(fill, -0.35);
-          ctx.fillRect(x - w * 1.12, ny - s * 0.012, w * 2.24, s * 0.026);
+          ctx.fillStyle = sh(fill, -0.3);
+          ctx.beginPath();
+          ctx.roundRect(x - w * 1.2, ny - s * 0.016, w * 2.4, s * 0.034, s * 0.014);
+          ctx.fill();
           ctx.strokeStyle = color;
-          ctx.lineWidth = lw(s, 0.014);
-          ctx.strokeRect(x - w * 1.12, ny - s * 0.012, w * 2.24, s * 0.026);
+          ctx.lineWidth = lw(s, 0.022);
+          ctx.stroke();
         }
         ctx.strokeStyle = color;
         ctx.lineWidth = lw(s, 0.035);
@@ -573,8 +590,11 @@ export const STAMPS_TREESB = [
         ctx.lineTo(x - w, y1);
         ctx.moveTo(x + w, y0);
         ctx.lineTo(x + w, y1);
-        ctx.moveTo(x - w, y0);
-        ctx.lineTo(x + w, y0);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(x, y0, w, w * 0.55, 0, 0, TAU);
+        ctx.fillStyle = sh(fill, 0.25);
+        ctx.fill();
         ctx.stroke();
         // leaf sprays near the top
         for (let l = 0; l < 4; l++) {
@@ -685,14 +705,14 @@ export const STAMPS_TREESB = [
       const s = size;
       groundShadow(ctx, s * 0.5, s * 0.92, s * 0.3, s * 0.06);
       // arms (behind main trunk)
-      pill(ctx, s * 0.22, s * 0.36, s * 0.1, s * 0.3, fill, color, s);
-      pill(ctx, s * 0.22, s * 0.58, s * 0.3, s * 0.1, fill, color, s);
-      pill(ctx, s * 0.68, s * 0.24, s * 0.1, s * 0.34, fill, color, s);
-      pill(ctx, s * 0.5, s * 0.5, s * 0.28, s * 0.1, fill, color, s);
-      pill(ctx, s * 0.4, s * 0.08, s * 0.2, s * 0.84, fill, color, s);
+      pill(ctx, s * 0.14, s * 0.34, s * 0.14, s * 0.3, fill, color, s);
+      bar(ctx, s * 0.16, s * 0.54, s * 0.32, s * 0.14, fill, color, s);
+      pill(ctx, s * 0.72, s * 0.2, s * 0.14, s * 0.4, fill, color, s);
+      bar(ctx, s * 0.52, s * 0.46, s * 0.3, s * 0.14, fill, color, s);
+      pill(ctx, s * 0.37, s * 0.06, s * 0.26, s * 0.86, fill, color, s);
       // flowers on top
-      flower(ctx, s * 0.5, s * 0.1, s * 0.03, '#f6efe0', '#f2c640', color, s);
-      flower(ctx, s * 0.73, s * 0.25, s * 0.025, '#f6efe0', '#f2c640', color, s);
+      flower(ctx, s * 0.5, s * 0.1, s * 0.035, '#f6efe0', '#f2c640', color, s);
+      flower(ctx, s * 0.79, s * 0.21, s * 0.03, '#f6efe0', '#f2c640', color, s);
       ctx.restore();
     }
   },
@@ -900,15 +920,15 @@ export const STAMPS_TREESB = [
     name: 'Fallen Log',
     category: 'world_nature',
     defaultScale: 0.9,
-    aspect: 1.5,
+    aspect: 1.25,
     group: 'veg_debris',
     groupName: 'Rocks, Logs & Stumps',
     render: (ctx, size, color = '#1e140d', fill = '#8a5a34') => {
       ctx.save();
       const s = size;
-      const w = s * 1.5;
-      const top = s * 0.34;
-      const hgt = s * 0.34;
+      const w = s * 1.25;
+      const top = s * 0.3;
+      const hgt = s * 0.4;
       const x0 = w * 0.16;
       const x1 = w * 0.94;
       groundShadow(ctx, w * 0.55, top + hgt + s * 0.04, w * 0.42, s * 0.09);
