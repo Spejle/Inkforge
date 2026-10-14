@@ -283,7 +283,7 @@ R.dwarf = {
 // ORC / GOBLIN
 R.orc = {
   lsk: 0.85,
-  ground: ['#a08460', '#86704e'], wall: { kind: 'pal', col: '#7a5a3a', hw: 0.12 },
+  ground: ['#b49a6e', '#9a8058'], wall: { kind: 'pal', col: '#9a7440', hw: 0.12 }, rim: true,
   house(c, x, y, s, r, fx) {
     const col = pick(r, ['#8a6a48', '#7a5a3a', '#6b6a45', '#8f7452']);
     if (r() < 0.3) { // log hut
@@ -348,7 +348,7 @@ R.halfling = {
     else { for (let i = -1; i <= 1; i++) line(c, x - s * 0.3, y + i * s * 0.1, x + s * 0.3, y + i * s * 0.1, '#6b4a2a', LW * 2, 0.9); for (let i = -2; i <= 2; i++) ell(c, x + i * s * 0.12, y - s * 0.05, s * 0.04, s * 0.05, '#4f9a3a', false); }
   },
   land(c, x, y, s, r, lvl, fx) {
-    s *= lvl >= 4 ? 1.3 : lvl >= 3 ? 1.15 : 1;
+    s *= lvl >= 3 ? 1.35 : lvl >= 2 ? 1.15 : 1;
     const mx = x + s * 0.7;
     dome(c, x - s * 0.6, y, s * 1.2, s * 1.0, '#6fa84c', s * 0.25);
     ell(c, x - s * 0.6, y - s * 0.38, s * 0.3, s * 0.34, '#d9d0a8'); ell(c, x - s * 0.6, y - s * 0.38, s * 0.23, s * 0.27, '#c4402a');
@@ -405,7 +405,7 @@ const stepPyr = (c, x, y, w, tiers, th, d, col, o = {}) => {
   for (let i = 1; i < tiers * 2; i++) { const t = i / (tiers * 2), ww = sw * (1 - t * 0.6); line(c, x - ww, y - th * tiers * t, x + ww, y - th * tiers * t, INK, LW * 0.5, 0.45); }
 };
 R.dragonborn = {
-  lsk: 0.8,
+  lsk: 0.7,
   ground: ['#d4b87a', '#bf9f62'], wall: { kind: 'stone', col: '#cdb07a', hw: 0.09, cren: 'step', tw: 1.5 }, nm: 1.15,
   house(c, x, y, s, r, fx) {
     const col = wt(pick(r, ['#d8b878', '#cfa86a', '#dcc08a'])), w = s * (0.9 + r() * 0.2), t = 2 + (r() < 0.4 ? 1 : 0);
@@ -419,15 +419,15 @@ R.dragonborn = {
     else rock(c, x, y, s * 0.7, '#b89a6a');
   },
   land(c, x, y, s, r, lvl, fx) {
-    const t = lvl >= 4 ? 7 : 5, th = s * (lvl >= 4 ? 0.36 : 0.42);
-    stepPyr(c, x, y, s * (lvl >= 4 ? 2.7 : 2.2), t, th, s * (lvl >= 4 ? 1.2 : 1.0), '#d8b878', { alt: '#c4552a', cren: false });
+    const t = [4, 4, 5, 7][Math.min(lvl, 3)], th = s * (lvl >= 3 ? 0.36 : 0.42);
+    stepPyr(c, x, y, s * [1.7, 1.8, 2.2, 2.9][Math.min(lvl, 3)], t, th, s * [0.8, 0.85, 1.0, 1.3][Math.min(lvl, 3)], '#d8b878', { alt: '#c4552a', cren: false });
     // dragon-head totem + brazier
     const ty = y - th * t;
     poly(c, [[x - s * 0.22, ty], [x - s * 0.2, ty - s * 0.4], [x + s * 0.0, ty - s * 0.55], [x + s * 0.28, ty - s * 0.42], [x + s * 0.18, ty - s * 0.3], [x + s * 0.2, ty]], '#a8452a');
     ell(c, x - s * 0.02, ty - s * 0.4, s * 0.03, s * 0.025, '#ffd24a', false);
     poly(c, [[x - s * 0.1, ty - s * 0.5], [x - s * 0.3, ty - s * 0.8], [x - s * 0.02, ty - s * 0.58]], '#e8dcc0'); poly(c, [[x + s * 0.1, ty - s * 0.5], [x + s * 0.3, ty - s * 0.8], [x + s * 0.0, ty - s * 0.58]], '#cfc4a8');
-    for (const dx of [-0.95, 0.95]) { const px = x + dx * s * (lvl >= 4 ? 1.2 : 1), py = y - th * 2.2; ell(c, px, py, s * 0.08, s * 0.04, '#4a3a2a'); flame(c, px, py - s * 0.02, s * 0.22); }
-    const bh = lvl >= 4 ? 1.5 : 0.85; banner(c, x - s * 1.1, y + s * 0.0, s * bh, '#b02a2a'); banner(c, x + s * 1.1, y + s * 0.0, s * bh, '#c8a22a');
+    for (const dx of [-0.95, 0.95]) { const px = x + dx * s * (lvl >= 3 ? 1.3 : 1), py = y - th * 2.2; ell(c, px, py, s * 0.08, s * 0.04, '#4a3a2a'); flame(c, px, py - s * 0.02, s * 0.22); }
+    const bh = lvl >= 3 ? 1.5 : 0.85; banner(c, x - s * 1.1, y + s * 0.0, s * bh, '#b02a2a'); banner(c, x + s * 1.1, y + s * 0.0, s * bh, '#c8a22a');
     smokeAt(fx, x, ty - s * 0.85, s * 0.6);
   },
 };
@@ -435,7 +435,7 @@ R.dragonborn = {
 // LIZARDFOLK
 R.lizard = {
   lsk: 0.9,
-  ground: ['#cdbd90', '#b0a074'], wall: { kind: 'pal', col: '#7d7a4a', hw: 0.1, round: true },
+  ground: ['#cdbd90', '#b0a074'], wall: { kind: 'pal', col: '#bfae80', hw: 0.1, round: true },
   house(c, x, y, s, r, fx) {
     const wood = '#6b5338', th = s * 0.45, rx = s * 0.5, thatch = pick(r, ['#9a8a4a', '#8a7a3e', '#a08f50']);
     for (const dx of [-0.8, -0.3, 0.3, 0.8]) line(c, x + dx * rx, y, x + dx * rx, y - th, wood, LW * 2, 1);
@@ -474,16 +474,17 @@ const spireTower = (c, x, y, w, h, col, capH) => {
   poly(c, [[x - w, y], [x - w * 0.55, y - h], [x + w * 0.55, y - h], [x + w, y]], cg(c, x - w, x + w, col, 0.25, 0.5));
   c.beginPath(); c.moveTo(x - w * 0.85, y - h); c.quadraticCurveTo(x - w * 0.4, y - h - capH * 0.35, x, y - h - capH); c.quadraticCurveTo(x + w * 0.4, y - h - capH * 0.35, x + w * 0.85, y - h); c.closePath();
   c.fillStyle = cg(c, x - w, x + w, dk(col, 0.1), 0.35, 0.5); c.fill(); stroke(c);
+  line(c, x - w * 0.8, y - h * 0.95, x - w * 0.5, y - h * 0.1, lit(col, 0.6), LW * 1.2, 0.7);
   for (let i = 0; i < Math.max(1, Math.floor(h / (w * 1.1))); i++) { const wy = y - h * 0.25 - i * w * 1.1; if (wy < y - h * 0.9) break; ell(c, x, wy - w * 0.3, w * 0.07, w * 0.11, glow, false); }
 };
 R.drow = {
   lsk: 0.72,
-  ground: ['#7a74a0', '#625c86'], wall: { kind: 'stone', col: '#4a4468', hw: 0.12, cren: 'spike' }, sp: 1.15,
+  ground: ['#7a74a0', '#625c86'], wall: { kind: 'stone', col: '#7a74a8', hw: 0.12, cren: 'spike' }, sp: 1.15, inner: 0.7, rim: true,
   house(c, x, y, s, r, fx) {
     ell(c, x, y, s * 0.7, s * 0.14, 'rgba(10,0,30,.4)', false);
     const n = r() < 0.5 ? 2 : 3, hs = [1.0, 1.7, 1.3].slice(0, n);
     const order = n === 2 ? [[-0.2, 1], [0.25, 0]] : [[-0.32, 2], [0.32, 2], [0, 1]];
-    order.forEach(([dx, hi], i) => spireTower(c, x + dx * s, y + (i === n - 1 ? s * 0.05 : 0), s * (0.2 + (hi === 1 ? 0.04 : 0)), s * hs[hi] * (0.75 + r() * 0.2), pick(r, [obs, '#463a60', '#352f4a']), s * 0.7));
+    order.forEach(([dx, hi], i) => spireTower(c, x + dx * s, y + (i === n - 1 ? s * 0.05 : 0), s * (0.2 + (hi === 1 ? 0.04 : 0)), s * hs[hi] * (0.75 + r() * 0.2), pick(r, ['#5a4e80', '#4c4272', '#665a90']), s * 0.7));
   },
   prop(c, x, y, s, r) {
     if (r() < 0.5) { poly(c, [[x - s * 0.15, y], [x - s * 0.02, y - s * 0.8], [x + s * 0.15, y]], '#6a6488'); poly(c, [[x + s * 0.14, y], [x + s * 0.25, y - s * 0.45], [x + s * 0.38, y]], '#4f4a6c'); }
@@ -491,11 +492,11 @@ R.drow = {
   },
   land(c, x, y, s, r, lvl, fx) {
     box(c, x - s * 1.0, y, s * 2.0, s * 0.7, s * 0.7, '#3a3350', { top: true, bricks: true });
-    spireTower(c, x - s * 0.9, y - s * 0.1, s * 0.28, s * 1.5, '#352f4a', s * 0.9); spireTower(c, x + s * 1.05, y - s * 0.4, s * 0.26, s * 1.4, '#352f4a', s * 0.8);
-    spireTower(c, x - s * 0.4, y - s * 0.7, s * 0.3, s * 1.8, '#463a60', s * 1.0); spireTower(c, x + s * 0.55, y - s * 0.7, s * 0.3, s * 1.6, '#463a60', s * 0.9);
-    spireTower(c, x, y - s * 0.3, s * (lvl >= 4 ? 0.5 : 0.4), s * (lvl >= 4 ? 3.3 : 2.4), '#2f2a44', s * (lvl >= 4 ? 1.9 : 1.5));
+    spireTower(c, x - s * 0.9, y - s * 0.1, s * 0.28, s * 1.5, '#4c4272', s * 0.9); spireTower(c, x + s * 1.05, y - s * 0.4, s * 0.26, s * 1.4, '#4c4272', s * 0.8);
+    spireTower(c, x - s * 0.4, y - s * 0.7, s * 0.3, s * 1.8, '#5a4e80', s * 1.0); spireTower(c, x + s * 0.55, y - s * 0.7, s * 0.3, s * 1.6, '#5a4e80', s * 0.9);
+    spireTower(c, x, y - s * 0.3, s * (lvl >= 3 ? 0.5 : 0.4), s * (lvl >= 3 ? 2.8 : 2.4), '#463a60', s * (lvl >= 3 ? 1.6 : 1.5));
     // spider sigil
-    const sy = y - s * (lvl >= 4 ? 1.6 : 1.2); ell(c, x, sy, s * 0.07, s * 0.1, glow, false); ell(c, x, sy - s * 0.1, s * 0.04, s * 0.04, glow, false);
+    const sy = y - s * (lvl >= 3 ? 1.6 : 1.2); ell(c, x, sy, s * 0.07, s * 0.1, glow, false); ell(c, x, sy - s * 0.1, s * 0.04, s * 0.04, glow, false);
     for (let i = 0; i < 4; i++) { const k = (i - 1.5) * 0.12; line(c, x - s * 0.04, sy + k * s, x - s * 0.22, sy + k * s * 2.4 - s * 0.05, glow, LW * 0.9); line(c, x + s * 0.04, sy + k * s, x + s * 0.22, sy + k * s * 2.4 - s * 0.05, glow, LW * 0.9); }
     poly(c, [[x - s * 0.15, y + s * 0.0], [x - s * 0.15, y - s * 0.3], [x, y - s * 0.5], [x + s * 0.15, y - s * 0.3], [x + s * 0.15, y]], '#14102a');
   },
@@ -508,13 +509,13 @@ const shellDome = (c, x, y, rx, h, col) => {
   for (let i = 1; i < 6; i++) { const a = Math.PI * (i / 6); c.beginPath(); c.moveTo(x, y - h * 0.95); c.quadraticCurveTo(x - Math.cos(a) * rx * 0.8, y - h * 0.5, x - Math.cos(a) * rx * 0.98, y); c.strokeStyle = dk(col, 0.4); c.globalAlpha = 0.5; c.lineWidth = LW * 0.6; c.stroke(); c.globalAlpha = 1; }
 };
 R.merfolk = {
-  ground: ['#e3d3a0', '#cdbb88'], wall: { kind: 'stone', col: '#e2d6bc', hw: 0.06, cren: 'sq', cap: '#6aa8a6' }, water: true, hamPlus: 2,
+  ground: ['#e3d3a0', '#cdbb88'], wall: { kind: 'stone', col: '#e2d6bc', hw: 0.06, cren: 'sq', cap: '#6aa8a6' }, water: true, hamPlus: 4, pn: 2,
   house(c, x, y, s, r, fx) {
     const col = pick(r, ['#7fb5b2', '#dccfa8', '#d9907e', '#7fb5b2']), rx = s * (0.5 + r() * 0.15), h = s * (0.55 + r() * 0.2);
     { const w0 = LW; LW = w0 * 1.7; shellDome(c, x, y, rx, h, col); LW = w0; }
     ell(c, x, y - h - s * 0.02, s * 0.06, s * 0.06, '#fff8f0'); ell(c, x - s * 0.02, y - h - s * 0.04, s * 0.02, s * 0.02, '#fff', false);
     ell(c, x + rx * 0.1, y - s * 0.2, s * 0.1, s * 0.13, '#2a4a66'); ell(c, x + rx * 0.1, y - s * 0.2, s * 0.06, s * 0.09, '#7ae0e8', false);
-    if (r() < 0.6) { const kx = x + rx * 1.1; for (const [dx, dy] of [[0, 0.35], [-0.08, 0.28], [0.1, 0.3]]) line(c, kx, y, kx + dx * s, y - dy * s, '#d9907e', LW * 2.2); }
+    if (r() < 0.2) { const kx = x + rx * 1.1; for (const [dx, dy] of [[0, 0.35], [-0.08, 0.28], [0.1, 0.3]]) line(c, kx, y, kx + dx * s, y - dy * s, '#d9907e', LW * 2.2); }
   },
   prop(c, x, y, s, r) {
     if (r() < 0.6) { for (const [dx, dy] of [[0, 0.5], [-0.12, 0.38], [0.12, 0.42], [0.2, 0.28]]) { line(c, x, y, x + dx * s, y - dy * s, pick(r, ['#d9907e', '#c4806a', '#d8a890']), LW * 2.4); ell(c, x + dx * s, y - dy * s, s * 0.035, s * 0.035, '#f8d0c0', false); } }
@@ -571,7 +572,8 @@ function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
       if (!o.round) line(c, pm[0] - sw * 0.45, pm[1] - 0.002, pm[0] - sw * 0.45, pm[1] - hh, '#d8b878', LW * 0.9, l > -0.3 ? 0.75 : 0.35);
       if (lvl >= 3 && !o.round && i % 24 === 5) { ell(c, pm[0], pm[1] - hh - sw * 2.4, sw * 0.9, sw * 0.8, '#e8e2cf'); }
     } else if (o.kind === 'trunk') {
-      if (i % 3 === 2) continue;
+      poly(c, [p0, p1, [p1[0], p1[1] - hw * 0.32], [p0[0], p0[1] - hw * 0.32]], mix('#4f8a4a', '#143a2a', l < 0 ? 0.25 : 0.05));
+      if (lvl < 3 && i % 3 === 2) continue;
       const cc = ['#4f9a70', '#68b078', '#3f8f78'][i % 3], th2 = hw * (1.2 + ((i * 31) % 4) * 0.12);
       line(c, pm[0], pm[1], pm[0], pm[1] - th2, '#4a3322', LW * 4.2); line(c, pm[0], pm[1], pm[0], pm[1] - th2, '#a08560', LW * 2.4);
       ell(c, pm[0], pm[1] - th2, hw * 0.34, hw * 0.28, mix(cc, '#143a2a', l < 0 ? 0.2 : 0)); ell(c, pm[0] - hw * 0.1, pm[1] - th2 - hw * 0.08, hw * 0.14, hw * 0.1, lit(cc, 0.4), false);
@@ -600,7 +602,7 @@ function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
     } else {
       for (const dx of [-0.8, 0.8]) line(c, px + dx * tw, py, px + dx * tw, py - th, '#4a3322', LW * 2.2);
       poly(c, [[px - tw * 1.2, py - th], [px + tw * 1.2, py - th], [px + tw * 1.3, py - th - hw * 0.4], [px - tw * 1.3, py - th - hw * 0.4]], '#6a4a2a');
-      poly(c, [[px - tw * 1.45, py - th - hw * 0.4], [px, py - th - hw * 0.95], [px + tw * 1.45, py - th - hw * 0.4]], o.round ? '#9a8a4a' : '#7a4a2a');
+      poly(c, [[px - tw * 1.45, py - th - hw * 0.4], [px, py - th - hw * 0.95], [px + tw * 1.45, py - th - hw * 0.4]], o.round ? '#b8a060' : '#7a4a2a');
     }
   }
 }
@@ -611,7 +613,8 @@ function makeRender(raceKey, li, id) {
     ctx.save();
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     ctx.scale(size, size);
-    ctx.translate(L.asp / 2, 0.985); ctx.scale(L.kk, L.kk); ctx.translate(-L.asp / 2, -1.05);
+    const KK = (NAMES[raceKey][1].length === 5 ? [0.4, 0.5, 0.63, 0.78, 0.93] : [0.46, 0.6, 0.76, 0.93])[li];
+    ctx.translate(L.asp / 2, 0.985); ctx.scale(KK, KK); ctx.translate(-L.asp / 2, -1.05);
     INK = color; FILL = fill; LW = Math.max(0.009, 1.1 / size);
     const r = rng(hashStr(id));
     const W = L.asp, cx = W / 2, cy = 0.66, rx = L.rx * W, ry = L.ry, fx = [];
@@ -632,6 +635,7 @@ function makeRender(raceKey, li, id) {
     ctx.globalAlpha = 0.95; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, gx, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
     if (raceKey === 'lizard') for (let i = 0; i < 3 + li; i++) { const a = r() * 6.28, d = 0.55 + r() * 0.35; ell(ctx, cx + Math.cos(a) * gx * d, cy + Math.sin(a) * gy * d, 0.04 + r() * 0.04, 0.015 + r() * 0.012, 'rgba(150,190,182,.8)', false); }
     for (let i = 0; i < 14 + li * 6; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 0.95; const px = cx + Math.cos(a) * gx * d, py = cy + Math.sin(a) * gy * d; line(ctx, px, py, px + 0.006, py - 0.012, dk(race.ground[1], 0.3), LW * 0.7, 0.5); }
+    if (race.rim) { ell(ctx, cx, cy, gx * 0.96, gy * 0.96, null, false); ctx.strokeStyle = lit(race.ground[0], 0.35); ctx.globalAlpha = 0.7; ctx.lineWidth = 0.014; ctx.stroke(); ctx.globalAlpha = 1; }
     // road
     const pathPts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, py = cy + gy * 0.92 - t * (gy * 0.92 + ry * 0.2); pathPts.push([cx + Math.sin(t * 5) * 0.03 * (1 - t * 0.3), py]); }
     ctx.beginPath(); pathPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -643,7 +647,7 @@ function makeRender(raceKey, li, id) {
     const roadX = (y) => { const t = (cy + gy * 0.92 - y) / (gy * 0.92 + ry * 0.2); return cx + Math.sin(t * 5) * 0.03 * (1 - t * 0.3); };
     let lm = null;
     if (L.ls) { const ls = L.s * L.ls * (race.lsk || 1), ly = cy - ry * 0.32; lm = { y: ly, draw: () => race.land(ctx, cx, ly, ls, r, li, fx) }; taken.push({ x: cx, y: ly, s: ls * 2.2 }); objs.push(lm); }
-    const inner = li >= 2 ? 0.82 : 0.95;
+    const inner = race.inner && li >= 2 ? race.inner : li >= 2 ? 0.82 : 0.95;
     let placed = 0; const NN = Math.round(L.n * (race.nm && li >= 2 ? race.nm : 1)) + (race.hamPlus && li === 0 ? race.hamPlus : 0); const SP = race.sp || 1;
     for (let tries = 0; tries < 900 && placed < NN; tries++) {
       const a = r() * 6.2832, d = Math.sqrt(r()), x = cx + Math.cos(a) * rx * inner * d, y = cy + Math.sin(a) * ry * inner * d + ry * 0.1;
@@ -694,7 +698,7 @@ export const STAMPS_SETTLEMENTSA = Object.keys(R).flatMap((key) =>
     const id = `set_${key === 'lizard' ? 'lizardfolk' : key}_${['hamlet', 'village', 'town', 'city', 'capital'][li]}`;
     // 4-level races use Camp/Village/Town/City names with level index 0..3 mapped onto LV 0..3
     return {
-      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization', defaultScale: [1.9, 1.7, 1.65, 1.6, 1.6][li], aspect: LV[li].asp,
+      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization', defaultScale: [2.1, 1.8, 1.7, 1.6, 1.6][li], aspect: LV[li].asp,
       group: `set_${key === 'lizard' ? 'lizardfolk' : key}`, groupName: `${GROUPNAMES[key]} Settlements`,
       render: makeRender(key, li, id),
     };
