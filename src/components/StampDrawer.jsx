@@ -43,6 +43,13 @@ export default function StampDrawer({
     const matchesSearch = stamp.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+  // One tile per group (first member represents it); search shows every variant flat.
+  const seenGroups = new Set();
+  const tiles = searchQuery
+    ? filteredStamps
+    : filteredStamps.filter((st) => !st.group || (!seenGroups.has(st.group) && seenGroups.add(st.group)));
+  const groupMembers = (g) => STAMPS.filter((st) => st.group === g);
+  const [openGroup, setOpenGroup] = useState(null);
   const myStamps = customStamps.filter(
     (c) => (selectedCat === 'all' || selectedCat === 'mine') && c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -144,21 +151,44 @@ export default function StampDrawer({
                     <span className="stamp-name-caption">{c.name}</span>
                   </div>
                 ))}
-                {filteredStamps.map((stamp) => {
-                  const isSelected = activeStampId === stamp.id;
+                {tiles.map((stamp) => {
+                  const members = !searchQuery && stamp.group ? groupMembers(stamp.group) : [];
+                  const isGroup = members.length > 1;
+                  const isSelected = isGroup ? members.some((m) => m.id === activeStampId) : activeStampId === stamp.id;
+                  const shown = isGroup && isSelected ? members.find((m) => m.id === activeStampId) : stamp;
 
                   return (
-                    <div
-                      key={stamp.id}
-                      className={`stamp-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => setActiveStampId(stamp.id)}
-                      title={`Select ${stamp.name}`}
-                    >
-                      <div className="stamp-preview-canvas-box">
-                        <StampThumbnail stamp={stamp} />
+                    <React.Fragment key={stamp.id}>
+                      <div
+                        className={`stamp-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => {
+                          setActiveStampId(isSelected ? activeStampId : stamp.id);
+                          setOpenGroup(isGroup && openGroup !== stamp.group ? stamp.group : null);
+                        }}
+                        title={isGroup ? `${stamp.groupName || stamp.name}\n${members.length} variants. Click to choose one.` : `Select ${stamp.name}`}
+                      >
+                        <div className="stamp-preview-canvas-box">
+                          <StampThumbnail stamp={shown} />
+                          {isGroup && <span className="stamp-group-badge">{members.length}</span>}
+                        </div>
+                        <span className="stamp-name-caption">{isGroup ? stamp.groupName || stamp.name : stamp.name}</span>
                       </div>
-                      <span className="stamp-name-caption">{stamp.name}</span>
-                    </div>
+                      {isGroup && openGroup === stamp.group && (
+                        <div className="stamp-variants">
+                          {members.map((m) => (
+                            <div
+                              key={m.id}
+                              className={`stamp-card small ${activeStampId === m.id ? 'selected' : ''}`}
+                              onClick={() => setActiveStampId(m.id)}
+                              title={m.name}
+                            >
+                              <div className="stamp-preview-canvas-box"><StampThumbnail stamp={m} /></div>
+                              <span className="stamp-name-caption">{m.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </div>

@@ -1219,3 +1219,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .tip-head kbd { font: 700 10px/1 inherit; padding: 2px 5px; border-radius: 4px; background: var(--bg-subtle); border: 1px solid var(--border-light); color: var(--primary-gold); }
 .tip-body { margin-top: 3px; color: var(--text-muted); }
 @keyframes tipIn { from { opacity: 0; margin-top: 3px; } to { opacity: 1; margin-top: 0; } }
+
+/* Stamp groups: one tile per family, variants unfold beneath it */
+.stamp-preview-canvas-box { position: relative; }
+.stamp-group-badge { position: absolute; top: 4px; right: 4px; min-width: 18px; padding: 1px 5px; border-radius: 9px; background: var(--primary-gold); color: var(--bg-app); font-size: 10px; font-weight: 800; text-align: center; }
+.stamp-variants { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; padding: 8px; border-radius: 8px; background: var(--bg-subtle); border: 1px dashed var(--border-light); }
+.stamp-card.small .stamp-name-caption { font-size: 10px; }
