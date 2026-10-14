@@ -1,6 +1,8 @@
 // Fantasy and Tactical Stamp Catalog
 // Renders vector-sharp cartography and battlemap assets with consistent aspect ratios and lighting
 
+import { EXTRA_STAMPS } from './stamps/index.js';
+
 export const STAMP_CATEGORIES = [
   { id: 'world_nature', name: 'Nature & Land', type: 'world' },
   { id: 'world_civilization', name: 'Settlements & Structures', type: 'world' },
@@ -3896,7 +3898,7 @@ export const STAMPS = [
       ctx.restore();
     }
   }
-];
+].concat(EXTRA_STAMPS);
 
 export function getStampById(id) {
   return STAMPS.find((s) => s.id === id);
