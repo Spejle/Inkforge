@@ -363,7 +363,7 @@ export default function App() {
     setMapWidth(found.width);
     setMapHeight(found.height);
     setLandmasses(found.landmasses || []);
-    setBrushStrokes([]);
+    setBrushStrokes(found.brushStrokes || []);
     setStamps(found.stamps || []);
     setPaths(found.paths || []);
     setTexts(found.texts || []);
@@ -374,10 +374,10 @@ export default function App() {
     setSelectedTextId(null);
     setSelectedPathId(null);
 
-    setLayers(DEFAULT_LAYERS);
+    setLayers({ ...DEFAULT_LAYERS, ...(found.layers || {}) });
     resetHistory({
       landmasses: found.landmasses || [],
-      brushStrokes: [],
+      brushStrokes: found.brushStrokes || [],
       stamps: found.stamps || [],
       paths: found.paths || [],
       texts: found.texts || []
