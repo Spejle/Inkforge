@@ -48,11 +48,11 @@ function groundShadow(ctx, s, cx = 0.5, cy = 0.9, rx = 0.3, ry = 0.06) {
   if (SHADOW_OFF) return;
   rx *= 1.1;
   ctx.save();
-  ctx.translate((cx + 0.04) * s, (cy + 0.012) * s);
+  ctx.translate((cx + 0.045) * s, (cy + 0.012) * s);
   ctx.scale(1, ry / rx);
   const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * s);
-  g.addColorStop(0, 'rgba(30,24,12,0.26)');
-  g.addColorStop(0.72, 'rgba(30,24,12,0.22)');
+  g.addColorStop(0, 'rgba(30,24,12,0.21)');
+  g.addColorStop(0.72, 'rgba(30,24,12,0.18)');
   g.addColorStop(1, 'rgba(30,24,12,0)');
   ctx.fillStyle = g;
   ctx.beginPath();
@@ -167,13 +167,13 @@ function canopy(ctx, s, o, layout, pal, rnd, lw) {
 const LAYOUTS = {
   oak: [[.5, .38, .16], [.3, .46, .15], [.7, .45, .15], [.15, .58, .11], [.85, .57, .11], [.4, .56, .16], [.62, .56, .15]],
   ancient: [[.5, .22, .15], [.33, .3, .15], [.68, .3, .15], [.2, .43, .14], [.82, .43, .14], [.4, .42, .16], [.6, .42, .16], [.28, .56, .12], [.72, .56, .12], [.5, .55, .14]],
-  round: [[.5, .27, .17], [.33, .37, .15], [.67, .37, .15], [.27, .52, .12], [.73, .52, .12], [.5, .47, .2]],
+  round: [[.5, .2, .18], [.34, .3, .15], [.7, .28, .14], [.26, .46, .13], [.75, .45, .14], [.5, .42, .2], [.38, .58, .11], [.63, .6, .1]],
   tall: [[.5, .22, .14], [.3, .27, .13], [.7, .27, .13], [.4, .42, .12], [.6, .42, .12], [.5, .54, .09]],
   bush: [[.27, .7, .14], [.73, .7, .14], [.5, .6, .19], [.4, .7, .12], [.62, .7, .12]],
 };
 const TRUNKS = {
   oak: { top: 0.56 },
-  round: { top: 0.62, wt: 0.085, wb: 0.1, flare: 0.045 },
+  round: { top: 0.64, wt: 0.085, wb: 0.1, flare: 0.045 },
   tall: { top: 0.5, wt: 0.055, wb: 0.07, flare: 0.035 },
 };
 
@@ -303,6 +303,17 @@ function tier(ctx, s, o, cx, top, bot, hw, P, rnd, teeth, snow) {
   ctx.save();
   path();
   if (!snow) { ctx.strokeStyle = 'rgba(255,255,230,0.17)'; ctx.lineWidth = lw * 2.8; ctx.lineJoin = 'round'; ctx.stroke(); }
+  if (!snow) { // 1px lit-side rim just inside the ink line
+    ctx.save();
+    path();
+    ctx.clip();
+    ctx.beginPath(); ctx.rect(0, 0, (cx + hw * 0.15) * s, s); ctx.clip();
+    path();
+    ctx.strokeStyle = 'rgba(255,255,225,0.3)';
+    ctx.lineWidth = lw + 2 * Math.max(1, s * 0.016);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.strokeStyle = o;
   ctx.lineWidth = lw;
   ctx.lineJoin = 'round';
@@ -310,11 +321,18 @@ function tier(ctx, s, o, cx, top, bot, hw, P, rnd, teeth, snow) {
   ctx.restore();
 }
 
-function conifer(ctx, s, color, fill, { seed, tiers = 4, hw = 0.26, top = 0.06, bot = 0.8, teeth = 3, snow = false, slim = 0.5, tr = 0.07 }) {
+function conifer(ctx, s, color, fill, { seed, tiers = 4, hw = 0.26, top = 0.06, bot = 0.8, teeth = 3, snow = false, slim = 0.5, tr = 0.07, vseed }) {
   const rnd = rng(seed);
+  let lean = 0;
+  if (vseed != null && isFinite(vseed)) { // per-instance variation: tiers +-1, apex lean +-4 deg
+    const v = rng((Math.imul(Math.floor(vseed * 1000) | 0, 2654435761) ^ seed) >>> 0);
+    tiers = Math.max(2, tiers + Math.floor(v() * 3) - 1);
+    lean = ((v() - 0.5) * 8 * Math.PI) / 180;
+  }
   const P = ramp(fill);
   ctx.save();
   groundShadow(ctx, s, 0.5, 0.9, hw + 0.06, 0.06);
+  ctx.translate(0.5 * s, 0.9 * s); ctx.rotate(lean); ctx.translate(-0.5 * s, -0.9 * s);
   trunk(ctx, s, color, { top: bot - 0.1, bot: 0.9, wt: tr * 0.8, wb: tr, flare: 0.03 });
   for (let i = tiers - 1; i >= 0; i--) {
     const tt = top + (bot - top) * (i / tiers) * 0.92;
@@ -424,7 +442,7 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
       ctx.closePath();
     };
     frond();
-    ctx.fillStyle = i < 3 || dx > 0.1 ? P.dark : P.mid;
+    ctx.fillStyle = i < 3 || dx > 0.1 ? P.dark : P.light;
     ctx.fill();
     ctx.save();
     ctx.clip();
@@ -445,8 +463,8 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
     ctx.lineWidth = s * 0.024;
     ctx.lineJoin = 'round';
     ctx.stroke();
-    ctx.save(); frond(); ctx.clip(); ctx.translate(s * 0.012, s * 0.012); frond();
-    ctx.strokeStyle = P.hi; ctx.lineWidth = s * 0.012; ctx.stroke(); ctx.restore();
+    ctx.save(); frond(); ctx.clip(); ctx.translate(Math.max(0.8, s * 0.012), Math.max(0.8, s * 0.012)); frond();
+    ctx.strokeStyle = '#f6ffb4'; ctx.lineWidth = Math.max(1.2, s * 0.02); ctx.stroke(); ctx.restore();
     ctx.strokeStyle = P.hi;
     ctx.lineWidth = s * 0.008;
     ctx.beginPath();
@@ -702,7 +720,7 @@ const G_GROVE = G('tree_grove', 'Groves & Clumps');
 
 const bl = (kind, seed, f0 = FOLIAGE) => (c, s, color = FC, fill = f0) => broadleaf(c, s, color, fill, kind, seed);
 const blF = (kind, seed, f0 = FOLIAGE) => (c, s) => broadleaf(c, s, FC, f0, kind, seed);
-const cf = (o, f0) => (c, s, color = FC, fill = f0) => conifer(c, s, color, fill, o);
+const cf = (o, f0) => (c, s, color = FC, fill = f0, seed) => conifer(c, s, color, fill, { ...o, vseed: seed });
 const cfF = (o, f0) => (c, s) => conifer(c, s, FC, f0, o);
 
 export const STAMPS_TREESA = [
@@ -726,8 +744,8 @@ export const STAMPS_TREESA = [
   T('willow', 'Willow', G_WILL, 1.1, (c, s, color = FC, fill = '#6e9a4c') => willow(c, s, color, fill, 51)),
   T('birch', 'Birch', G_BIRCH, 1.0, (c, s, color = FC, fill = '#7aa650') => birch(c, s, color, fill, 61)),
 
-  T('palm', 'Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#6cbc4a') => palm(c, s, color, fill, 71, 0.08)),
-  T('palm_lean', 'Leaning Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#7ac850') => palm(c, s, color, fill, 72, -0.34, false)),
+  T('palm', 'Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#80cc58') => palm(c, s, color, fill, 71, 0.08)),
+  T('palm_lean', 'Leaning Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#8cd860') => palm(c, s, color, fill, 72, -0.34, false)),
 
   T('acacia', 'Acacia', G_SAV, 1.0, (c, s, color = FC, fill = '#a8b04e') => acacia(c, s, color, fill, 81)),
   T('baobab', 'Baobab', G_SAV, 1.1, (c, s, color = FC, fill = '#86b04c') => baobab(c, s, color, fill, 82)),
