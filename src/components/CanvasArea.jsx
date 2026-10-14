@@ -247,6 +247,12 @@ export default function CanvasArea({
       rotation: Number(finalRot.toFixed(2)),
       zIndex: 0 // Stable default for isometric Y-sorting
     };
+    if (stampJitter) {
+      // Per-instance variety so sprayed forests don't read as clones
+      newStamp.flipX = Math.random() < 0.5;
+      newStamp.tone = Number((0.94 + Math.random() * 0.12).toFixed(2));
+      newStamp.hue = Math.round((Math.random() - 0.5) * 8);
+    }
     const custom = customStamps.find((c) => c.id === activeStampId);
     if (custom) {
       Object.assign(newStamp, { customImage: custom.img, dataUrl: custom.dataUrl, aspect: custom.aspect, anchor: custom.anchor });
