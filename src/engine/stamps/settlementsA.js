@@ -171,6 +171,7 @@ R.human = {
   prop(c, x, y, s, r) { r() < 0.7 ? tree(c, x, y, s, pick(r, ['#4f7d3a', '#5b8a3f', '#6b8f3a']), r) : rock(c, x, y, s * 0.6); },
   land(c, x, y, s, r, lvl, fx) {
     if (lvl >= 4) {
+      s *= 0.82;
       const w = s * 1.7, h = s * 1.3, d = s * 0.7, x0 = x - w / 2;
       box(c, x0, y, w, h, d, wt('#b9b2a2'), { cren: 5, bricks: true });
       for (const [tx, ty] of [[x0 - s * 0.15, y + s * 0.1], [x0 + w + d * 0.9, y - d * 0.4]]) {
@@ -201,15 +202,15 @@ R.human = {
 
 // ELF
 R.elf = {
-  lsk: 0.8,
-  ground: ['#79a65f', '#5f9150'], wall: { kind: 'blob', col: '#3f7f4a', hw: 0.1 },
+  lsk: 0.72,
+  ground: ['#79a65f', '#5f9150'], wall: { kind: 'trunk', col: '#3f7f4a', hw: 0.12 }, sp: 1.3,
   house(c, x, y, s, r, fx) {
     const t = pick(r, ['#8b6a4a', '#9a7656', '#a58a68']), canopy = pick(r, ['#4fa070', '#68b078', '#3f8f78', '#7fb95c']);
     const th = s * (1.1 + r() * 0.4);
     ell(c, x + s * 0.3, y, s * 0.6, s * 0.15, 'rgba(15,40,20,.28)', false);
     poly(c, [[x - s * 0.2, y], [x - s * 0.13, y - th], [x + s * 0.13, y - th], [x + s * 0.22, y]], cg(c, x - s * 0.2, x + s * 0.22, t)); // trunk
     for (const [dx, dy, k] of [[-0.35, -0.15, 0.4], [0.3, -0.1, 0.42], [0, 0.1, 0.5], [-0.05, -0.32, 0.4]]) {
-      ell(c, x + dx * s, y - th - dy * s, s * k + s * 0.12, s * k * 0.85, mix(canopy, '#143a2a', 0.1 + (dx > 0 ? 0.25 : 0)));
+      ell(c, x + dx * s, y - th - dy * s, s * k + s * 0.04, s * k * 0.8, mix(canopy, '#143a2a', 0.1 + (dx > 0 ? 0.25 : 0)));
     }
     for (const [dx, dy] of [[-0.3, -0.22], [0.15, -0.2], [-0.02, -0.4]]) ell(c, x + dx * s, y - th - dy * s, s * 0.2, s * 0.15, lit(canopy, 0.4), false);
     // cabin with lily roof
@@ -227,13 +228,13 @@ R.elf = {
     poly(c, [[x - s * 0.6, y + s * 0.05], [x - s * 0.3, y - th], [x + s * 0.3, y - th], [x + s * 0.65, y + s * 0.05]], cg(c, x - s * 0.6, x + s * 0.65, t));
     line(c, x - s * 0.2, y, x - s * 0.1, y - th, INK, LW * 0.6, 0.4); line(c, x + s * 0.1, y, x + s * 0.05, y - th, INK, LW * 0.6, 0.4);
     // white spire tower
-    poly(c, [[x - s * 0.15, y - th * 0.5], [x + s * 0.15, y - th * 0.5], [x + s * 0.1, y - th - s * 0.8], [x, y - th - s * 1.5], [x - s * 0.1, y - th - s * 0.8]], '#f2ecd8');
+    poly(c, [[x - s * 0.15, y - th * 0.5], [x + s * 0.15, y - th * 0.5], [x + s * 0.1, y - th - s * 0.8], [x, y - th - s * 1.5], [x - s * 0.1, y - th - s * 0.8]], '#c6c2e6');
     ell(c, x, y - th * 0.9, s * 0.05, s * 0.1, '#7ad0ff');
     const cols = ['#3f8f6a', '#4fa070', '#68b078', '#3f8f78'];
     const bl = [[-0.9, 0.0], [0.9, 0.0], [-0.55, -0.5], [0.55, -0.5], [0, -0.75], [-1.1, 0.35], [1.1, 0.35], [0, -0.1]];
     bl.forEach(([dx, dy], i) => ell(c, x + dx * s, y - th - dy * s * 0.5, s * (0.55 + (i % 2) * 0.1), s * 0.45, mix(cols[i % 4], '#143a2a', dx > 0 ? 0.3 : 0.05)));
     for (const [dx, dy] of [[-0.8, 0.0], [-0.4, -0.45], [0.1, -0.7]]) ell(c, x + dx * s, y - th - dy * s * 0.5, s * 0.3, s * 0.2, lit('#68b078', 0.35), false);
-    spire(c, x - s * 0.1, y - th - s * 0.55, s * 0.2, s * 1.1, '#f2ecd8');
+    spire(c, x - s * 0.1, y - th - s * 0.55, s * 0.2, s * 1.1, '#c6c2e6');
     for (let i = 0; i < 6 + lvl * 2; i++) lantern(c, x + (r() - 0.5) * s * 2.2, y - th - (r() - 0.2) * s * 0.9, s * 0.05);
     if (lvl >= 4) { banner(c, x, y - th - s * 1.5, s * 0.55, '#58b0c8'); }
   },
@@ -282,7 +283,7 @@ R.dwarf = {
 // ORC / GOBLIN
 R.orc = {
   lsk: 0.85,
-  ground: ['#8a6e4c', '#6e5a3e'], wall: { kind: 'pal', col: '#7a5a3a', hw: 0.12 },
+  ground: ['#a08460', '#86704e'], wall: { kind: 'pal', col: '#7a5a3a', hw: 0.12 },
   house(c, x, y, s, r, fx) {
     const col = pick(r, ['#8a6a48', '#7a5a3a', '#6b6a45', '#8f7452']);
     if (r() < 0.3) { // log hut
@@ -300,7 +301,7 @@ R.orc = {
     for (const a of [-0.55, -0.15, 0.3]) line(c, x, y - h, x + a * rx * 1.6, y + rx * 0.3 * Math.cos(a * 1.4), INK, LW * 0.5, 0.35);
     poly(c, [[x - rx * 0.28, y + rx * 0.2], [x, y - h * 0.5], [x + rx * 0.28, y + rx * 0.2]], '#2a1c14');
     line(c, x - s * 0.18, y - h - s * 0.1, x + s * 0.18, y - h + s * 0.08, '#4a3322', LW * 1.8); line(c, x + s * 0.18, y - h - s * 0.1, x - s * 0.18, y - h + s * 0.08, '#4a3322', LW * 1.8);
-    if (r() < 0.6) { ell(c, x + rx * 0.45, y - h * 0.25, s * 0.07, s * 0.07, '#e8e2cf'); ell(c, x + rx * 0.4, y - h * 0.25, s * 0.015, s * 0.02, INK, false); ell(c, x + rx * 0.5, y - h * 0.25, s * 0.015, s * 0.02, INK, false); }
+    if (r() < 0.22) { ell(c, x + rx * 0.45, y - h * 0.25, s * 0.07, s * 0.07, '#e8e2cf'); ell(c, x + rx * 0.4, y - h * 0.25, s * 0.015, s * 0.02, INK, false); ell(c, x + rx * 0.5, y - h * 0.25, s * 0.015, s * 0.02, INK, false); }
     if (r() < 0.35) smokeAt(fx, x, y - h - s * 0.1, s * 0.5);
   },
   prop(c, x, y, s, r) {
@@ -329,11 +330,11 @@ R.orc = {
 
 // HALFLING
 R.halfling = {
-  ground: ['#88b95f', '#6ea04e'], wall: { kind: 'blob', col: '#5f9a46', hw: 0.07 },
+  ground: ['#88b95f', '#6ea04e'], wall: { kind: 'fence', col: '#8b6a50', hw: 0.08 }, nm: 1.35,
   house(c, x, y, s, r, fx) {
     const g = pick(r, ['#6fa84c', '#7db556', '#62a050']), rx = s * (0.65 + r() * 0.15), h = s * 0.7;
     dome(c, x, y, rx, h, g, rx * 0.22);
-    for (let i = 0; i < 5; i++) { const a = r() * 3 + 0.1, rr = r() * 0.6; const fxp = x + Math.cos(a) * rx * rr * 0.9 - rx * 0.1, fyp = y - Math.sin(a) * h * rr * 0.9 - h * 0.1; ell(c, fxp, fyp, s * 0.025, s * 0.025, pick(r, ['#f4d34a', '#f08090', '#ffffff']), false); }
+    for (let i = 0; i < 2; i++) { const a = r() * 3 + 0.1, rr = r() * 0.6; const fxp = x + Math.cos(a) * rx * rr * 0.9 - rx * 0.1, fyp = y - Math.sin(a) * h * rr * 0.9 - h * 0.1; ell(c, fxp, fyp, s * 0.025, s * 0.025, pick(r, ['#f4d34a', '#f08090', '#ffffff']), false); }
     const dc = pick(r, ['#c4402a', '#d8a82a', '#3a7a4a', '#3a5aa8']);
     ell(c, x, y - rx * 0.28, rx * 0.3, rx * 0.34, '#d9d0a8'); ell(c, x, y - rx * 0.28, rx * 0.22, rx * 0.26, dc);
     ell(c, x + rx * 0.08, y - rx * 0.28, s * 0.018, s * 0.018, '#ffd24a', false);
@@ -343,11 +344,11 @@ R.halfling = {
     line(c, x - rx * 1.0, y + s * 0.05, x - rx * 0.88, y + s * 0.05, '#8b6a50', LW);
   },
   prop(c, x, y, s, r) {
-    if (r() < 0.5) tree(c, x, y, s * 0.8, '#5f9a46', r);
+    if (r() < 0.3) tree(c, x, y, s * 0.8, '#5f9a46', r);
     else { for (let i = -1; i <= 1; i++) line(c, x - s * 0.3, y + i * s * 0.1, x + s * 0.3, y + i * s * 0.1, '#6b4a2a', LW * 2, 0.9); for (let i = -2; i <= 2; i++) ell(c, x + i * s * 0.12, y - s * 0.05, s * 0.04, s * 0.05, '#4f9a3a', false); }
   },
   land(c, x, y, s, r, lvl, fx) {
-    // windmill + great hill
+    s *= lvl >= 4 ? 1.3 : lvl >= 3 ? 1.15 : 1;
     const mx = x + s * 0.7;
     dome(c, x - s * 0.6, y, s * 1.2, s * 1.0, '#6fa84c', s * 0.25);
     ell(c, x - s * 0.6, y - s * 0.38, s * 0.3, s * 0.34, '#d9d0a8'); ell(c, x - s * 0.6, y - s * 0.38, s * 0.23, s * 0.27, '#c4402a');
@@ -365,7 +366,7 @@ R.halfling = {
 // GNOME
 R.gnome = {
   lsk: 0.8,
-  ground: ['#a0a678', '#8a9068'], wall: { kind: 'stone', col: '#a08a6a', hw: 0.06, cren: 'sq' },
+  ground: ['#a0a678', '#8a9068'], wall: { kind: 'stone', col: '#a08a6a', hw: 0.06, cren: 'sq' }, pn: 3,
   house(c, x, y, s, r, fx) {
     const col = pick(r, ['#c4784a', '#4a9a98', '#b89048', '#8a6ab0']), rx = s * (0.55 + r() * 0.12), h = s * (0.5 + r() * 0.2);
     cyl(c, x, y, rx * 0.95, s * 0.2, wt('#d8cba8'), rx * 0.3, false);
@@ -374,7 +375,7 @@ R.gnome = {
     for (let i = -2; i <= 2; i++) ell(c, x + i * rx * 0.35, y - s * 0.2 - rx * 0.26 + Math.abs(i) * s * 0.012, s * 0.014, s * 0.014, lit(col, 0.5), false);
     ell(c, x - rx * 0.1, y - s * 0.5, s * 0.13, s * 0.13, '#f2c35e'); ell(c, x - rx * 0.1, y - s * 0.5, s * 0.13, s * 0.13, null, true);
     ell(c, x + rx * 0.45, y - s * 0.12, s * 0.07, s * 0.1, '#4a2f20');
-    if (r() < 0.6) gear(c, x + rx * 0.2, y - s * 0.2 - h - s * 0.05, s * 0.12, '#c8a24a', 7);
+    if (r() < 0.25) gear(c, x + rx * 0.2, y - s * 0.2 - h - s * 0.05, s * 0.12, '#c8a24a', 7);
     else { const px = x - rx * 0.35, py = y - s * 0.2 - h * 0.85; cyl(c, px, py, s * 0.07, s * 0.3, '#8a6a40', s * 0.025); smokeAt(fx, px, py - s * 0.32, s * 0.45); }
   },
   prop(c, x, y, s, r) {
@@ -384,12 +385,10 @@ R.gnome = {
   land(c, x, y, s, r, lvl, fx) {
     const tw = s * 0.55, th = s * 1.9;
     cyl(c, x, y, tw, th, '#c0a470'); for (let i = 1; i < 5; i++) line(c, x - tw, y - th * i / 5, x + tw, y - th * i / 5, INK, LW * 0.5, 0.3);
-    ell(c, x, y - th * 0.7, s * 0.3, s * 0.3, '#f2ecd8'); line(c, x, y - th * 0.7, x, y - th * 0.7 - s * 0.2, INK, LW * 1.4); line(c, x, y - th * 0.7, x + s * 0.14, y - th * 0.7, INK, LW * 1.4);
+    ell(c, x, y - th * 0.7, s * 0.3, s * 0.3, '#c6c2e6'); line(c, x, y - th * 0.7, x, y - th * 0.7 - s * 0.2, INK, LW * 1.4); line(c, x, y - th * 0.7, x + s * 0.14, y - th * 0.7, INK, LW * 1.4);
     gear(c, x - tw - s * 0.05, y - th * 0.4, s * 0.3, '#c8a24a', 9); gear(c, x + tw + s * 0.02, y - th * 0.25, s * 0.2, '#a87a3a', 7);
     cone(c, x, y - th, tw * 1.15, s * 0.6, '#4a9a98');
-    ell(c, x + s * 0.5, y - th - s * 1.0, s * 0.55, s * 0.65, '#d8503a'); for (const dx of [-0.2, 0.2]) line(c, x + s * 0.5 + dx * s * 0.6, y - th - s * 1.0 - s * 0.6, x + s * 0.5 + dx * s * 0.4, y - th - s * 0.4, '#f2c35e', LW * 1.6, 0.8);
-    ell(c, x + s * 0.5, y - th - s * 1.0, s * 0.15, s * 0.64, '#f2c35e', false); ell(c, x + s * 0.5, y - th - s * 1.0, s * 0.55, s * 0.65, null, true);
-    line(c, x + s * 0.5, y - th - s * 0.35, x + s * 0.1, y - th + s * 0.1, INK, LW * 0.7, 0.7);
+    { const bx = x + s * 1.25, by = y - th - s * 0.45; line(c, bx, by + s * 0.22, x + tw * 0.9, y - th + s * 0.1, INK, LW * 0.7, 0.7); ell(c, bx, by, s * 0.36, s * 0.28, '#d8503a'); ell(c, bx, by, s * 0.1, s * 0.28, '#f2c35e', false); ell(c, bx, by, s * 0.36, s * 0.28, null, true); }
     cyl(c, x + tw + s * 0.5, y, s * 0.15, s * 0.9, '#8a6a40', s * 0.05); smokeAt(fx, x + tw + s * 0.5, y - s * 0.95, s * 0.7);
   },
 };
@@ -407,7 +406,7 @@ const stepPyr = (c, x, y, w, tiers, th, d, col, o = {}) => {
 };
 R.dragonborn = {
   lsk: 0.8,
-  ground: ['#d4b87a', '#bf9f62'], wall: { kind: 'stone', col: '#cdb07a', hw: 0.09, cren: 'step' },
+  ground: ['#d4b87a', '#bf9f62'], wall: { kind: 'stone', col: '#cdb07a', hw: 0.09, cren: 'step', tw: 1.5 }, nm: 1.15,
   house(c, x, y, s, r, fx) {
     const col = wt(pick(r, ['#d8b878', '#cfa86a', '#dcc08a'])), w = s * (0.9 + r() * 0.2), t = 2 + (r() < 0.4 ? 1 : 0);
     stepPyr(c, x, y, w, t, s * 0.28, s * 0.45, col, { alt: '#bf7a4a' });
@@ -420,15 +419,15 @@ R.dragonborn = {
     else rock(c, x, y, s * 0.7, '#b89a6a');
   },
   land(c, x, y, s, r, lvl, fx) {
-    const t = 5, th = s * 0.42;
-    stepPyr(c, x, y, s * 2.2, t, th, s * 1.0, '#d8b878', { alt: '#c4552a', cren: false });
+    const t = lvl >= 4 ? 7 : 5, th = s * (lvl >= 4 ? 0.36 : 0.42);
+    stepPyr(c, x, y, s * (lvl >= 4 ? 2.7 : 2.2), t, th, s * (lvl >= 4 ? 1.2 : 1.0), '#d8b878', { alt: '#c4552a', cren: false });
     // dragon-head totem + brazier
     const ty = y - th * t;
     poly(c, [[x - s * 0.22, ty], [x - s * 0.2, ty - s * 0.4], [x + s * 0.0, ty - s * 0.55], [x + s * 0.28, ty - s * 0.42], [x + s * 0.18, ty - s * 0.3], [x + s * 0.2, ty]], '#a8452a');
     ell(c, x - s * 0.02, ty - s * 0.4, s * 0.03, s * 0.025, '#ffd24a', false);
     poly(c, [[x - s * 0.1, ty - s * 0.5], [x - s * 0.3, ty - s * 0.8], [x - s * 0.02, ty - s * 0.58]], '#e8dcc0'); poly(c, [[x + s * 0.1, ty - s * 0.5], [x + s * 0.3, ty - s * 0.8], [x + s * 0.0, ty - s * 0.58]], '#cfc4a8');
-    for (const dx of [-0.95, 0.95]) { const px = x + dx * s, py = y - th * 2.2; ell(c, px, py, s * 0.08, s * 0.04, '#4a3a2a'); flame(c, px, py - s * 0.02, s * 0.22); }
-    banner(c, x - s * 0.9, y + s * 0.0, s * 0.85, '#b02a2a'); banner(c, x + s * 0.9, y + s * 0.0, s * 0.85, '#c8a22a');
+    for (const dx of [-0.95, 0.95]) { const px = x + dx * s * (lvl >= 4 ? 1.2 : 1), py = y - th * 2.2; ell(c, px, py, s * 0.08, s * 0.04, '#4a3a2a'); flame(c, px, py - s * 0.02, s * 0.22); }
+    const bh = lvl >= 4 ? 1.5 : 0.85; banner(c, x - s * 1.1, y + s * 0.0, s * bh, '#b02a2a'); banner(c, x + s * 1.1, y + s * 0.0, s * bh, '#c8a22a');
     smokeAt(fx, x, ty - s * 0.85, s * 0.6);
   },
 };
@@ -436,7 +435,7 @@ R.dragonborn = {
 // LIZARDFOLK
 R.lizard = {
   lsk: 0.9,
-  ground: ['#6b8556', '#58704a'], wall: { kind: 'pal', col: '#7d7a4a', hw: 0.1, round: true },
+  ground: ['#cdbd90', '#b0a074'], wall: { kind: 'pal', col: '#7d7a4a', hw: 0.1, round: true },
   house(c, x, y, s, r, fx) {
     const wood = '#6b5338', th = s * 0.45, rx = s * 0.5, thatch = pick(r, ['#9a8a4a', '#8a7a3e', '#a08f50']);
     for (const dx of [-0.8, -0.3, 0.3, 0.8]) line(c, x + dx * rx, y, x + dx * rx, y - th, wood, LW * 2, 1);
@@ -444,7 +443,7 @@ R.lizard = {
     poly(c, [[x - rx * 1.05, y - th], [x + rx * 1.05, y - th], [x + rx * 1.15, y - th - s * 0.08], [x - rx * 0.95, y - th - s * 0.08]], '#8a6a44');
     for (let i = 1; i < 5; i++) line(c, x - rx * 1.0 + i * rx * 0.4, y - th, x - rx * 1.0 + i * rx * 0.4, y - th - s * 0.08, INK, LW * 0.5, 0.5);
     cyl(c, x, y - th - s * 0.08, rx * 0.72, s * 0.3, '#a08a5a', rx * 0.2, false);
-    cone(c, x, y - th - s * 0.38, rx * 0.95, s * 0.55, thatch, rx * 0.25);
+    { const w0 = LW; LW = w0 * 1.7; cone(c, x, y - th - s * 0.38, rx * 0.95, s * 0.55, thatch, rx * 0.25); LW = w0; }
     for (const a of [-0.6, -0.2, 0.25, 0.6]) line(c, x, y - th - s * 0.93, x + a * rx * 0.9, y - th - s * 0.38 + rx * 0.2, INK, LW * 0.5, 0.35);
     poly(c, [[x - s * 0.08, y - th - s * 0.08], [x - s * 0.08, y - th - s * 0.3], [x + s * 0.08, y - th - s * 0.3], [x + s * 0.08, y - th - s * 0.08]], '#2a1c14');
     line(c, x - rx * 1.0, y, x - rx * 0.75, y - th, '#8a6a44', LW * 1.2);
@@ -452,14 +451,14 @@ R.lizard = {
   },
   prop(c, x, y, s, r) {
     if (r() < 0.55) { for (let i = -2; i <= 2; i++) { line(c, x + i * s * 0.07, y, x + i * s * 0.1 + i * s * 0.02, y - s * (0.45 + r() * 0.2), '#6a8a3e', LW * 1.6); } ell(c, x, y - s * 0.55, s * 0.04, s * 0.09, '#6a4a2a', false); }
-    else { ell(c, x, y, s * 0.55, s * 0.2, '#4a8a8a'); ell(c, x - s * 0.1, y - s * 0.02, s * 0.2, s * 0.06, '#7ab0a8', false); }
+    else { ell(c, x, y, s * 0.55, s * 0.2, '#9cc4ba'); ell(c, x - s * 0.1, y - s * 0.02, s * 0.2, s * 0.06, '#c8e0d8', false); }
   },
   land(c, x, y, s, r, lvl, fx) {
     const wood = '#6b5338', th = s * 0.6, rx = s * 0.95;
     for (const dx of [-0.85, -0.4, 0.4, 0.85]) line(c, x + dx * rx, y, x + dx * rx, y - th, wood, LW * 2.6, 1);
     poly(c, [[x - rx * 1.1, y - th], [x + rx * 1.1, y - th], [x + rx * 1.25, y - th - s * 0.12], [x - rx * 0.95, y - th - s * 0.12]], '#8a6a44');
     cyl(c, x, y - th - s * 0.12, rx * 0.8, s * 0.45, '#a08a5a', rx * 0.22, false);
-    cone(c, x, y - th - s * 0.57, rx * 1.05, s * 0.95, '#8a7a3e', rx * 0.28);
+    { const w0 = LW; LW = w0 * 1.7; cone(c, x, y - th - s * 0.57, rx * 1.05, s * 0.95, '#8a7a3e', rx * 0.28); LW = w0; }
     for (const a of [-0.7, -0.3, 0.15, 0.55]) line(c, x, y - th - s * 1.52, x + a * rx, y - th - s * 0.57 + rx * 0.22, INK, LW * 0.5, 0.35);
     poly(c, [[x - s * 0.1, y - th - s * 0.12], [x - s * 0.1, y - th - s * 0.42], [x + s * 0.1, y - th - s * 0.42], [x + s * 0.1, y - th - s * 0.12]], '#2a1c14');
     for (const sx of [x - rx * 1.45, x + rx * 1.5]) { line(c, sx, y + s * 0.05, sx, y - s * 1.2, '#4a3a2a', LW * 2.6); ell(c, sx, y - s * 1.28, s * 0.13, s * 0.11, '#e8e2cf'); for (const dy of [0.3, 0.6, 0.9]) line(c, sx - s * 0.1, y - s * dy, sx + s * 0.1, y - s * dy, '#7a3a2a', LW * 1.6); }
@@ -475,32 +474,30 @@ const spireTower = (c, x, y, w, h, col, capH) => {
   poly(c, [[x - w, y], [x - w * 0.55, y - h], [x + w * 0.55, y - h], [x + w, y]], cg(c, x - w, x + w, col, 0.25, 0.5));
   c.beginPath(); c.moveTo(x - w * 0.85, y - h); c.quadraticCurveTo(x - w * 0.4, y - h - capH * 0.35, x, y - h - capH); c.quadraticCurveTo(x + w * 0.4, y - h - capH * 0.35, x + w * 0.85, y - h); c.closePath();
   c.fillStyle = cg(c, x - w, x + w, dk(col, 0.1), 0.35, 0.5); c.fill(); stroke(c);
-  for (let i = 0; i < Math.max(1, Math.floor(h / (w * 1.1))); i++) { const wy = y - h * 0.25 - i * w * 1.1; if (wy < y - h * 0.9) break; poly(c, [[x - w * 0.12, wy], [x - w * 0.12, wy - w * 0.35], [x, wy - w * 0.55], [x + w * 0.12, wy - w * 0.35], [x + w * 0.12, wy]], glow, false); }
+  for (let i = 0; i < Math.max(1, Math.floor(h / (w * 1.1))); i++) { const wy = y - h * 0.25 - i * w * 1.1; if (wy < y - h * 0.9) break; ell(c, x, wy - w * 0.3, w * 0.07, w * 0.11, glow, false); }
 };
 R.drow = {
   lsk: 0.72,
-  ground: ['#5a5470', '#453f5a'], wall: { kind: 'stone', col: '#3e3856', hw: 0.1, cren: 'spike' },
+  ground: ['#7a74a0', '#625c86'], wall: { kind: 'stone', col: '#4a4468', hw: 0.12, cren: 'spike' }, sp: 1.15,
   house(c, x, y, s, r, fx) {
     ell(c, x, y, s * 0.7, s * 0.14, 'rgba(10,0,30,.4)', false);
     const n = r() < 0.5 ? 2 : 3, hs = [1.0, 1.7, 1.3].slice(0, n);
     const order = n === 2 ? [[-0.2, 1], [0.25, 0]] : [[-0.32, 2], [0.32, 2], [0, 1]];
-    order.forEach(([dx, hi], i) => spireTower(c, x + dx * s, y + (i === n - 1 ? s * 0.05 : 0), s * (0.2 + (hi === 1 ? 0.04 : 0)), s * hs[hi] * (0.9 + r() * 0.25), pick(r, [obs, '#463a60', '#352f4a']), s * 0.7));
-    ell(c, x + s * 0.5, y - s * 0.05, s * 0.08, s * 0.06, 'rgba(180,90,255,.35)', false);
+    order.forEach(([dx, hi], i) => spireTower(c, x + dx * s, y + (i === n - 1 ? s * 0.05 : 0), s * (0.2 + (hi === 1 ? 0.04 : 0)), s * hs[hi] * (0.75 + r() * 0.2), pick(r, [obs, '#463a60', '#352f4a']), s * 0.7));
   },
   prop(c, x, y, s, r) {
     if (r() < 0.5) { poly(c, [[x - s * 0.15, y], [x - s * 0.02, y - s * 0.8], [x + s * 0.15, y]], '#6a6488'); poly(c, [[x + s * 0.14, y], [x + s * 0.25, y - s * 0.45], [x + s * 0.38, y]], '#4f4a6c'); }
-    else { line(c, x, y, x, y - s * 0.25, '#c8b8e0', LW * 2); ell(c, x, y - s * 0.3, s * 0.2, s * 0.14, '#9a5ae0'); ell(c, x - s * 0.06, y - s * 0.34, s * 0.04, s * 0.03, '#e8c8ff', false); ell(c, x, y - s * 0.2, s * 0.35, s * 0.35, 'rgba(180,90,255,.18)', false); }
+    else { line(c, x, y, x, y - s * 0.25, '#c8b8e0', LW * 2); ell(c, x, y - s * 0.3, s * 0.2, s * 0.14, '#9a5ae0'); ell(c, x - s * 0.06, y - s * 0.34, s * 0.04, s * 0.03, '#e8c8ff', false); }
   },
   land(c, x, y, s, r, lvl, fx) {
     box(c, x - s * 1.0, y, s * 2.0, s * 0.7, s * 0.7, '#3a3350', { top: true, bricks: true });
     spireTower(c, x - s * 0.9, y - s * 0.1, s * 0.28, s * 1.5, '#352f4a', s * 0.9); spireTower(c, x + s * 1.05, y - s * 0.4, s * 0.26, s * 1.4, '#352f4a', s * 0.8);
     spireTower(c, x - s * 0.4, y - s * 0.7, s * 0.3, s * 1.8, '#463a60', s * 1.0); spireTower(c, x + s * 0.55, y - s * 0.7, s * 0.3, s * 1.6, '#463a60', s * 0.9);
-    spireTower(c, x, y - s * 0.3, s * 0.4, s * 2.4, '#2f2a44', s * 1.5);
+    spireTower(c, x, y - s * 0.3, s * (lvl >= 4 ? 0.5 : 0.4), s * (lvl >= 4 ? 3.3 : 2.4), '#2f2a44', s * (lvl >= 4 ? 1.9 : 1.5));
     // spider sigil
-    const sy = y - s * 1.2; ell(c, x, sy, s * 0.07, s * 0.1, glow, false); ell(c, x, sy - s * 0.1, s * 0.04, s * 0.04, glow, false);
+    const sy = y - s * (lvl >= 4 ? 1.6 : 1.2); ell(c, x, sy, s * 0.07, s * 0.1, glow, false); ell(c, x, sy - s * 0.1, s * 0.04, s * 0.04, glow, false);
     for (let i = 0; i < 4; i++) { const k = (i - 1.5) * 0.12; line(c, x - s * 0.04, sy + k * s, x - s * 0.22, sy + k * s * 2.4 - s * 0.05, glow, LW * 0.9); line(c, x + s * 0.04, sy + k * s, x + s * 0.22, sy + k * s * 2.4 - s * 0.05, glow, LW * 0.9); }
     poly(c, [[x - s * 0.15, y + s * 0.0], [x - s * 0.15, y - s * 0.3], [x, y - s * 0.5], [x + s * 0.15, y - s * 0.3], [x + s * 0.15, y]], '#14102a');
-    ell(c, x, y - s * 1.2, s * 0.5, s * 0.5, 'rgba(180,90,255,.12)', false);
   },
   glowFx: true,
 };
@@ -511,36 +508,36 @@ const shellDome = (c, x, y, rx, h, col) => {
   for (let i = 1; i < 6; i++) { const a = Math.PI * (i / 6); c.beginPath(); c.moveTo(x, y - h * 0.95); c.quadraticCurveTo(x - Math.cos(a) * rx * 0.8, y - h * 0.5, x - Math.cos(a) * rx * 0.98, y); c.strokeStyle = dk(col, 0.4); c.globalAlpha = 0.5; c.lineWidth = LW * 0.6; c.stroke(); c.globalAlpha = 1; }
 };
 R.merfolk = {
-  ground: ['#e3d3a0', '#cdbb88'], wall: { kind: 'blob', col: '#e0707a', hw: 0.08 }, water: true,
+  ground: ['#e3d3a0', '#cdbb88'], wall: { kind: 'stone', col: '#e2d6bc', hw: 0.06, cren: 'sq', cap: '#6aa8a6' }, water: true, hamPlus: 2,
   house(c, x, y, s, r, fx) {
-    const col = pick(r, ['#e8a0b0', '#7acbd0', '#f0c0a0', '#a0a8e0']), rx = s * (0.5 + r() * 0.15), h = s * (0.55 + r() * 0.2);
-    shellDome(c, x, y, rx, h, col);
+    const col = pick(r, ['#7fb5b2', '#dccfa8', '#d9907e', '#7fb5b2']), rx = s * (0.5 + r() * 0.15), h = s * (0.55 + r() * 0.2);
+    { const w0 = LW; LW = w0 * 1.7; shellDome(c, x, y, rx, h, col); LW = w0; }
     ell(c, x, y - h - s * 0.02, s * 0.06, s * 0.06, '#fff8f0'); ell(c, x - s * 0.02, y - h - s * 0.04, s * 0.02, s * 0.02, '#fff', false);
     ell(c, x + rx * 0.1, y - s * 0.2, s * 0.1, s * 0.13, '#2a4a66'); ell(c, x + rx * 0.1, y - s * 0.2, s * 0.06, s * 0.09, '#7ae0e8', false);
-    if (r() < 0.6) { const kx = x + rx * 1.1; for (const [dx, dy] of [[0, 0.35], [-0.08, 0.28], [0.1, 0.3]]) line(c, kx, y, kx + dx * s, y - dy * s, '#e0706a', LW * 2.2); }
+    if (r() < 0.6) { const kx = x + rx * 1.1; for (const [dx, dy] of [[0, 0.35], [-0.08, 0.28], [0.1, 0.3]]) line(c, kx, y, kx + dx * s, y - dy * s, '#d9907e', LW * 2.2); }
   },
   prop(c, x, y, s, r) {
-    if (r() < 0.6) { for (const [dx, dy] of [[0, 0.5], [-0.12, 0.38], [0.12, 0.42], [0.2, 0.28]]) { line(c, x, y, x + dx * s, y - dy * s, pick(r, ['#e0706a', '#f0907a', '#c860a0']), LW * 2.4); ell(c, x + dx * s, y - dy * s, s * 0.035, s * 0.035, '#f8d0c0', false); } }
+    if (r() < 0.6) { for (const [dx, dy] of [[0, 0.5], [-0.12, 0.38], [0.12, 0.42], [0.2, 0.28]]) { line(c, x, y, x + dx * s, y - dy * s, pick(r, ['#d9907e', '#c4806a', '#d8a890']), LW * 2.4); ell(c, x + dx * s, y - dy * s, s * 0.035, s * 0.035, '#f8d0c0', false); } }
     else { poly(c, [[x - s * 0.2, y], [x - s * 0.25, y - s * 0.2], [x, y - s * 0.3], [x + s * 0.25, y - s * 0.2], [x + s * 0.2, y]], '#f0d0c0'); for (let i = -1; i <= 1; i++) line(c, x, y - s * 0.28, x + i * s * 0.12, y, '#c8a090', LW * 0.6, 0.7); }
   },
   land(c, x, y, s, r, lvl, fx) {
-    for (const [dx, hh, col] of [[-1.1, 1.3, '#a0a8e0'], [1.1, 1.1, '#e8a0b0']]) { cone(c, x + dx * s, y, s * 0.3, s * hh, col, s * 0.1); for (let i = 1; i < 5; i++) line(c, x + dx * s - s * 0.3 * (1 - i / 5), y - s * hh * (i / 5), x + dx * s + s * 0.3 * (1 - i / 5), y - s * hh * (i / 5) + s * 0.04, dk(col, 0.4), LW * 0.6, 0.6); ell(c, x + dx * s, y - s * hh - s * 0.03, s * 0.06, s * 0.06, '#fff8f0'); }
-    // great scallop palace
-    c.beginPath(); c.moveTo(x - s * 1.0, y); c.quadraticCurveTo(x - s * 1.2, y - s * 1.4, x, y - s * 1.7); c.quadraticCurveTo(x + s * 1.2, y - s * 1.4, x + s * 1.0, y); c.closePath(); c.fillStyle = cg(c, x - s, x + s, '#f0b8c0', 0.35, 0.4); c.fill(); stroke(c);
-    for (let i = 1; i < 7; i++) { const t = i / 7, ex = x - s * 1.0 + s * 2.0 * t; c.beginPath(); c.moveTo(x, y - s * 1.6); c.quadraticCurveTo((x + ex) / 2 + (t - 0.5) * s * 0.3, y - s * 0.8, ex, y); c.strokeStyle = dk('#f0b8c0', 0.4); c.globalAlpha = 0.55; c.lineWidth = LW * 0.7; c.stroke(); c.globalAlpha = 1; }
+    for (const [dx, hh, col] of [[-1.1, 1.3, '#7fb5b2'], [1.1, 1.1, '#d9907e']]) { cone(c, x + dx * s, y, s * 0.3, s * hh, col, s * 0.1); for (let i = 1; i < 5; i++) line(c, x + dx * s - s * 0.3 * (1 - i / 5), y - s * hh * (i / 5), x + dx * s + s * 0.3 * (1 - i / 5), y - s * hh * (i / 5) + s * 0.04, dk(col, 0.4), LW * 0.6, 0.6); ell(c, x + dx * s, y - s * hh - s * 0.03, s * 0.06, s * 0.06, '#fff8f0'); }
+    LW *= 1.5;
+    c.beginPath(); c.moveTo(x - s * 1.0, y); c.quadraticCurveTo(x - s * 1.2, y - s * 1.4, x, y - s * 1.7); c.quadraticCurveTo(x + s * 1.2, y - s * 1.4, x + s * 1.0, y); c.closePath(); c.fillStyle = cg(c, x - s, x + s, '#a9d0c8', 0.35, 0.4); c.fill(); stroke(c);
+    for (let i = 1; i < 7; i++) { const t = i / 7, ex = x - s * 1.0 + s * 2.0 * t; c.beginPath(); c.moveTo(x, y - s * 1.6); c.quadraticCurveTo((x + ex) / 2 + (t - 0.5) * s * 0.3, y - s * 0.8, ex, y); c.strokeStyle = dk('#a9d0c8', 0.4); c.globalAlpha = 0.55; c.lineWidth = LW * 0.7; c.stroke(); c.globalAlpha = 1; }
     c.beginPath(); c.moveTo(x - s * 0.25, y); c.lineTo(x - s * 0.25, y - s * 0.4); c.arc(x, y - s * 0.4, s * 0.25, Math.PI, 0); c.lineTo(x + s * 0.25, y); c.closePath(); c.fillStyle = '#2a4a66'; c.fill(); stroke(c);
     ell(c, x, y - s * 1.82, s * 0.14, s * 0.14, '#fff8f0'); ell(c, x - s * 0.04, y - s * 1.86, s * 0.045, s * 0.045, '#fff', false);
-    ell(c, x, y - s * 0.55, s * 0.12, s * 0.15, '#7ae0e8', false);
+    ell(c, x, y - s * 0.55, s * 0.12, s * 0.15, '#7ae0e8', false); LW /= 1.5;
   },
 };
 
 // ---------- builder ----------
 const LV = [
-  { k: 'Hamlet', n: 3, s: 0.2, asp: 1.1, rx: 0.34, ry: 0.19, ls: 0 },
-  { k: 'Village', n: 6, s: 0.17, asp: 1.2, rx: 0.38, ry: 0.23, ls: 1.45 },
-  { k: 'Town', n: 12, s: 0.14, asp: 1.3, rx: 0.41, ry: 0.27, ls: 1.65 },
-  { k: 'City', n: 20, s: 0.115, asp: 1.4, rx: 0.44, ry: 0.3, ls: 1.9 },
-  { k: 'Capital', n: 28, s: 0.1, asp: 1.5, rx: 0.46, ry: 0.31, ls: 2.4 },
+  { k: 'Hamlet', n: 4, kk: 0.54, s: 0.2, asp: 1.1, rx: 0.34, ry: 0.19, ls: 0 },
+  { k: 'Village', n: 7, kk: 0.66, s: 0.17, asp: 1.2, rx: 0.38, ry: 0.23, ls: 1.45 },
+  { k: 'Town', n: 12, kk: 0.78, s: 0.14, asp: 1.3, rx: 0.41, ry: 0.27, ls: 1.65 },
+  { k: 'City', n: 26, kk: 0.87, s: 0.11, asp: 1.4, rx: 0.44, ry: 0.3, ls: 1.9 },
+  { k: 'Capital', n: 36, kk: 0.93, s: 0.095, asp: 1.5, rx: 0.46, ry: 0.31, ls: 2.4 },
 ];
 
 function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
@@ -571,13 +568,17 @@ function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
       const hh = hw * (0.85 + ((i * 37) % 5) * 0.06);
       if (o.round) { c.beginPath(); c.moveTo(pm[0] - sw, pm[1]); c.lineTo(pm[0] - sw, pm[1] - hh); c.arc(pm[0], pm[1] - hh, sw, Math.PI, 0); c.lineTo(pm[0] + sw, pm[1]); c.closePath(); c.fillStyle = col; c.fill(); stroke(c); }
       else poly(c, [[pm[0] - sw, pm[1]], [pm[0] - sw, pm[1] - hh], [pm[0], pm[1] - hh - sw * 1.9], [pm[0] + sw, pm[1] - hh], [pm[0] + sw, pm[1]]], col);
-      if (lvl >= 3 && !o.round && i % 12 === 5) { ell(c, pm[0], pm[1] - hh - sw * 2.4, sw * 0.9, sw * 0.8, '#e8e2cf'); }
+      if (!o.round) line(c, pm[0] - sw * 0.45, pm[1] - 0.002, pm[0] - sw * 0.45, pm[1] - hh, '#d8b878', LW * 0.9, l > -0.3 ? 0.75 : 0.35);
+      if (lvl >= 3 && !o.round && i % 24 === 5) { ell(c, pm[0], pm[1] - hh - sw * 2.4, sw * 0.9, sw * 0.8, '#e8e2cf'); }
+    } else if (o.kind === 'trunk') {
+      if (i % 3 === 2) continue;
+      const cc = ['#4f9a70', '#68b078', '#3f8f78'][i % 3], th2 = hw * (1.2 + ((i * 31) % 4) * 0.12);
+      line(c, pm[0], pm[1], pm[0], pm[1] - th2, '#4a3322', LW * 4.2); line(c, pm[0], pm[1], pm[0], pm[1] - th2, '#a08560', LW * 2.4);
+      ell(c, pm[0], pm[1] - th2, hw * 0.34, hw * 0.28, mix(cc, '#143a2a', l < 0 ? 0.2 : 0)); ell(c, pm[0] - hw * 0.1, pm[1] - th2 - hw * 0.08, hw * 0.14, hw * 0.1, lit(cc, 0.4), false);
+    } else if (o.kind === 'fence') {
+      line(c, p0[0], p0[1] - hw * 0.7, p1[0], p1[1] - hw * 0.7, '#6b4a2a', LW * 1.6); line(c, p0[0], p0[1] - hw * 0.3, p1[0], p1[1] - hw * 0.3, '#6b4a2a', LW * 1.6);
+      line(c, p0[0], p0[1], p0[0], p0[1] - hw, '#b08a58', LW * 2.6);
     } else {
-      if (race.water) {
-        const cc = ['#e0706a', '#f0907a', '#c860a0'][i % 3];
-        for (const [dx, dy] of [[-0.012, 0.7], [0.0, 1.0], [0.014, 0.6]]) { line(c, pm[0], pm[1], pm[0] + dx * 1.5, pm[1] - hw * dy, cc, LW * 2.4); ell(c, pm[0] + dx * 1.5, pm[1] - hw * dy, LW * 2, LW * 2, lit(cc, 0.5), false); }
-        continue;
-      }
       const rr = hw * (0.5 + ((i * 53) % 4) * 0.08), col = mix(o.col, i % 2 ? '#e0a050' : '#143a2a', 0.1 + (i % 4) * 0.06);
       ell(c, pm[0], pm[1] - rr * 0.5, rr, rr * 0.85, mix(col, '#143a2a', l < 0 ? 0.2 : 0));
       ell(c, pm[0] - rr * 0.3, pm[1] - rr * 0.8, rr * 0.4, rr * 0.3, lit(col, 0.4), false);
@@ -586,20 +587,20 @@ function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
   }
   // towers
   const nt = lvl === 4 ? 6 : lvl === 3 ? 4 : lvl === 2 ? 2 : 0;
-  if (o.kind === 'blob') return;
+  if (o.kind === 'blob' || o.kind === 'trunk' || o.kind === 'fence') return;
   const angs = [];
   for (let i = 0; i < nt; i++) angs.push(((i + 0.5) / nt) * Math.PI * 2);
   if (lvl >= 2) angs.push(Math.PI / 2 - gap, Math.PI / 2 + gap);
   for (const t of angs) {
     const isBack = Math.sin(t) < 0; if (isBack !== back) continue;
-    const px = cx + rx * Math.cos(t), py = cy + ry * Math.sin(t), tw = hw * 0.42, th = hw * 1.5;
+    const px = cx + rx * Math.cos(t), py = cy + ry * Math.sin(t), tw = hw * 0.42 * (o.tw || 1), th = hw * 1.5;
     if (o.kind === 'stone') {
       cyl(c, px, py, tw, th, o.col, tw * 0.35);
-      if (o.cren === 'spike') cone(c, px, py - th, tw * 1.2, hw * 1.3, dk(o.col, 0.2), tw * 0.4); else cone(c, px, py - th, tw * 1.25, hw * 0.9, o.cren === 'step' ? '#c4552a' : '#a3392f', tw * 0.4);
+      if (o.cren === 'spike') cone(c, px, py - th, tw * 1.2, hw * 1.3, dk(o.col, 0.2), tw * 0.4); else cone(c, px, py - th, tw * 1.25, hw * 0.9, o.cap || (o.cren === 'step' ? '#c4552a' : '#a3392f'), tw * 0.4);
     } else {
       for (const dx of [-0.8, 0.8]) line(c, px + dx * tw, py, px + dx * tw, py - th, '#4a3322', LW * 2.2);
       poly(c, [[px - tw * 1.2, py - th], [px + tw * 1.2, py - th], [px + tw * 1.3, py - th - hw * 0.4], [px - tw * 1.3, py - th - hw * 0.4]], '#6a4a2a');
-      poly(c, [[px - tw * 1.45, py - th - hw * 0.4], [px, py - th - hw * 0.95], [px + tw * 1.45, py - th - hw * 0.4]], o.round ? '#9a8a4a' : '#8a3a2a');
+      poly(c, [[px - tw * 1.45, py - th - hw * 0.4], [px, py - th - hw * 0.95], [px + tw * 1.45, py - th - hw * 0.4]], o.round ? '#9a8a4a' : '#7a4a2a');
     }
   }
 }
@@ -610,7 +611,7 @@ function makeRender(raceKey, li, id) {
     ctx.save();
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
     ctx.scale(size, size);
-    ctx.translate(L.asp * 0.05, 0.11); ctx.scale(0.9, 0.9);
+    ctx.translate(L.asp / 2, 0.985); ctx.scale(L.kk, L.kk); ctx.translate(-L.asp / 2, -1.05);
     INK = color; FILL = fill; LW = Math.max(0.009, 1.1 / size);
     const r = rng(hashStr(id));
     const W = L.asp, cx = W / 2, cy = 0.66, rx = L.rx * W, ry = L.ry, fx = [];
@@ -623,13 +624,13 @@ function makeRender(raceKey, li, id) {
     }
     // ground shadow + ground
     ctx.save(); ctx.translate(cx + 0.012, cy + 0.03); ctx.scale(1, gy / gx);
-    let g = ctx.createRadialGradient(0, 0, gx * 0.4, 0, 0, gx); g.addColorStop(0, 'rgba(20,14,8,.28)'); g.addColorStop(1, 'rgba(20,14,8,0)');
+    let g = ctx.createRadialGradient(0, 0, gx * 0.4, 0, 0, gx); g.addColorStop(0, 'rgba(80,66,50,.17)'); g.addColorStop(1, 'rgba(80,66,50,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, gx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     ctx.save(); ctx.translate(cx, cy); ctx.scale(1, gy / gx);
     g = ctx.createRadialGradient(0, 0, gx * 0.35, 0, 0, gx);
     g.addColorStop(0, mix(race.ground[0], FILL, 0.1)); g.addColorStop(0.75, mix(race.ground[1], FILL, 0.1)); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.95; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, gx, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
-    if (raceKey === 'lizard') for (let i = 0; i < 3 + li; i++) { const a = r() * 6.28, d = 0.55 + r() * 0.35; ell(ctx, cx + Math.cos(a) * gx * d, cy + Math.sin(a) * gy * d, 0.04 + r() * 0.04, 0.015 + r() * 0.012, 'rgba(70,130,130,.8)', false); }
+    if (raceKey === 'lizard') for (let i = 0; i < 3 + li; i++) { const a = r() * 6.28, d = 0.55 + r() * 0.35; ell(ctx, cx + Math.cos(a) * gx * d, cy + Math.sin(a) * gy * d, 0.04 + r() * 0.04, 0.015 + r() * 0.012, 'rgba(150,190,182,.8)', false); }
     for (let i = 0; i < 14 + li * 6; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 0.95; const px = cx + Math.cos(a) * gx * d, py = cy + Math.sin(a) * gy * d; line(ctx, px, py, px + 0.006, py - 0.012, dk(race.ground[1], 0.3), LW * 0.7, 0.5); }
     // road
     const pathPts = []; for (let i = 0; i <= 10; i++) { const t = i / 10, py = cy + gy * 0.92 - t * (gy * 0.92 + ry * 0.2); pathPts.push([cx + Math.sin(t * 5) * 0.03 * (1 - t * 0.3), py]); }
@@ -643,19 +644,19 @@ function makeRender(raceKey, li, id) {
     let lm = null;
     if (L.ls) { const ls = L.s * L.ls * (race.lsk || 1), ly = cy - ry * 0.32; lm = { y: ly, draw: () => race.land(ctx, cx, ly, ls, r, li, fx) }; taken.push({ x: cx, y: ly, s: ls * 2.2 }); objs.push(lm); }
     const inner = li >= 2 ? 0.82 : 0.95;
-    let placed = 0;
-    for (let tries = 0; tries < 900 && placed < L.n; tries++) {
+    let placed = 0; const NN = Math.round(L.n * (race.nm && li >= 2 ? race.nm : 1)) + (race.hamPlus && li === 0 ? race.hamPlus : 0); const SP = race.sp || 1;
+    for (let tries = 0; tries < 900 && placed < NN; tries++) {
       const a = r() * 6.2832, d = Math.sqrt(r()), x = cx + Math.cos(a) * rx * inner * d, y = cy + Math.sin(a) * ry * inner * d + ry * 0.1;
       if (Math.abs(x - roadX(y)) < L.s * 0.55) continue;
-      if (!free(x, y, L.s * 1.0)) continue;
-      taken.push({ x, y, s: L.s }); placed++;
+      if (!free(x, y, L.s * SP)) continue;
+      taken.push({ x, y, s: L.s * SP }); placed++;
       const sd = hashStr(id + placed);
       objs.push({ y, x, draw: () => race.house(ctx, x, y, L.s, rng(sd), fx) });
     }
     if (race.extra && li <= 1) { /* hamlet camp feature */ }
     // props around
-    const np = 5 + li * 4;
-    for (let tries = 0; tries < 600 && np > 0 && objs.length < L.n + 1 + np; tries++) {
+    const np = race.pn != null ? race.pn : 5 + li * 4;
+    for (let tries = 0; tries < 600 && np > 0 && objs.length < NN + 1 + np; tries++) {
       const a = r() * 6.2832, d = li >= 3 ? 1.0 + r() * 0.08 : 0.55 + r() * 0.5, x = cx + Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d * 1.1;
       if (Math.abs(x - roadX(y)) < 0.05 || !free(x, y, L.s * 0.6) || x < 0.06 || x > W - 0.06) continue;
       taken.push({ x, y, s: L.s * 0.5 }); const sd = hashStr(id + 'p' + tries);
@@ -693,7 +694,7 @@ export const STAMPS_SETTLEMENTSA = Object.keys(R).flatMap((key) =>
     const id = `set_${key === 'lizard' ? 'lizardfolk' : key}_${['hamlet', 'village', 'town', 'city', 'capital'][li]}`;
     // 4-level races use Camp/Village/Town/City names with level index 0..3 mapped onto LV 0..3
     return {
-      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization', defaultScale: 1.2 + li * 0.15, aspect: LV[li].asp,
+      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization', defaultScale: [1.9, 1.7, 1.65, 1.6, 1.6][li], aspect: LV[li].asp,
       group: `set_${key === 'lizard' ? 'lizardfolk' : key}`, groupName: `${GROUPNAMES[key]} Settlements`,
       render: makeRender(key, li, id),
     };
