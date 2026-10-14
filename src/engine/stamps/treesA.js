@@ -26,7 +26,7 @@ const mix = (a, b, t) => {
 };
 // Shade ramp from one base tint (mix() returns rgb(); re-hex not needed, mix parses only hex,
 // so ramp() takes hex and mixes from the hex).
-const ramp = (base) => {
+const ramp = (base, warm) => {
   const hex = (c) => {
     const m = /rgb\((\d+),(\d+),(\d+)\)/.exec(c);
     return m ? '#' + [1, 2, 3].map((i) => (+m[i]).toString(16).padStart(2, '0')).join('') : c;
@@ -35,18 +35,28 @@ const ramp = (base) => {
   return {
     dark: mix(hex(mix(b, '#1a2a14', 0.5)), '#2a1a3a', 0.12),
     mid: mix(b, '#000000', 0.05),
-    light: mix(b, '#f4f0a0', 0.28),
-    hi: mix(b, '#fffbc8', 0.5),
+    light: warm ? mix(b, '#f8ee78', 0.4) : mix(b, '#f4f0a0', 0.28),
+    hi: warm ? mix(b, '#fff8a8', 0.62) : mix(b, '#fffbc8', 0.5),
   };
 };
 const BARK = ramp('#7a5634');
 const FOLIAGE = '#5c8a48';
 
+let SHADOW_OFF = false;
+let HALO = false;
 function groundShadow(ctx, s, cx = 0.5, cy = 0.9, rx = 0.3, ry = 0.06) {
+  if (SHADOW_OFF) return;
+  rx *= 1.1;
   ctx.save();
-  ctx.fillStyle = 'rgba(30,24,12,0.30)';
+  ctx.translate((cx + 0.04) * s, (cy + 0.012) * s);
+  ctx.scale(1, ry / rx);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * s);
+  g.addColorStop(0, 'rgba(30,24,12,0.26)');
+  g.addColorStop(0.72, 'rgba(30,24,12,0.22)');
+  g.addColorStop(1, 'rgba(30,24,12,0)');
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.ellipse((cx + 0.05) * s, (cy + 0.012) * s, rx * s, ry * s, 0, 0, Math.PI * 2);
+  ctx.arc(0, 0, rx * s, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -139,6 +149,7 @@ function lobe(ctx, s, o, x, y, r, P, rnd, lw = s * 0.026) {
   ctx.restore();
   ctx.save();
   path(0, 0, 1);
+  if (HALO) { ctx.strokeStyle = 'rgba(255,255,235,0.2)'; ctx.lineWidth = lw * 3; ctx.lineJoin = 'round'; ctx.stroke(); }
   ctx.strokeStyle = o;
   ctx.lineWidth = lw;
   ctx.lineJoin = 'round';
@@ -154,24 +165,34 @@ function canopy(ctx, s, o, layout, pal, rnd, lw) {
 
 // ---------------------------------------------------------------- broadleaf
 const LAYOUTS = {
-  oak: [[.5, .3, .17], [.31, .4, .15], [.69, .39, .15], [.2, .53, .11], [.8, .52, .11], [.42, .52, .16], [.61, .52, .15]],
+  oak: [[.5, .38, .16], [.3, .46, .15], [.7, .45, .15], [.15, .58, .11], [.85, .57, .11], [.4, .56, .16], [.62, .56, .15]],
   ancient: [[.5, .22, .15], [.33, .3, .15], [.68, .3, .15], [.2, .43, .14], [.82, .43, .14], [.4, .42, .16], [.6, .42, .16], [.28, .56, .12], [.72, .56, .12], [.5, .55, .14]],
-  round: [[.5, .33, .2], [.34, .48, .16], [.66, .48, .16], [.5, .52, .17]],
-  tall: [[.5, .17, .13], [.4, .3, .14], [.6, .3, .14], [.36, .45, .14], [.64, .45, .14], [.5, .43, .15], [.46, .58, .12], [.57, .58, .12]],
-  bush: [[.3, .66, .17], [.7, .66, .17], [.5, .6, .2], [.5, .78, .13]],
+  round: [[.5, .27, .17], [.33, .37, .15], [.67, .37, .15], [.27, .52, .12], [.73, .52, .12], [.5, .47, .2]],
+  tall: [[.5, .22, .14], [.3, .27, .13], [.7, .27, .13], [.4, .42, .12], [.6, .42, .12], [.5, .54, .09]],
+  bush: [[.27, .7, .14], [.73, .7, .14], [.5, .6, .19], [.4, .7, .12], [.62, .7, .12]],
+};
+const TRUNKS = {
+  oak: { top: 0.56 },
+  round: { top: 0.62, wt: 0.085, wb: 0.1, flare: 0.045 },
+  tall: { top: 0.5, wt: 0.055, wb: 0.07, flare: 0.035 },
 };
 
 function broadleaf(ctx, s, color, fill, kind, seed) {
   const rnd = rng(seed);
-  const P = ramp(fill);
+  const P = ramp(fill, kind === 'bush');
   ctx.save();
   if (kind === 'bush') {
     groundShadow(ctx, s, 0.5, 0.88, 0.34, 0.06);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, s, 0.8 * s); ctx.clip();
     canopy(ctx, s, color, LAYOUTS.bush, P, rnd, s * 0.03);
+    ctx.restore();
+    ctx.strokeStyle = color; ctx.lineWidth = s * 0.03; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0.19 * s, 0.8 * s); ctx.lineTo(0.81 * s, 0.8 * s); ctx.stroke();
   } else {
     const anc = kind === 'ancient';
     groundShadow(ctx, s, 0.5, 0.9, anc ? 0.36 : 0.3, 0.065);
-    trunk(ctx, s, color, { top: 0.5, bot: 0.9, wt: anc ? 0.11 : 0.07, wb: anc ? 0.14 : 0.09, flare: anc ? 0.07 : 0.04, lean: anc ? 0.01 : 0 });
+    trunk(ctx, s, color, { top: 0.5, bot: 0.9, wt: anc ? 0.11 : 0.07, wb: anc ? 0.14 : 0.09, flare: anc ? 0.07 : 0.04, lean: anc ? 0.01 : 0, ...(TRUNKS[kind] || {}) });
     canopy(ctx, s, color, LAYOUTS[kind], P, rnd);
     if (anc) { // hanging moss strands
       ctx.strokeStyle = P.light;
@@ -281,6 +302,7 @@ function tier(ctx, s, o, cx, top, bot, hw, P, rnd, teeth, snow) {
   ctx.restore();
   ctx.save();
   path();
+  if (!snow) { ctx.strokeStyle = 'rgba(255,255,230,0.17)'; ctx.lineWidth = lw * 2.8; ctx.lineJoin = 'round'; ctx.stroke(); }
   ctx.strokeStyle = o;
   ctx.lineWidth = lw;
   ctx.lineJoin = 'round';
@@ -311,8 +333,8 @@ function willow(ctx, s, color, fill, seed) {
   groundShadow(ctx, s, 0.5, 0.9, 0.34, 0.06);
   trunk(ctx, s, color, { top: 0.4, bot: 0.9, wt: 0.07, wb: 0.1, flare: 0.05, lean: -0.02 });
   canopy(ctx, s, color, [[.5, .22, .17], [.3, .32, .14], [.7, .32, .14]], P, rnd);
-  for (let i = 0; i < 13; i++) { // drooping curtains
-    const x = 0.14 + i * 0.06 + (rnd() - 0.5) * 0.02;
+  for (let i = 0; i < 9; i++) { // drooping curtains
+    const x = 0.16 + i * 0.085 + (rnd() - 0.5) * 0.02;
     const edge = Math.abs(x - 0.5);
     const y0 = 0.32 + edge * 0.2, len = 0.26 + rnd() * 0.12 - edge * 0.2;
     const sway = (rnd() - 0.5) * 0.03;
@@ -322,8 +344,8 @@ function willow(ctx, s, color, fill, seed) {
       ctx.bezierCurveTo((x + sway) * s, (y0 + len * 0.4) * s, (x - sway + (x < 0.5 ? -0.02 : 0.02)) * s, (y0 + len * 0.75) * s, (x + sway * 0.5) * s, (y0 + len) * s);
     };
     ctx.lineCap = 'round';
-    curve(); ctx.strokeStyle = color; ctx.lineWidth = s * 0.034; ctx.stroke();
-    curve(); ctx.strokeStyle = i % 3 ? P.mid : P.light; ctx.lineWidth = s * 0.02; ctx.stroke();
+    curve(); ctx.strokeStyle = color; ctx.lineWidth = s * 0.041; ctx.stroke();
+    curve(); ctx.strokeStyle = i % 3 ? P.dark : P.mid; ctx.lineWidth = s * 0.024; ctx.stroke();
   }
   ctx.restore();
 }
@@ -353,12 +375,12 @@ function birch(ctx, s, color, fill, seed) {
 // ---------------------------------------------------------------- palm / savanna
 function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
   const rnd = rng(seed);
-  const P = ramp(fill);
+  const P = ramp(fill, true);
   ctx.save();
   groundShadow(ctx, s, 0.5, 0.9, 0.3, 0.055);
-  const bx = 0.45, tx = bx + lean, ty = 0.33;
+  const bx = lean < 0 ? 0.66 : 0.45, tx = bx + lean, ty = lean < 0 ? 0.36 : 0.33;
   const pt = (t) => {
-    const u = 1 - t, cx = bx + lean * 0.1, cy = 0.62;
+    const u = 1 - t, cx = bx + lean * (lean < -0.2 ? 0.1 : 0.1), cy = lean < -0.2 ? 0.76 : 0.62;
     return [u * u * bx + 2 * u * t * cx + t * t * tx, u * u * 0.9 + 2 * u * t * cy + t * t * ty];
   };
   const seg = (w, col, dx = 0) => {
@@ -373,9 +395,11 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
       ctx.stroke();
     }
   };
-  seg(0.082, color);
-  seg(0.056, BARK.mid);
-  seg(0.018, BARK.light, -s * 0.012);
+  seg(0.1, color);
+  seg(0.074, BARK.mid);
+  seg(0.024, BARK.light, -s * 0.014);
+  ctx.fillStyle = BARK.mid; ctx.strokeStyle = color; ctx.lineWidth = s * 0.026; // base knot
+  ctx.beginPath(); ctx.ellipse(bx * s, 0.885 * s, s * 0.065, s * 0.032, 0, 0, 6.3); ctx.fill(); ctx.stroke();
   ctx.strokeStyle = BARK.dark; // rings
   ctx.lineWidth = Math.max(0.7, s * 0.01);
   for (let i = 1; i < 14; i++) {
@@ -389,7 +413,7 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
     const L = (0.3 + rnd() * 0.06) * s;
     const dx = Math.cos(ang), dy = Math.sin(ang);
     const x0 = tx * s, y0 = ty * s;
-    const x1 = x0 + dx * L, y1 = y0 + dy * L + L * 0.45 * Math.abs(dx);
+    const x1 = x0 + dx * L, y1 = y0 + dy * L + L * 0.55 * Math.abs(dx);
     const cx = x0 + dx * L * 0.5, cy = y0 + dy * L * 0.5 - L * 0.28;
     const nx = -dy, ny = dx, w = s * 0.07;
     const frond = () => {
@@ -421,6 +445,8 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
     ctx.lineWidth = s * 0.024;
     ctx.lineJoin = 'round';
     ctx.stroke();
+    ctx.save(); frond(); ctx.clip(); ctx.translate(s * 0.012, s * 0.012); frond();
+    ctx.strokeStyle = P.hi; ctx.lineWidth = s * 0.012; ctx.stroke(); ctx.restore();
     ctx.strokeStyle = P.hi;
     ctx.lineWidth = s * 0.008;
     ctx.beginPath();
@@ -429,7 +455,7 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
     ctx.stroke();
   });
   if (coconuts) {
-    for (const [x, y] of [[-0.02, 0.04], [0.025, 0.05], [0.0, 0.07]]) {
+    for (const [x, y] of [[-0.022, 0.045], [0.026, 0.052]]) {
       ctx.fillStyle = '#6b4a28';
       ctx.strokeStyle = color;
       ctx.lineWidth = s * 0.016;
@@ -443,7 +469,7 @@ function palm(ctx, s, color, fill, seed, lean = 0.08, coconuts = true) {
 
 function acacia(ctx, s, color, fill, seed) {
   const rnd = rng(seed);
-  const P = ramp(fill);
+  const P = ramp(fill, true);
   ctx.save();
   groundShadow(ctx, s, 0.5, 0.9, 0.36, 0.055);
   const lim = [[0.5, 0.9, 0.5, 0.66, 0.06], [0.5, 0.68, 0.34, 0.46, 0.04], [0.5, 0.68, 0.68, 0.44, 0.04], [0.5, 0.68, 0.52, 0.42, 0.03]];
@@ -469,13 +495,13 @@ function baobab(ctx, s, color, fill, seed) {
   groundShadow(ctx, s, 0.5, 0.9, 0.36, 0.065);
   const body = () => {
     ctx.beginPath();
-    ctx.moveTo(0.43 * s, 0.3 * s);
-    ctx.bezierCurveTo(0.3 * s, 0.42 * s, 0.26 * s, 0.7 * s, 0.25 * s, 0.9 * s);
-    ctx.lineTo(0.75 * s, 0.9 * s);
-    ctx.bezierCurveTo(0.74 * s, 0.7 * s, 0.7 * s, 0.42 * s, 0.57 * s, 0.3 * s);
+    ctx.moveTo(0.46 * s, 0.34 * s);
+    ctx.bezierCurveTo(0.44 * s, 0.5 * s, 0.1 * s, 0.6 * s, 0.2 * s, 0.9 * s);
+    ctx.lineTo(0.8 * s, 0.9 * s);
+    ctx.bezierCurveTo(0.9 * s, 0.6 * s, 0.56 * s, 0.5 * s, 0.54 * s, 0.34 * s);
     ctx.closePath();
   };
-  for (const [x, y, ex, ey] of [[0.44, 0.32, 0.26, 0.2], [0.56, 0.32, 0.74, 0.2], [0.5, 0.3, 0.5, 0.14]]) {
+  for (const [x, y, ex, ey] of [[0.47, 0.37, 0.2, 0.25], [0.53, 0.37, 0.8, 0.25], [0.5, 0.35, 0.5, 0.17]]) {
     ctx.lineCap = 'round';
     ctx.strokeStyle = color; ctx.lineWidth = s * 0.06;
     ctx.beginPath(); ctx.moveTo(x * s, y * s); ctx.lineTo(ex * s, ey * s); ctx.stroke();
@@ -490,7 +516,7 @@ function baobab(ctx, s, color, fill, seed) {
   ctx.fillStyle = '#6e5238';
   ctx.beginPath(); ctx.moveTo(0.52 * s, 0.3 * s); ctx.lineTo(0.9 * s, 0.3 * s); ctx.lineTo(0.9 * s, 0.95 * s); ctx.lineTo(0.62 * s, 0.95 * s); ctx.bezierCurveTo(0.64 * s, 0.7 * s, 0.58 * s, 0.5 * s, 0.52 * s, 0.3 * s); ctx.fill();
   ctx.fillStyle = '#b89870';
-  ctx.beginPath(); ctx.moveTo(0.43 * s, 0.3 * s); ctx.bezierCurveTo(0.3 * s, 0.42 * s, 0.26 * s, 0.7 * s, 0.25 * s, 0.9 * s); ctx.lineTo(0.36 * s, 0.9 * s); ctx.bezierCurveTo(0.37 * s, 0.7 * s, 0.4 * s, 0.45 * s, 0.47 * s, 0.3 * s); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0.46 * s, 0.34 * s); ctx.bezierCurveTo(0.44 * s, 0.5 * s, 0.1 * s, 0.6 * s, 0.2 * s, 0.9 * s); ctx.lineTo(0.34 * s, 0.9 * s); ctx.bezierCurveTo(0.26 * s, 0.66 * s, 0.44 * s, 0.5 * s, 0.49 * s, 0.34 * s); ctx.fill();
   ctx.strokeStyle = '#5a4230';
   ctx.lineWidth = s * 0.01;
   for (let i = 0; i < 6; i++) {
@@ -499,7 +525,7 @@ function baobab(ctx, s, color, fill, seed) {
   }
   ctx.restore();
   body(); ctx.strokeStyle = color; ctx.lineWidth = s * 0.03; ctx.lineJoin = 'round'; ctx.stroke();
-  canopy(ctx, s, color, [[.24, .17, .1], [.76, .17, .1], [.5, .12, .11], [.36, .22, .08], [.64, .22, .08]], P, rnd);
+  canopy(ctx, s, color, [[.19, .25, .125], [.81, .25, .125], [.5, .16, .145], [.33, .26, .105], [.67, .26, .105]], P, rnd);
   ctx.restore();
 }
 
@@ -521,8 +547,8 @@ function bare(ctx, s, color, seed, { gnarl = false, depth = 4, barren = false })
     if (rnd() < 0.5 && d > 1) grow(mx, my, na + (rnd() < 0.5 ? -1.1 : 1.1), len * 0.5, w * 0.5, d - 2);
   };
   ctx.save();
-  groundShadow(ctx, s, 0.5, 0.9, 0.24, 0.05);
-  if (barren) { // cracked earth
+  groundShadow(ctx, s, 0.5, 0.9, barren ? 0.3 : 0.24, barren ? 0.06 : 0.05);
+  if (false) {
     ctx.strokeStyle = 'rgba(70,50,30,0.55)';
     ctx.lineWidth = Math.max(0.7, s * 0.01);
     ctx.lineCap = 'round';
@@ -531,7 +557,7 @@ function bare(ctx, s, color, seed, { gnarl = false, depth = 4, barren = false })
     }
   }
   grow(0.5, 0.9, -Math.PI / 2 + (gnarl ? 0.1 : 0), gnarl ? 0.3 : 0.26, gnarl ? 0.1 : 0.075, depth);
-  const B = barren ? ramp('#9a8468') : BARK;
+  const B = barren ? ramp('#7e6c54') : BARK;
   const draw = (col, wk, off) => {
     ctx.lineCap = 'round';
     for (const [x, y, mx, my, nx, ny, sw] of segs) {
@@ -545,7 +571,7 @@ function bare(ctx, s, color, seed, { gnarl = false, depth = 4, barren = false })
   ctx.lineCap = 'round';
   for (const [x, y, mx, my, nx, ny, sw] of segs) {
     ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(sw * s + s * 0.028, s * 0.03);
+    ctx.lineWidth = Math.max(sw * s + s * (barren ? 0.04 : 0.028), s * (barren ? 0.042 : 0.03));
     ctx.beginPath(); ctx.moveTo(x * s, y * s); ctx.quadraticCurveTo(mx * s, my * s, nx * s, ny * s); ctx.stroke();
   }
   draw(B.dark, 1, 0);
@@ -591,6 +617,8 @@ function crystalTree(ctx, s, color, seed) {
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.lineTo(...c); ctx.closePath(); ctx.fill();
     }
+    ctx.beginPath(); ctx.moveTo(...top); ctx.lineTo(...L); ctx.lineTo(...B); ctx.lineTo(...R); ctx.closePath();
+    ctx.strokeStyle = 'rgba(235,250,255,0.22)'; ctx.lineWidth = s * 0.06; ctx.lineJoin = 'round'; ctx.stroke();
     ctx.strokeStyle = color; ctx.lineWidth = s * 0.022; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(...top); ctx.lineTo(...L); ctx.lineTo(...B); ctx.lineTo(...R); ctx.closePath(); ctx.stroke();
     ctx.lineWidth = s * 0.01; ctx.beginPath(); ctx.moveTo(...top); ctx.lineTo(...C); ctx.lineTo(...B); ctx.stroke();
@@ -607,7 +635,9 @@ function glowTree(ctx, s, color, fill, seed) {
   glow(ctx, 0.5 * s, 0.9 * s, 0.34 * s, 'rgba(120,255,220,0.35)');
   trunk(ctx, s, color, { top: 0.5, bot: 0.9, wt: 0.07, wb: 0.09, flare: 0.05, bark: ramp('#3a4a6a') });
   glow(ctx, 0.5 * s, 0.38 * s, 0.4 * s, 'rgba(120,255,230,0.45)');
+  HALO = true;
   canopy(ctx, s, color, LAYOUTS.oak, P, rnd);
+  HALO = false;
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 10; i++) glow(ctx, (0.2 + rnd() * 0.6) * s, (0.2 + rnd() * 0.45) * s, s * 0.035, 'rgba(200,255,240,0.9)');
   ctx.globalCompositeOperation = 'source-over';
@@ -631,7 +661,9 @@ function worldTree(ctx, s, color, seed) {
   ctx.fillStyle = 'rgba(255,220,110,0.85)'; // runes
   for (const y of [0.62, 0.72, 0.82]) ctx.fillRect(0.5 * s - s * 0.012, y * s, s * 0.024, s * 0.035);
   const lay = [[.5, .14, .13], [.34, .2, .14], [.66, .2, .14], [.2, .32, .14], [.8, .32, .14], [.42, .3, .15], [.6, .3, .15], [.26, .46, .12], [.74, .46, .12], [.5, .44, .14]];
+  HALO = true;
   canopy(ctx, s, color, lay.map(([x, y, r], i) => [x, y, r, i % 4 === 0 ? 1 : 0]), pals, rnd);
+  HALO = false;
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 9; i++) glow(ctx, (0.15 + rnd() * 0.7) * s, (0.08 + rnd() * 0.5) * s, s * 0.03, 'rgba(255,240,170,0.9)');
   ctx.globalCompositeOperation = 'source-over';
@@ -639,7 +671,9 @@ function worldTree(ctx, s, color, seed) {
 }
 
 // ---------------------------------------------------------------- groves
-function grove(ctx, s, items) {
+function grove(ctx, s, items, shared) {
+  if (shared) groundShadow(ctx, s, ...shared);
+  SHADOW_OFF = !!shared;
   [...items].sort((a, b) => a[1] - b[1]).forEach(([x, y, k, fn]) => {
     ctx.save();
     ctx.translate((x - 0.5 * k) * s, (y - 0.9 * k) * s);
@@ -647,6 +681,7 @@ function grove(ctx, s, items) {
     fn(ctx, s);
     ctx.restore();
   });
+  SHADOW_OFF = false;
 }
 
 const FC = '#2a2018';
@@ -665,8 +700,8 @@ const G_DEAD = G('tree_dead_grp', 'Dead & Gnarled');
 const G_FANT = G('tree_fantasy', 'Fantasy Trees');
 const G_GROVE = G('tree_grove', 'Groves & Clumps');
 
-const bl = (kind, seed) => (c, s, color = FC, fill = FOLIAGE) => broadleaf(c, s, color, fill, kind, seed);
-const blF = (kind, seed) => (c, s) => broadleaf(c, s, FC, FOLIAGE, kind, seed);
+const bl = (kind, seed, f0 = FOLIAGE) => (c, s, color = FC, fill = f0) => broadleaf(c, s, color, fill, kind, seed);
+const blF = (kind, seed, f0 = FOLIAGE) => (c, s) => broadleaf(c, s, FC, f0, kind, seed);
 const cf = (o, f0) => (c, s, color = FC, fill = f0) => conifer(c, s, color, fill, o);
 const cfF = (o, f0) => (c, s) => conifer(c, s, FC, f0, o);
 
@@ -675,12 +710,12 @@ export const STAMPS_TREESA = [
   T('oak_ancient', 'Ancient Oak', G_BROAD, 1.3, bl('ancient', 12)),
   T('round', 'Round Tree', G_BROAD, 0.9, bl('round', 13)),
   T('elm', 'Tall Elm', G_BROAD, 1.1, bl('tall', 14)),
-  T('bush', 'Shrub', G_BROAD, 0.6, bl('bush', 15)),
+  T('bush', 'Shrub', G_BROAD, 0.6, bl('bush', 15, '#7c9e4c')),
 
-  T('pine', 'Pine', G_CONIF, 1.0, cf({ seed: 21, tiers: 4, hw: 0.31, top: 0.05, bot: 0.8, teeth: 3 }, '#4d8250')),
-  T('spruce', 'Spruce', G_CONIF, 1.0, cf({ seed: 22, tiers: 5, hw: 0.27, top: 0.03, bot: 0.8, teeth: 3, slim: 0.35 }, '#477a58')),
-  T('fir_squat', 'Squat Fir', G_CONIF, 0.9, cf({ seed: 23, tiers: 3, hw: 0.33, top: 0.15, bot: 0.8, teeth: 4, slim: 0.55, tr: 0.08 }, '#58904f')),
-  T('cypress', 'Cypress', G_CONIF, 1.0, cf({ seed: 24, tiers: 6, hw: 0.16, top: 0.02, bot: 0.82, teeth: 2, slim: 0.6, tr: 0.05 }, '#4a7e4c')),
+  T('pine', 'Pine', G_CONIF, 1.0, cf({ seed: 21, tiers: 4, hw: 0.3, top: 0.03, bot: 0.7, teeth: 3 }, '#4d8250')),
+  T('spruce', 'Spruce', G_CONIF, 1.0, cf({ seed: 22, tiers: 5, hw: 0.27, top: 0.03, bot: 0.8, teeth: 3, slim: 0.35 }, '#5e9a6a')),
+  T('fir_squat', 'Squat Fir', G_CONIF, 0.9, cf({ seed: 23, tiers: 3, hw: 0.38, top: 0.1, bot: 0.8, teeth: 4, slim: 0.62, tr: 0.09 }, '#76ac60')),
+  T('cypress', 'Cypress', G_CONIF, 1.0, cf({ seed: 24, tiers: 6, hw: 0.16, top: 0.02, bot: 0.82, teeth: 2, slim: 0.6, tr: 0.05 }, '#62a05c')),
 
   T('snowy_pine', 'Snowy Pine', G_SNOW, 1.0, cf({ seed: 31, tiers: 4, hw: 0.31, top: 0.05, bot: 0.8, teeth: 3, snow: true }, '#4d8258')),
   T('snowy_spruce', 'Snowy Spruce', G_SNOW, 1.0, cf({ seed: 32, tiers: 5, hw: 0.27, top: 0.03, bot: 0.8, teeth: 3, slim: 0.35, snow: true }, '#437260')),
@@ -691,11 +726,11 @@ export const STAMPS_TREESA = [
   T('willow', 'Willow', G_WILL, 1.1, (c, s, color = FC, fill = '#6e9a4c') => willow(c, s, color, fill, 51)),
   T('birch', 'Birch', G_BIRCH, 1.0, (c, s, color = FC, fill = '#7aa650') => birch(c, s, color, fill, 61)),
 
-  T('palm', 'Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#4f9a4a') => palm(c, s, color, fill, 71, 0.08)),
-  T('palm_lean', 'Leaning Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#5aa04a') => palm(c, s, color, fill, 72, -0.14, false)),
+  T('palm', 'Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#6cbc4a') => palm(c, s, color, fill, 71, 0.08)),
+  T('palm_lean', 'Leaning Palm', G_TROP, 1.0, (c, s, color = FC, fill = '#7ac850') => palm(c, s, color, fill, 72, -0.34, false)),
 
-  T('acacia', 'Acacia', G_SAV, 1.0, (c, s, color = FC, fill = '#8a9a44') => acacia(c, s, color, fill, 81)),
-  T('baobab', 'Baobab', G_SAV, 1.1, (c, s, color = FC, fill = '#6f9a46') => baobab(c, s, color, fill, 82)),
+  T('acacia', 'Acacia', G_SAV, 1.0, (c, s, color = FC, fill = '#a8b04e') => acacia(c, s, color, fill, 81)),
+  T('baobab', 'Baobab', G_SAV, 1.1, (c, s, color = FC, fill = '#86b04c') => baobab(c, s, color, fill, 82)),
 
   T('dead', 'Dead Tree', G_DEAD, 1.0, (c, s, color = FC) => bare(c, s, color, 91, { depth: 4 })),
   T('gnarled', 'Gnarled Tree', G_DEAD, 1.0, (c, s, color = FC) => bare(c, s, color, 92, { gnarl: true, depth: 3 })),
@@ -706,7 +741,7 @@ export const STAMPS_TREESA = [
   T('world', 'World Tree', G_FANT, 1.6, (c, s, color = FC) => worldTree(c, s, color, 103)),
 
   T('grove_oak', 'Oak Grove', G_GROVE, 1.3, (c, s) => grove(c, s, [
-    [0.3, 0.86, 0.62, blF('oak', 111)], [0.7, 0.88, 0.66, blF('round', 112)], [0.5, 0.94, 0.72, blF('oak', 113)]])),
+    [0.34, 0.84, 0.7, blF('oak', 111)], [0.66, 0.86, 0.7, blF('round', 112)], [0.5, 0.93, 0.8, blF('oak', 113)]], [0.5, 0.9, 0.42, 0.075])),
   T('grove_pine', 'Pine Stand', G_GROVE, 1.3, (c, s) => grove(c, s, [
     [0.25, 0.8, 0.6, cfF({ seed: 121, tiers: 4, hw: 0.27 }, '#4d8250')], [0.75, 0.82, 0.62, cfF({ seed: 122, tiers: 5, hw: 0.23, slim: 0.35 }, '#477a58')],
     [0.5, 0.9, 0.78, cfF({ seed: 123, tiers: 4, hw: 0.27 }, '#5a9255')]])),
@@ -714,5 +749,5 @@ export const STAMPS_TREESA = [
     [0.28, 0.82, 0.6, cfF({ seed: 131, tiers: 4, hw: 0.27, snow: true }, '#4d8258')], [0.74, 0.84, 0.62, cfF({ seed: 132, tiers: 5, hw: 0.23, slim: 0.35, snow: true }, '#437260')],
     [0.5, 0.92, 0.74, cfF({ seed: 133, tiers: 4, hw: 0.27, snow: true }, '#4d8258')]])),
   T('thicket', 'Thicket', G_GROVE, 1.0, (c, s) => grove(c, s, [
-    [0.28, 0.86, 0.6, blF('bush', 141)], [0.74, 0.86, 0.56, blF('bush', 142)], [0.5, 0.92, 0.66, blF('bush', 143)]])),
+    [0.33, 0.86, 0.62, blF('bush', 141, '#7c9e4c')], [0.67, 0.86, 0.6, blF('bush', 142, '#7c9e4c')], [0.5, 0.92, 0.7, blF('bush', 143, '#7c9e4c')]], [0.5, 0.9, 0.4, 0.07])),
 ];
