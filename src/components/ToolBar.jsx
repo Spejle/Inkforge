@@ -25,18 +25,20 @@ export const TOOLS = [
   { id: 'hand', name: 'Pan Canvas', icon: Hand, shortcut: 'H', desc: 'Pan around map (or hold Spacebar)' }
 ];
 
-export default function ToolBar({ activeTool, setActiveTool }) {
-  return (
-    <aside className="tool-bar">
-      <div className="tool-list">
-        {TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          const isActive = activeTool === tool.id;
+// Draw tools build the map; utility tools navigate, select, erase and adjust it.
+const DRAW_IDS = ['mask', 'brush', 'stamp', 'path', 'text'];
 
+function Rail({ label, tools, activeTool, setActiveTool }) {
+  return (
+    <aside className="tool-bar" aria-label={label}>
+      <div className="tool-rail-label">{label}</div>
+      <div className="tool-list">
+        {tools.map((tool) => {
+          const Icon = tool.icon;
           return (
             <button
               key={tool.id}
-              className={`tool-button ${isActive ? 'active' : ''}`}
+              className={`tool-button ${activeTool === tool.id ? 'active' : ''}`}
               onClick={() => setActiveTool(tool.id)}
               title={`${tool.name} (${tool.shortcut})\n${tool.desc}`}
             >
@@ -47,5 +49,14 @@ export default function ToolBar({ activeTool, setActiveTool }) {
         })}
       </div>
     </aside>
+  );
+}
+
+export default function ToolBar({ activeTool, setActiveTool }) {
+  return (
+    <>
+      <Rail label="Draw" tools={TOOLS.filter((t) => DRAW_IDS.includes(t.id))} activeTool={activeTool} setActiveTool={setActiveTool} />
+      <Rail label="Tools" tools={TOOLS.filter((t) => !DRAW_IDS.includes(t.id))} activeTool={activeTool} setActiveTool={setActiveTool} />
+    </>
   );
 }

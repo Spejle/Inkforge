@@ -603,6 +603,8 @@
   box-shadow: var(--shadow-md);
 }
 
+.tool-bar + .tool-bar { border-left: none; }
+.tool-rail-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
 .tool-list {
   display: flex;
   flex-direction: column;
@@ -1184,6 +1186,7 @@
 .canvas-viewport { touch-action: none; }
 @media (pointer: coarse), (max-width: 1100px) {
   .tool-bar { width: 64px; }
+  .tip { display: none; }
   .tool-button, .btn-icon, .btn-ghost, .btn-primary, .chip, .layer-row, .drawer-tab-btn { min-width: 44px; min-height: 44px; }
   input[type='range'] { height: 28px; }
   .center-stage { flex-direction: column-reverse; }
@@ -1209,3 +1212,10 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .theme-toggle { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
 .theme-toggle:hover { color: var(--primary-gold); border-color: var(--primary-gold); }
 .preset-selector-group { flex: 0 1 300px; min-width: 0; } .preset-selector-group .select-styled { min-width: 0; width: 100%; }
+
+/* Global tooltip */
+.tip { position: fixed; z-index: 1000; transform: translateX(-50%); max-width: 240px; width: max-content; pointer-events: none; padding: 7px 10px; border-radius: 7px; background: var(--bg-raise); color: var(--text-main); border: 1px solid var(--border-light); box-shadow: var(--shadow-lg); font-size: 12px; line-height: 1.4; animation: tipIn 0.12s ease-out; }
+.tip-head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-strong); }
+.tip-head kbd { font: 700 10px/1 inherit; padding: 2px 5px; border-radius: 4px; background: var(--bg-subtle); border: 1px solid var(--border-light); color: var(--primary-gold); }
+.tip-body { margin-top: 3px; color: var(--text-muted); }
+@keyframes tipIn { from { opacity: 0; margin-top: 3px; } to { opacity: 1; margin-top: 0; } }

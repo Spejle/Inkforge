@@ -1,3 +1,4 @@
+import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 
@@ -94,6 +95,7 @@ export default function CanvasArea({
   const panStartRef = useRef({ x: 0, y: 0 });
   const activeStrokeRef = useRef(null);
   const activePathRef = useRef(null);
+  const pathStabRef = useRef(null); // lazy-rope cursor so drawn rivers don't wobble
   const straightAnchorRef = useRef(null);
   const draggedObjectRef = useRef(null);
   const lastSprayPosRef = useRef({ x: -9999, y: -9999 });
@@ -423,6 +425,7 @@ export default function CanvasArea({
         points: [[Math.round(x), Math.round(y)]]
       };
       activePathRef.current = newPath;
+      pathStabRef.current = [x, y];
       onAddPath(newPath);
     }
   };
@@ -543,6 +546,7 @@ export default function CanvasArea({
       const pts = activePathRef.current.points;
       if (e.shiftKey) {
         // Shift: straight segment from the last committed point to the cursor (Alt snaps to 15°)
+        if (pathStabRef.current) pathStabRef.current.raw = null;
         const anchor = straightAnchorRef.current || pts[pts.length - 1];
         straightAnchorRef.current = anchor;
         let tx = x;
@@ -558,7 +562,15 @@ export default function CanvasArea({
         pts.push([Math.round(tx), Math.round(ty)]);
       } else {
         straightAnchorRef.current = null;
-        pts.push([Math.round(x), Math.round(y)]);
+        // Stabiliser: the pen follows the cursor on a short rope; points only every 6 px
+        const st = pathStabRef.current || [x, y];
+        st[0] += (x - st[0]) * 0.35;
+        st[1] += (y - st[1]) * 0.35;
+        st.raw = [x, y];
+        pathStabRef.current = st;
+        const last = pts[pts.length - 1];
+        if (Math.hypot(st[0] - last[0], st[1] - last[1]) < 6) return;
+        pts.push([Math.round(st[0]), Math.round(st[1])]);
       }
       onAddPath({ ...activePathRef.current, points: [...pts] });
       return;
@@ -567,6 +579,12 @@ export default function CanvasArea({
 
   // Mouse Up handler
   const handleMouseUp = () => {
+    if (activePathRef.current && activePathRef.current.points.length > 3) {
+      const raw = pathStabRef.current?.raw; // the rope lags the cursor, so finish exactly where the pen lifted
+      const all = raw ? [...activePathRef.current.points, [Math.round(raw[0]), Math.round(raw[1])]] : activePathRef.current.points;
+      const done = { ...activePathRef.current, points: simplifyPath(all, 2.5) };
+      onAddPath(done);
+    }
     if (isInteractingRef.current && onCommitAction) {
       onCommitAction();
     }

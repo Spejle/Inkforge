@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import ToolBar from './components/ToolBar';
+import Tooltip from './components/Tooltip';
 import ToolOptions from './components/ToolOptions';
 import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
@@ -740,6 +741,8 @@ export default function App() {
         onNewMap={handleNewMap}
         onPrint={() => setDialog('print')}
       />
+
+      <Tooltip />
 
       {/* Main Studio Workspace */}
       <div className="studio-workspace">
