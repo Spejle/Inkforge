@@ -2,6 +2,12 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.4.2] - 2026-10-14
+
+### Fixed
+- **Mask tool**: the ink coastline was stroked along the *centre line* of every Add-land stroke, leaving dark scribbles across new land. The contour is now traced from the real land edge, so it also outlines carved water and the preset islands consistently (outline sits just outside the edge).
+- **Brush tool**: with Softness above 10% (the default) every biome painted the same flat green; the biome texture is now applied through the feathered mask, so Sunbaked Sands, Snow, Swamp etc. look like themselves.
+
 ## [1.4.1] - 2026-10-14
 
 Bug-fix release from a code review.

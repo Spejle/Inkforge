@@ -417,18 +417,33 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     tctx.globalCompositeOperation = stroke.blendMode || 'source-over';
 
     if (stroke.softness && stroke.softness > 0.1) {
-      // Soft-falloff feathered airbrush dabs
-      const pat = getBiomePattern(tctx, stroke.biome || 'grassland');
+      // Soft-falloff feathered airbrush dabs: build the alpha mask in a bbox-sized buffer,
+      // then fill it with the biome texture (a gradient can't carry a pattern directly).
       const r = (stroke.size || 40) / 2;
+      const xs = stroke.points.map((pt) => pt.x);
+      const ys = stroke.points.map((pt) => pt.y);
+      const minX = Math.floor(Math.min(...xs) - r);
+      const minY = Math.floor(Math.min(...ys) - r);
+      const bw = Math.ceil(Math.max(...xs) + r) - minX;
+      const bh = Math.ceil(Math.max(...ys) + r) - minY;
+      const sc = document.createElement('canvas');
+      sc.width = Math.max(1, bw);
+      sc.height = Math.max(1, bh);
+      const sctx = sc.getContext('2d');
+      sctx.translate(-minX, -minY);
       for (const pt of stroke.points) {
-        const grad = tctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
-        grad.addColorStop(0, typeof pat === 'string' ? pat : '#658d4a');
-        grad.addColorStop(1, 'transparent');
-        tctx.fillStyle = grad;
-        tctx.beginPath();
-        tctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-        tctx.fill();
+        const grad = sctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        sctx.fillStyle = grad;
+        sctx.beginPath();
+        sctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        sctx.fill();
       }
+      sctx.globalCompositeOperation = 'source-in';
+      sctx.fillStyle = getBiomePattern(sctx, stroke.biome || 'grassland');
+      sctx.fillRect(minX, minY, bw, bh);
+      tctx.drawImage(sc, minX, minY);
     } else {
       tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
       tctx.fillStyle = tctx.strokeStyle;
@@ -478,35 +493,23 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     ctx.restore();
   }
 
-  // 7. Crisp Ink Coastline Contour
+  // 7. Crisp Ink Coastline Contour: the true edge of the land mask (presets, added land and carved water)
   if (cl.outlineWidth > 0) {
-    ctx.save();
-    for (const land of landmasses) {
-      if (!land.points || land.points.length < 3) continue;
-      ctx.beginPath();
-      drawSmoothPolygon(ctx, land.points);
-      ctx.strokeStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
-      ctx.lineWidth = cl.outlineWidth;
-      ctx.lineJoin = 'round';
-      ctx.stroke();
+    const ring = document.createElement('canvas');
+    ring.width = width;
+    ring.height = height;
+    const rctx = ring.getContext('2d');
+    const reach = cl.outlineWidth;
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2;
+      rctx.drawImage(maskCanvas, Math.cos(ang) * reach, Math.sin(ang) * reach);
     }
-    // Also outline additive mask strokes
-    for (const stroke of (brushStrokes || [])) {
-      if (stroke.type === 'mask' && stroke.mode === 'land' && stroke.points && stroke.points.length > 0) {
-        ctx.beginPath();
-        if (stroke.points.length === 1) {
-          ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-        } else {
-          drawSmoothPolyline(ctx, stroke.points.map(p => [p.x, p.y]));
-        }
-        ctx.strokeStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
-        ctx.lineWidth = cl.outlineWidth;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
+    rctx.globalCompositeOperation = 'source-in';
+    rctx.fillStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
+    rctx.fillRect(0, 0, width, height);
+    rctx.globalCompositeOperation = 'destination-out';
+    rctx.drawImage(maskCanvas, 0, 0);
+    ctx.drawImage(ring, 0, 0);
   }
 }
 
