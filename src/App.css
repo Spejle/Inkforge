@@ -1225,3 +1225,23 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .stamp-group-badge { position: absolute; top: 4px; right: 4px; min-width: 18px; padding: 1px 5px; border-radius: 9px; background: var(--primary-gold); color: var(--bg-app); font-size: 10px; font-weight: 800; text-align: center; }
 .stamp-variants { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; padding: 8px; border-radius: 8px; background: var(--bg-subtle); border: 1px dashed var(--border-light); }
 .stamp-card.small .stamp-name-caption { font-size: 10px; }
+
+/* Tool settings live in a sidebar beside the Draw / Tools rails */
+.tool-options-ribbon {
+  flex-direction: column; align-items: stretch; justify-content: flex-start;
+  width: 264px; min-width: 264px; height: 100%; min-height: 0; flex-shrink: 0;
+  padding: 14px 14px 24px; gap: 14px; overflow-y: auto; overflow-x: hidden;
+  border-bottom: none; border-right: 1px solid var(--border-color);
+}
+.tool-options-ribbon .options-segment { flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+.tool-options-ribbon .options-segment:last-child { border-bottom: none; }
+.tool-options-ribbon .segment-label { flex-basis: 100%; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; color: var(--text-dim); }
+.tool-options-ribbon .segment-divider { display: none; }
+.tool-options-ribbon .option-label, .tool-options-ribbon .option-label-compact { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
+.tool-options-ribbon input[type='range'] { flex: 1; min-width: 0; }
+.tool-options-ribbon .select-input, .tool-options-ribbon .text-input { width: 100%; }
+.tool-options-ribbon .coastline-fx-popover { left: 0; right: auto; max-width: 240px; }
+@media (pointer: coarse), (max-width: 1100px) {
+  .tool-options-ribbon { width: 220px; min-width: 220px; }
+  .center-stage > .tool-options-ribbon { height: auto; }
+}

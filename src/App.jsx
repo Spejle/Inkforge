@@ -748,8 +748,7 @@ export default function App() {
       <div className="studio-workspace">
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} />
 
-        <div className="center-stage">
-          <ToolOptions
+        <ToolOptions
             activeTool={activeTool}
             maskMode={maskMode}
             setMaskMode={setMaskMode}
@@ -817,6 +816,9 @@ export default function App() {
             onBringToFront={handleBringToFront}
             onSendToBack={handleSendToBack}
           />
+
+        <div className="center-stage">
+
 
           <CanvasArea
             mapWidth={mapWidth}

@@ -2,6 +2,11 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.6.1] - 2026-10-14
+
+### Changed
+- **Tool settings moved to a sidebar** beside the Draw / Tools rails (scale, rotation, jitter, brush size, biome, path type, text options and so on). They used to sit in a ribbon above the canvas; the canvas now gets the full height.
+
 ## [1.6.0] - 2026-10-14
 
 Art and usability release; most stamp and texture work was done by parallel agents and then art-reviewed round by round.
