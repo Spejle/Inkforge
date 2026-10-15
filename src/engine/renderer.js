@@ -1,6 +1,7 @@
 // InkForge Rendering Pipeline — High Performance Canvas 2D Engine
 import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
+import { safeImageSrc } from '../utils/importGuard.js';
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -16,6 +17,7 @@ export function onImageLoad(fn) {
   imageLoadHandler = fn;
 }
 export function stampImage(src) {
+  if (typeof src === 'string' && !safeImageSrc(src)) return null; // never fetch a remote URL for a stamp
   let img = typeof src === 'string' ? imageCache.get(src) : src;
   if (!img) {
     img = new Image();

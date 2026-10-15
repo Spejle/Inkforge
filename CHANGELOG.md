@@ -2,6 +2,17 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.8.2] - 2026-10-15
+
+### Security
+- **Imported projects are no longer trusted** (`src/utils/importGuard.js`): `.inkforge` files and library entries go through `sanitizeProject`. Canvas size is clamped to 64-8000 px (a crafted file could ask for a multi-gigapixel canvas and freeze the tab), list fields must be lists (a wrong type used to crash the editor on every open, and the broken project was autosaved), and stamp images may only be embedded `data:image/...` (a remote URL in a shared file made the viewer's browser contact that server on open). The stamp loader refuses non-embedded sources as well.
+- **Content-Security-Policy** in the built page (build only, so dev hot reload still works): scripts, connections and images from the page itself plus embedded data, styles and fonts from Google Fonts only, no plugins, no `<base>`, no form posts. PixiJS now loads its `unsafe-eval` build so the policy needs no `'unsafe-eval'`. Checked in a browser in both render modes, including PNG export.
+- **`server.js`**: the directory check was a prefix test, so a sibling folder such as `dist-secret` could be read; fixed (resolved path plus separator). A malformed URL escape (`%E0%A4%A`) threw and killed the server; now a 400. Removed `Access-Control-Allow-Origin: *`, added `nosniff` and `no-referrer`, and it now listens on 127.0.0.1 unless `HOST=0.0.0.0` is set.
+- Tests for the guard (`tests/importGuard.test.js`).
+
+### Known
+- Google Fonts is still loaded from Google (privacy and a third-party stylesheet); self-hosting the fonts would remove it.
+
 ## [1.8.1] - 2026-10-15
 
 ### Added

@@ -3,6 +3,7 @@
 //   - raster parts: drawn by the existing Canvas 2D code into their own canvas, uploaded as a texture only when their inputs change
 //   - stamps: one sprite per stamp, so moving one stamp touches one sprite instead of redrawing the whole layer
 //   - layer opacity / blend and the atmosphere run on the GPU
+import 'pixi.js/unsafe-eval'; // Pixi's code generation uses new Function; this build avoids it so the page needs no 'unsafe-eval'
 import { Application, Container, Rectangle, RenderTexture, Sprite, Texture, TilingSprite } from 'pixi.js';
 import 'pixi.js/advanced-blend-modes'; // overlay and soft-light
 import {

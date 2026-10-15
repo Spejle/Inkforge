@@ -1,4 +1,5 @@
 // Export and Import utilities for InkForge
+import { sanitizeProject } from './importGuard.js';
 import { renderMap } from '../engine/renderer.js';
 
 /** Standard 1x PNG download */
@@ -244,12 +245,12 @@ export function importFromJson(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const parsed = JSON.parse(e.target.result);
+        const parsed = sanitizeProject(JSON.parse(e.target.result));
 
         // Hydrate custom images
         if (Array.isArray(parsed.stamps)) {
           parsed.stamps = parsed.stamps.map((s) => {
-            if (typeof s.customImage === 'string' && s.customImage.startsWith('data:')) {
+            if (typeof s.customImage === 'string') { // sanitizeProject has already kept only embedded images
               const img = new Image();
               img.src = s.customImage;
               return { ...s, customImage: img };

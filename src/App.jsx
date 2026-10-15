@@ -9,6 +9,7 @@ import StampImportDialog from './components/StampImportDialog';
 import PrintDialog from './components/PrintDialog';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
 import { exportPrintPdf } from './utils/printUtils';
+import { sanitizeProject } from './utils/importGuard';
 import { saveMap, loadMap, deleteMap, listMaps, newMapId, hydrateStamps } from './utils/autosave';
 import Home from './components/Home';
 import NewMapDialog from './components/NewMapDialog';
@@ -612,7 +613,8 @@ export default function App() {
   };
 
   // Load a parsed project (from a file or from autosave) into state and reset history
-  const applyProject = (data) => {
+  const applyProject = (raw) => {
+    const data = sanitizeProject(raw); // files and old library entries are not trusted
     const tpl = getTemplate(data.template || data.type);
     setMapTitle(data.title || 'Imported Realm');
     setTemplate(tpl.id);
