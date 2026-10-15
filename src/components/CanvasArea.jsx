@@ -1,6 +1,6 @@
 import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { renderMap, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
+import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 
 const HANDLE_R = 14;
 
@@ -90,6 +90,11 @@ export default function CanvasArea({
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const hostRef = useRef(null); // holds the Pixi canvas
+  const [view, setView] = useState(null); // PixiMapView once ready
+  // Canvas 2D stays as the fallback: no GPU WebGL, a map larger than one GPU texture, or ?renderer=2d
+  const rendererParam = new URLSearchParams(window.location.search).get('renderer'); // '2d' forces Canvas 2D, 'pixi' forces Pixi
+  const [fallback, setFallback] = useState(rendererParam === '2d');
   const isInteractingRef = useRef(false);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
@@ -146,15 +151,37 @@ export default function CanvasArea({
     return { x, y };
   }, []);
 
-  // Main canvas render trigger
+  // Pixi view: created lazily (the engine is its own chunk) and rebuilt when the map size changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    if (fallback) return;
+    let cancelled = false;
+    let v = null;
+    (async () => {
+      try {
+        const m = await import('../engine/pixiView');
+        if (cancelled) return;
+        if (!m.canUsePixi(mapWidth, mapHeight, rendererParam === 'pixi')) throw new Error('no usable GPU WebGL, or map too large');
+        v = await m.PixiMapView.create(mapWidth, mapHeight);
+        if (cancelled) return v.destroy();
+        v.canvas.className = 'main-map-canvas';
+        hostRef.current.appendChild(v.canvas);
+        canvasRef.current = v.canvas;
+        setView(v);
+      } catch (err) {
+        console.warn('InkForge: falling back to Canvas 2D view.', err);
+        if (!cancelled) setFallback(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (v) v.destroy();
+      setView(null);
+    };
+  }, [fallback, mapWidth, mapHeight, rendererParam]);
 
-    // one repaint per frame, however many state updates landed in it
-    const raf = requestAnimationFrame(() => renderMap({
-      ctx,
+  // Main render trigger
+  useEffect(() => {
+    const props = {
       width: mapWidth,
       height: mapHeight,
       mapType,
@@ -171,11 +198,17 @@ export default function CanvasArea({
       selectedTextId,
       selectedPathId,
       layerVisibility,
-      layerStyle,
-      cache: true
-    }));
+      layerStyle
+    };
+    // one repaint per frame, however many state updates landed in it
+    const raf = requestAnimationFrame(() => {
+      if (view) view.render(buildPlan(props));
+      else if (fallback && canvasRef.current) renderMap({ ctx: canvasRef.current.getContext('2d'), cache: true, ...props });
+    });
     return () => cancelAnimationFrame(raf);
   }, [
+    view,
+    fallback,
     mapWidth,
     mapHeight,
     mapType,
@@ -648,12 +681,11 @@ export default function CanvasArea({
           transformOrigin: 'center center'
         }}
       >
-        <canvas
-          ref={canvasRef}
-          width={mapWidth}
-          height={mapHeight}
-          className="main-map-canvas"
-        />
+        {fallback ? (
+          <canvas ref={canvasRef} width={mapWidth} height={mapHeight} className="main-map-canvas" />
+        ) : (
+          <div ref={hostRef} style={{ width: mapWidth, height: mapHeight }} />
+        )}
 
         {/* Brush Radius Preview Ring */}
         {mousePos.inside && (activeTool === 'mask' || activeTool === 'brush') && (

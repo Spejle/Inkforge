@@ -5,7 +5,6 @@ import { getBiomePattern } from './biomesCatalog.js';
 // Cache for static background & noise buffers
 let backgroundCache = null;
 let lastBgKey = '';
-let noisePatternCache = null;
 
 // Custom stamp images: decoded once per data URL, never written back onto the stamp.
 // The canvas repaints via onImageLoad when a still-loading image arrives.
@@ -16,7 +15,7 @@ let imageEpoch = 0; // bumps when any custom image finishes decoding, so cached 
 export function onImageLoad(fn) {
   imageLoadHandler = fn;
 }
-function stampImage(src) {
+export function stampImage(src) {
   let img = typeof src === 'string' ? imageCache.get(src) : src;
   if (!img) {
     img = new Image();
@@ -30,16 +29,19 @@ function stampImage(src) {
   return img.complete && img.naturalWidth ? img : null;
 }
 
-/**
- * Main draw loop: renders the composite map into destination canvas.
- */
 /** Width / height of a placed stamp: its own (custom uploads) or the catalogue definition's. */
 export function stampAspect(s) {
   return s.aspect || getStampById(s.stampId)?.aspect || 1.0;
 }
 
-export function renderMap({
-  ctx,
+/**
+ * The map as an ordered list of layers, each made of parts, with the inputs that decide when a part must be redrawn.
+ * Both the Canvas 2D path (renderMap) and the Pixi live view consume it, so layer order and cache keys live in one place.
+ *  - { kind: 'layer', name, style, parts }  parts: { kind: 'raster', deps, draw(c) } | { kind: 'stamps', deps, stamps, selectedId, draw(c) }
+ *  - { kind: 'live', style, stroke }        stroke being painted: cheap preview above the land layer
+ *  - { kind: 'atmosphere', atmosphere }     post-processing over everything below it
+ */
+export function buildPlan({
   width,
   height,
   mapType = 'world',
@@ -56,77 +58,102 @@ export function renderMap({
   selectedTextId = null,
   selectedPathId = null,
   layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
-  layerStyle = {}, // { [layerKey]: { opacity, blend } }
-  cache = false // live canvas only: keep each layer's raster between repaints (exports must not share it)
+  layerStyle = {} // { [layerKey]: { opacity, blend } }
 }) {
-  ctx.save();
-  ctx.clearRect(0, 0, width, height);
-
   const st = (k) => layerStyle[k];
-
+  // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
   const onLayer = (key) => (o) => o.layer === key;
   const onBase = (o) => !o.layer || !layerStyle[o.layer];
   const customKeys = Object.keys(layerStyle).filter((k) => k.startsWith('c_'));
   const customSig = customKeys.join(',');
 
+  const raster = (deps, draw, empty = false) => ({ kind: 'raster', deps, draw, empty });
+  const stampPart = (list, selectedId, extra) => ({
+    kind: 'stamps',
+    deps: [stamps, selectedId, imageEpoch, ...extra],
+    stamps: list,
+    selectedId,
+    epoch: imageEpoch,
+    draw: (c) => renderStamps(c, list, selectedId)
+  });
+  const items = [];
+  const layer = (name, ...parts) => items.push({ kind: 'layer', name, style: st(name), parts });
+
   // 1. BASE BACKGROUND (Ocean or Dungeon Void)
   if (layerVisibility.background) {
-    cachedPass(cache, ctx, 'background', [mapType, width, height], st('background'), (c) => {
+    layer('background', raster([mapType, width, height], (c) => {
       if (mapType === 'world') renderOceanBackground(c, width, height);
       else renderDungeonVoid(c, width, height);
-    });
+    }));
   }
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    cachedPass(cache, ctx, 'land', [landmasses, brushStrokes, coastline, mapType, width, height], st('land'),
-      (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline));
-    if (liveStroke) layerPass(ctx, st('land'), (c) => drawLiveStroke(c, liveStroke));
+    layer('land', raster([landmasses, brushStrokes, coastline, mapType, width, height],
+      (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline)));
+    if (liveStroke) items.push({ kind: 'live', style: st('land'), stroke: liveStroke });
   }
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    cachedPass(cache, ctx, 'paths', [paths, selectedPathId, customSig], st('paths'),
-      (c) => renderPaths(c, paths.filter(onBase), selectedPathId));
+    const list = paths.filter(onBase);
+    layer('paths', raster([paths, selectedPathId, customSig], (c) => renderPaths(c, list, selectedPathId), list.length === 0));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
   if (layerVisibility.stamps) {
-    cachedPass(cache, ctx, 'stamps', [stamps, selectedStampId, customSig, imageEpoch], st('stamps'),
-      (c) => renderStamps(c, stamps.filter(onBase), selectedStampId));
+    layer('stamps', stampPart(stamps.filter(onBase), selectedStampId, [customSig]));
   }
 
   // 4b. CUSTOM LAYERS, bottom to top: each draws its own paths, stamps and labels
   for (const key of customKeys) {
     if (layerVisibility[key] === false) continue;
-    cachedPass(cache, ctx, key, [paths, stamps, texts, selectedPathId, selectedStampId, selectedTextId, imageEpoch], st(key), (c) => {
-      renderPaths(c, paths.filter(onLayer(key)), selectedPathId);
-      renderStamps(c, stamps.filter(onLayer(key)), selectedStampId);
-      renderTexts(c, texts.filter(onLayer(key)), selectedTextId);
-    });
+    const pl = paths.filter(onLayer(key)), tl = texts.filter(onLayer(key));
+    layer(key,
+      raster([paths, selectedPathId], (c) => renderPaths(c, pl, selectedPathId), pl.length === 0),
+      stampPart(stamps.filter(onLayer(key)), selectedStampId, []),
+      raster([texts, selectedTextId], (c) => renderTexts(c, tl, selectedTextId), tl.length === 0));
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
-  if (layerVisibility.atmosphere) {
-    renderAtmosphere(ctx, width, height, atmosphere);
-  }
+  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere });
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
-    cachedPass(cache, ctx, 'text', [texts, selectedTextId, customSig], st('text'),
-      (c) => renderTexts(c, texts.filter(onBase), selectedTextId));
+    const list = texts.filter(onBase);
+    layer('text', raster([texts, selectedTextId, customSig], (c) => renderTexts(c, list, selectedTextId), list.length === 0));
   }
 
   // 7. GRID OVERLAY (Square, Hex, Isometric)
   if (layerVisibility.grid && grid.enabled) {
-    cachedPass(cache, ctx, 'grid', [grid, width, height], st('grid'), (c) => renderGrid(c, width, height, grid));
+    layer('grid', raster([grid, width, height], (c) => renderGrid(c, width, height, grid)));
   }
+  return { width, height, items };
+}
 
+/**
+ * Main draw loop: renders the composite map into destination canvas.
+ * `cache` is for the live canvas only: it keeps each layer's raster between repaints (exports must not share it).
+ */
+export function renderMap({ ctx, cache = false, ...props }) {
+  const { width, height, items } = buildPlan(props);
+  ctx.save();
+  ctx.clearRect(0, 0, width, height);
+  for (const it of items) {
+    if (it.kind === 'layer') {
+      const { name, style, parts } = it;
+      cachedPass(cache, ctx, name, parts.flatMap((p) => p.deps), style, (c) => parts.forEach((p) => p.draw(c)));
+    } else if (it.kind === 'live') {
+      layerPass(ctx, it.style, (c) => drawLiveStroke(c, it.stroke));
+    } else {
+      renderAtmosphere(ctx, width, height, it.atmosphere);
+    }
+  }
   ctx.restore();
 }
 
 /** Quick look at a stroke mid-drag: no coast ripples, sand or outline until it is committed. */
-function drawLiveStroke(c, s) {
+export function drawLiveStroke(c, s) {
   const pts = s.points;
   if (!pts || pts.length === 0) return;
   c.save();
@@ -735,7 +762,7 @@ function renderPaths(ctx, paths, selectedPathId) {
 // Stamps are vector code; drawing them once into a small sprite makes repaints cheap, gives each stamp
 // ONE soft shadow (not one per sub-path) and keeps per-stamp tone/hue filters off the big canvas.
 const spriteCache = new Map();
-function stampSprite(ctx, def, s, size, w, h) {
+export function stampSprite(ctx, def, s, size, w, h) {
   const a = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
   const k = Math.min(4, Math.max(0.25, 2 ** Math.ceil(Math.log2(a))));
   const key = [s.stampId, Math.round(size), k, s.color, s.fill, s.seed, s.tone, s.hue, !!s.flipX, !!s.flipY].join('|');
@@ -772,6 +799,34 @@ function stampSprite(ctx, def, s, size, w, h) {
   spriteCache.set(key, sp);
   if (spriteCache.size > 700) spriteCache.delete(spriteCache.keys().next().value);
   return sp;
+}
+
+/** Selection box and transform handles, in the stamp's own frame (origin = top-left of its w x h box). */
+export function drawStampSelection(ctx, finalW, finalH) {
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(-4, -4, finalW + 8, finalH + 8);
+  ctx.setLineDash([]);
+
+  // Corner handles (TL, TR, BL, BR)
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(-8, -8, 8, 8);
+  ctx.fillRect(finalW, -8, 8, 8);
+  ctx.fillRect(-8, finalH, 8, 8);
+  ctx.fillRect(finalW, finalH, 8, 8);
+
+  // Top Rotation Handle Stem
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(finalW / 2, -4);
+  ctx.lineTo(finalW / 2, -22);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(finalW / 2, -22, 5, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Render stamps with true aspect ratio centering, handles, and isometric Y-sorting */
@@ -828,33 +883,7 @@ function renderStamps(ctx, stamps, selectedStampId) {
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
 
-    // Selection box highlight & transform handles
-    if (s.id === selectedStampId) {
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(-4, -4, finalW + 8, finalH + 8);
-      ctx.setLineDash([]);
-
-      // Corner handles (TL, TR, BL, BR)
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(-8, -8, 8, 8);
-      ctx.fillRect(finalW, -8, 8, 8);
-      ctx.fillRect(-8, finalH, 8, 8);
-      ctx.fillRect(finalW, finalH, 8, 8);
-
-      // Top Rotation Handle Stem
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(finalW / 2, -4);
-      ctx.lineTo(finalW / 2, -22);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(finalW / 2, -22, 5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    if (s.id === selectedStampId) drawStampSelection(ctx, finalW, finalH);
 
     ctx.restore();
   }
@@ -1027,77 +1056,69 @@ function renderGrid(ctx, width, height, grid) {
 }
 
 /** Atmospheric post-processing: Vignette, Parchment Grain, Sepia warmth, and Brightness */
+// 128px parchment noise tile, built once
+let noiseCanvas = null;
+export function getNoiseCanvas() {
+  if (!noiseCanvas) {
+    const nSize = 128;
+    noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = nSize;
+    noiseCanvas.height = nSize;
+    const nctx = noiseCanvas.getContext('2d');
+    const imgData = nctx.createImageData(nSize, nSize);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const val = 120 + Math.floor(Math.random() * 80);
+      imgData.data[i] = val;
+      imgData.data[i + 1] = val - 10;
+      imgData.data[i + 2] = val - 20;
+      imgData.data[i + 3] = 45; // subtle alpha
+    }
+    nctx.putImageData(imgData, 0, 0);
+  }
+  return noiseCanvas;
+}
+
+/** The atmosphere as drawing steps: grain tile (multiply), flat tints (multiply / screen), vignette (normal). */
+export function atmosphereOps(a) {
+  const ops = [];
+  if (a.parchmentGrain > 0) ops.push({ type: 'grain', alpha: Math.min(1.0, a.parchmentGrain * 0.45) });
+  if (a.sepia > 0) ops.push({ type: 'solid', rgb: [196, 154, 108], alpha: a.sepia * 0.28, blend: 'multiply' });
+  if (a.brightness !== undefined && a.brightness !== 1.0) {
+    if (a.brightness > 1.0) ops.push({ type: 'solid', rgb: [255, 255, 255], alpha: (a.brightness - 1.0) * 0.4, blend: 'screen' });
+    else ops.push({ type: 'solid', rgb: [0, 0, 0], alpha: (1.0 - a.brightness) * 0.6, blend: 'multiply' });
+  }
+  if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
+  return ops;
+}
+
+export function drawVignette(ctx, width, height, vignette) {
+  const maxDim = Math.max(width, height);
+  const grad = ctx.createRadialGradient(width / 2, height / 2, maxDim * 0.28, width / 2, height / 2, maxDim * 0.72);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(0.7, `rgba(15, 10, 5, ${vignette * 0.45})`);
+  grad.addColorStop(1, `rgba(5, 3, 2, ${vignette * 0.95})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+}
+
 function renderAtmosphere(ctx, width, height, atmosphere) {
   ctx.save();
-
-  // 1. Procedural Parchment Grain noise pattern
-  if (atmosphere.parchmentGrain > 0) {
-    if (!noisePatternCache) {
-      const nSize = 128;
-      const nCanvas = document.createElement('canvas');
-      nCanvas.width = nSize;
-      nCanvas.height = nSize;
-      const nctx = nCanvas.getContext('2d');
-
-      const imgData = nctx.createImageData(nSize, nSize);
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        const val = 120 + Math.floor(Math.random() * 80);
-        imgData.data[i] = val;
-        imgData.data[i + 1] = val - 10;
-        imgData.data[i + 2] = val - 20;
-        imgData.data[i + 3] = 45; // subtle alpha
-      }
-      nctx.putImageData(imgData, 0, 0);
-      noisePatternCache = ctx.createPattern(nCanvas, 'repeat');
-    }
-
-    if (noisePatternCache) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1.0, atmosphere.parchmentGrain * 0.45);
+  for (const op of atmosphereOps(atmosphere)) {
+    ctx.save();
+    if (op.type === 'grain') {
+      ctx.globalAlpha = op.alpha;
       ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = noisePatternCache;
+      ctx.fillStyle = ctx.createPattern(getNoiseCanvas(), 'repeat');
       ctx.fillRect(0, 0, width, height);
-      ctx.restore();
-    }
-  }
-
-  // 2. Sepia Warmth Tint
-  if (atmosphere.sepia > 0) {
-    ctx.fillStyle = `rgba(196, 154, 108, ${atmosphere.sepia * 0.28})`;
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  // 3. Brightness / Exposure overlay
-  if (atmosphere.brightness !== undefined && atmosphere.brightness !== 1.0) {
-    if (atmosphere.brightness > 1.0) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${(atmosphere.brightness - 1.0) * 0.4})`;
-      ctx.globalCompositeOperation = 'screen';
+    } else if (op.type === 'solid') {
+      ctx.fillStyle = `rgba(${op.rgb.join(', ')}, ${op.alpha})`;
+      ctx.globalCompositeOperation = op.blend;
       ctx.fillRect(0, 0, width, height);
     } else {
-      ctx.fillStyle = `rgba(0, 0, 0, ${(1.0 - atmosphere.brightness) * 0.6})`;
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillRect(0, 0, width, height);
+      drawVignette(ctx, width, height, op.vignette);
     }
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
   }
-
-  // 4. Vignette radial gradient
-  if (atmosphere.vignette > 0) {
-    const maxDim = Math.max(width, height);
-    const grad = ctx.createRadialGradient(
-      width / 2, height / 2, maxDim * 0.28,
-      width / 2, height / 2, maxDim * 0.72
-    );
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(0.7, `rgba(15, 10, 5, ${atmosphere.vignette * 0.45})`);
-    grad.addColorStop(1, `rgba(5, 3, 2, ${atmosphere.vignette * 0.95})`);
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
-  }
-
   ctx.restore();
 }
 

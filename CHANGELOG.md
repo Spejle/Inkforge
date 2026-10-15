@@ -2,6 +2,27 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.8.0] - 2026-10-15
+
+### Added
+- **PixiJS (WebGL) live view** (`src/engine/pixiView.ts`, TypeScript). Each cached layer is a GPU texture; layer order, opacity and blend, and the atmosphere are composited on the GPU. Every stamp is its own sprite, so moving one stamp touches one sprite instead of redrawing the stamp layer. Stamp selection handles are a small sprite redrawn only when the selection changes. A stroke being painted uploads only its bounding box.
+- **Layer plan** (`buildPlan` in `renderer.js`): one ordered list of layers, parts and cache keys that both the Canvas 2D path and the Pixi view consume, so they cannot drift apart. `renderMap` is now a thin consumer of it.
+- Styled layers that contain stamps (opacity or blend set) are rendered into a texture first, so stamps in a layer blend as one group, like Canvas 2D.
+
+### Changed
+- Export, print and thumbnails still use the Canvas 2D renderer (exact output up to 16K, no GPU texture limit).
+- The live view falls back to Canvas 2D when WebGL is missing, the map is larger than one GPU texture, or the renderer is software GL (SwiftShader, llvmpipe), where Canvas 2D is faster. `?renderer=2d` forces Canvas 2D, `?renderer=pixi` forces Pixi.
+
+### Verified
+- Pixel comparison against the 1.7.2 renderer (headless Chromium): every one of 120 sampled stamps lands on the same centroid; sample region map mean difference 0.5/255, Obsidian Reach 2.1/255 (about 1% of pixels differ by more than 24, at anti-aliased edges and overlaps); multiply, opacity and custom layers within 0.7; overlay 0.8.
+- Stamp select and drag, and the Canvas 2D fallback, checked in the running app.
+
+### Known
+- **Speed on a real GPU has not been measured.** The only WebGL available here is software (SwiftShader), where a Pixi frame costs more than the cached Canvas 2D path (region map 330 ms against 30 ms; Obsidian Reach 2.1 s against 1.1 s per stamp move), which is why software GL falls back. Moving a stamp does no CPU redraw (2-3 ms of JavaScript on Obsidian Reach, against 1.1 s before).
+- Custom-image stamps and the parchment grain tile use the same pixels as before, but the grain's random noise is regenerated per page load.
+- The selection box of a stamp is drawn above all stamps of its layer, not in its own depth order.
+- A lost WebGL context is not recovered yet.
+
 ## [1.7.4] - 2026-10-15
 
 ### Added (tooling)
