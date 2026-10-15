@@ -4044,7 +4044,10 @@ for (const [id, view] of Object.entries(BASE_VIEWS)) {
 }
 for (const s of STAMPS) {
   const b = s.family && s.family !== s.id ? baseById.get(s.family) : null;
-  if (b) { s.group = b.group; s.groupName = b.groupName; s.category = b.category; }
+  if (b) {
+    s.group = b.group; s.groupName = b.groupName; s.category = b.category;
+    if (s.view === 'top') s.rotate = 'free'; // a plan view looks right at any angle, whatever the side view does
+  }
 }
 
 let stampIndex = null;

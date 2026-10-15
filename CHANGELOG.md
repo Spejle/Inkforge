@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.9.0] - 2026-10-15
+
+### Added
+- **81 new stamp views** (276 stamps in total). Directional stamps now come in several viewing directions, kept together in the same drawer group: side, top (plan), diagonal and front versions of dungeon walls, doors, pillars and stairs; tavern table, chests, barrels, throne, altar and bookshelf; hero and dragon tokens (front and side busts); sailing ships, sea serpents and the kraken; mountains, volcanoes, mesa, hills and dunes, fallen log and stump; castle citadel, keep, village, windmills, wizard tower, lighthouse, ruined tower, bridge, farm, port dock, temple and tent. 44 stamp families, one new file per area (`src/engine/stamps/views*.js`), drawn by the Gemini intern and reviewed on contact sheets.
+- A `top` view is always freely rotatable; the other views follow their base stamp's rotation policy.
+
+### Known
+- A few views are weak and are queued for a redraw: `castle_citadel_top` (corner towers read as "prohibited" signs), `village_houses_top` (reads as crates), `civ_lighthouse_side` and `windmill_front` (too close to the originals).
+- The generated settlement and castle sets (`set_*`, `cas_*`, `tr_*`) have no extra views yet.
+
 ## [1.8.4] - 2026-10-15
 
 ### Fixed
