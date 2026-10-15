@@ -12,6 +12,7 @@ let noisePatternCache = null;
 const imageCache = new Map();
 const watched = new WeakSet();
 let imageLoadHandler = null;
+let imageEpoch = 0; // bumps when any custom image finishes decoding, so cached stamp layers repaint
 export function onImageLoad(fn) {
   imageLoadHandler = fn;
 }
@@ -24,7 +25,7 @@ function stampImage(src) {
   }
   if (!img.complete && !watched.has(img)) {
     watched.add(img);
-    img.addEventListener('load', () => imageLoadHandler && imageLoadHandler(), { once: true });
+    img.addEventListener('load', () => { imageEpoch++; imageLoadHandler && imageLoadHandler(); }, { once: true });
   }
   return img.complete && img.naturalWidth ? img : null;
 }
@@ -55,16 +56,22 @@ export function renderMap({
   selectedTextId = null,
   selectedPathId = null,
   layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
-  layerStyle = {} // { [layerKey]: { opacity, blend } }
+  layerStyle = {}, // { [layerKey]: { opacity, blend } }
+  cache = false // live canvas only: keep each layer's raster between repaints (exports must not share it)
 }) {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
 
   const st = (k) => layerStyle[k];
 
+  const onLayer = (key) => (o) => o.layer === key;
+  const onBase = (o) => !o.layer || !layerStyle[o.layer];
+  const customKeys = Object.keys(layerStyle).filter((k) => k.startsWith('c_'));
+  const customSig = customKeys.join(',');
+
   // 1. BASE BACKGROUND (Ocean or Dungeon Void)
   if (layerVisibility.background) {
-    layerPass(ctx, st('background'), (c) => {
+    cachedPass(cache, ctx, 'background', [mapType, width, height], st('background'), (c) => {
       if (mapType === 'world') renderOceanBackground(c, width, height);
       else renderDungeonVoid(c, width, height);
     });
@@ -72,31 +79,27 @@ export function renderMap({
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    layerPass(ctx, st('land'), (c) => {
-      landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline);
-      if (liveStroke) drawLiveStroke(c, liveStroke);
-    });
+    cachedPass(cache, ctx, 'land', [landmasses, brushStrokes, coastline, mapType, width, height], st('land'),
+      (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline));
+    if (liveStroke) layerPass(ctx, st('land'), (c) => drawLiveStroke(c, liveStroke));
   }
-
-  // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
-  const onLayer = (key) => (o) => o.layer === key;
-  const onBase = (o) => !o.layer || !layerStyle[o.layer];
-  const customKeys = Object.keys(layerStyle).filter((k) => k.startsWith('c_'));
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    layerPass(ctx, st('paths'), (c) => renderPaths(c, paths.filter(onBase), selectedPathId));
+    cachedPass(cache, ctx, 'paths', [paths, selectedPathId, customSig], st('paths'),
+      (c) => renderPaths(c, paths.filter(onBase), selectedPathId));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
   if (layerVisibility.stamps) {
-    layerPass(ctx, st('stamps'), (c) => renderStamps(c, stamps.filter(onBase), selectedStampId));
+    cachedPass(cache, ctx, 'stamps', [stamps, selectedStampId, customSig, imageEpoch], st('stamps'),
+      (c) => renderStamps(c, stamps.filter(onBase), selectedStampId));
   }
 
   // 4b. CUSTOM LAYERS, bottom to top: each draws its own paths, stamps and labels
   for (const key of customKeys) {
     if (layerVisibility[key] === false) continue;
-    layerPass(ctx, st(key), (c) => {
+    cachedPass(cache, ctx, key, [paths, stamps, texts, selectedPathId, selectedStampId, selectedTextId, imageEpoch], st(key), (c) => {
       renderPaths(c, paths.filter(onLayer(key)), selectedPathId);
       renderStamps(c, stamps.filter(onLayer(key)), selectedStampId);
       renderTexts(c, texts.filter(onLayer(key)), selectedTextId);
@@ -110,12 +113,13 @@ export function renderMap({
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
-    layerPass(ctx, st('text'), (c) => renderTexts(c, texts.filter(onBase), selectedTextId));
+    cachedPass(cache, ctx, 'text', [texts, selectedTextId, customSig], st('text'),
+      (c) => renderTexts(c, texts.filter(onBase), selectedTextId));
   }
 
   // 7. GRID OVERLAY (Square, Hex, Isometric)
   if (layerVisibility.grid && grid.enabled) {
-    layerPass(ctx, st('grid'), (c) => renderGrid(c, width, height, grid));
+    cachedPass(cache, ctx, 'grid', [grid, width, height], st('grid'), (c) => renderGrid(c, width, height, grid));
   }
 
   ctx.restore();
@@ -160,22 +164,33 @@ function drawLiveStroke(c, s) {
   c.restore();
 }
 
-// The land pass (mask, ripples, terrain, sand, outline) is the expensive one and does not change while
-// stamps, paths or labels are being dragged, so keep its last result keyed by the state it was built from.
-let landCache = null;
-function landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline) {
-  // only the 1:1 preview is cached; scaled exports render directly so they stay sharp
-  if (c.getTransform().a !== 1) return renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline);
-  const k = landCache;
-  if (!(k && k.landmasses === landmasses && k.brushStrokes === brushStrokes && k.coastline === coastline &&
-        k.mapType === mapType && k.width === width && k.height === height)) {
+// Each layer is rasterised into its own canvas and only redrawn when its inputs change (compared by identity),
+// so dragging a stamp or drawing a path repaints one layer and composites the rest. Only the 1:1 preview is
+// cached; scaled exports render directly so they stay sharp.
+// ponytail: one full-size canvas per layer (~45 MB each at 4000x2800); merge into below/above bitmaps if memory bites.
+const layerCache = new Map();
+function cachedPass(cache, ctx, name, deps, style, draw) {
+  if (!cache || ctx.getTransform().a !== 1) return layerPass(ctx, style, draw);
+  const { width: w, height: h } = ctx.canvas;
+  let e = layerCache.get(name);
+  if (!e || e.canvas.width !== w || e.canvas.height !== h) {
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    renderLandmasses(canvas.getContext('2d'), width, height, landmasses, brushStrokes, mapType, coastline);
-    landCache = { landmasses, brushStrokes, coastline, mapType, width, height, canvas };
+    canvas.width = w;
+    canvas.height = h;
+    e = { canvas, deps: null };
+    layerCache.set(name, e);
   }
-  c.drawImage(landCache.canvas, 0, 0);
+  if (!e.deps || e.deps.some((d, i) => !Object.is(d, deps[i]))) {
+    const g = e.canvas.getContext('2d');
+    g.clearRect(0, 0, w, h);
+    draw(g);
+    e.deps = deps;
+  }
+  ctx.save();
+  ctx.globalAlpha = style?.opacity ?? 1;
+  ctx.globalCompositeOperation = style?.blend || 'source-over';
+  ctx.drawImage(e.canvas, 0, 0);
+  ctx.restore();
 }
 
 /**

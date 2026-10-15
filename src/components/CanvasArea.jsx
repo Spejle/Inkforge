@@ -171,7 +171,8 @@ export default function CanvasArea({
       selectedTextId,
       selectedPathId,
       layerVisibility,
-      layerStyle
+      layerStyle,
+      cache: true
     }));
     return () => cancelAnimationFrame(raf);
   }, [

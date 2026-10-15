@@ -2,6 +2,18 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.7.3] - 2026-10-15
+
+### Changed (performance)
+- **Per-layer raster cache** on the live canvas: each layer (background, land, paths, stamps, each custom layer, text, grid) keeps its own canvas and is redrawn only when its inputs change, then the layers are composited. Exports, print and thumbnails still render directly and never touch the cache (`cache` flag on `renderMap`).
+- Stamp layers also repaint when a custom stamp image finishes loading.
+- Measured in headless Chromium (software rendering), moving one stamp: sample region map 237 -> 30 ms per repaint; Obsidian Reach (1,364 stamps) 2550 -> 1107 ms.
+- Cached and direct renders differ by at most 5/255 per channel (alpha rounding when layers are composited separately).
+
+### Known
+- Moving one stamp still redraws the whole stamp layer; on the 1,364-stamp map that is most of the remaining time. Fix is to hold stamps as individual display objects (the PixiJS step).
+- One full-size canvas per layer is kept (about 45 MB each at 4000x2800).
+
 ## [1.7.2] - 2026-10-15
 
 ### Fixed (performance)
