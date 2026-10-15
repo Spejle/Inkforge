@@ -534,7 +534,7 @@ export default function ToolOptions({
           <button
             className={`btn-toggle ${stampJitter ? 'active' : ''}`}
             onClick={() => setStampJitter(!stampJitter)}
-            title="Randomize size and rotation for natural organic clusters"
+            title="Randomize size and rotation for natural organic clusters (upright stamps such as castles and trees keep their angle; top-down props spin freely)"
           >
             <Shuffle size={14} /> Jitter
           </button>

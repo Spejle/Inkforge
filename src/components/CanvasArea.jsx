@@ -1,6 +1,7 @@
 import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
+import { getStampById } from '../engine/stampsCatalog';
 
 const HANDLE_R = 14;
 
@@ -270,7 +271,10 @@ export default function CanvasArea({
 
     if (stampJitter) {
       finalScale *= 0.85 + Math.random() * 0.3;
-      finalRot += (Math.random() - 0.5) * 0.35;
+      // each stamp type says how it may turn: 'fixed' stays upright, 'free' spins any angle, otherwise a small lean
+      const policy = getStampById(activeStampId)?.rotate;
+      if (policy === 'free') finalRot += Math.random() * Math.PI * 2;
+      else if (policy !== 'fixed') finalRot += (Math.random() - 0.5) * 0.35;
       finalX += (Math.random() - 0.5) * 12;
       finalY += (Math.random() - 0.5) * 12;
     }

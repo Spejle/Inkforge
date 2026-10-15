@@ -2,6 +2,15 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.8.1] - 2026-10-15
+
+### Added
+- **Per-stamp rotation policy.** Every stamp definition now carries `rotate`: `fixed` (stays upright: trees, mountains, buildings, ships, standing figures), `tilt` (a small natural lean: hills, bushes, rocks) or `free` (top-down or symmetric: dungeon pieces, tavern tables, campfires, pools, whirlpools, hero and monster tokens). 195 stamps tagged (162 fixed, 18 tilt, 15 free); tagged by the Gemini intern, reviewed.
+- **Jitter respects it**: it no longer leans castles and trees by a random angle; `free` stamps spin to any angle, `tilt` keeps the old small lean. Stamps without a policy behave as before. The rotation slider, the rotate handle and `[` `]` still turn any stamp by hand.
+
+### Known
+- A few battle props (chests, throne, altar, barrel stack, bookshelf) are drawn front-on and are tagged `fixed`; switch to `free` if they turn out to be top-down.
+
 ## [1.8.0] - 2026-10-15
 
 ### Added
