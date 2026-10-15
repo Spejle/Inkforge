@@ -182,14 +182,26 @@ function landLayer(c, width, height, landmasses, brushStrokes, mapType, coastlin
  * Draws one layer through an offscreen buffer when it has non-default opacity or blend,
  * so passes that set their own globalAlpha still honour the layer setting.
  */
+const layerScratch = new Map();
 function layerPass(ctx, style, draw) {
   const opacity = style?.opacity ?? 1;
   const blend = style?.blend || 'source-over';
   if (opacity >= 1 && blend === 'source-over') return draw(ctx);
-  const off = document.createElement('canvas');
-  off.width = ctx.canvas.width;
-  off.height = ctx.canvas.height;
+  // one scratch canvas per size, reused: allocating a full-size canvas per layer per frame was ~45 ms each
+  const key = ctx.canvas.width + 'x' + ctx.canvas.height;
+  let off = layerScratch.get(key);
+  if (!off) {
+    off = document.createElement('canvas');
+    off.width = ctx.canvas.width;
+    off.height = ctx.canvas.height;
+    if (layerScratch.size > 3) layerScratch.clear();
+    layerScratch.set(key, off);
+  }
   const octx = off.getContext('2d');
+  octx.setTransform(1, 0, 0, 1, 0, 0);
+  octx.globalAlpha = 1;
+  octx.globalCompositeOperation = 'source-over';
+  octx.clearRect(0, 0, off.width, off.height);
   octx.setTransform(ctx.getTransform());
   draw(octx);
   ctx.save();
@@ -711,22 +723,36 @@ const spriteCache = new Map();
 function stampSprite(ctx, def, s, size, w, h) {
   const a = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
   const k = Math.min(4, Math.max(0.25, 2 ** Math.ceil(Math.log2(a))));
-  const key = [s.stampId, Math.round(size), k, s.color, s.fill, s.seed, s.tone, s.hue].join('|');
+  const key = [s.stampId, Math.round(size), k, s.color, s.fill, s.seed, s.tone, s.hue, !!s.flipX, !!s.flipY].join('|');
   let sp = spriteCache.get(key);
   if (sp) {
     spriteCache.delete(key); // refresh LRU order
     spriteCache.set(key, sp);
     return sp;
   }
-  const pad = Math.ceil(size * 0.15);
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.ceil((w + pad * 2) * k));
-  c.height = Math.max(1, Math.ceil((h + pad * 2) * k));
-  const g = c.getContext('2d');
+  const sc = s.scale || 1.0;
+  const pad = Math.max(Math.ceil(size * 0.15), Math.ceil(16 * sc));
+  const cw = Math.max(1, Math.ceil((w + pad * 2) * k));
+  const ch = Math.max(1, Math.ceil((h + pad * 2) * k));
+  const raw = document.createElement('canvas');
+  raw.width = cw;
+  raw.height = ch;
+  const g = raw.getContext('2d');
   g.scale(k, k);
   g.translate(pad, pad);
   if (s.tone) g.filter = `brightness(${s.tone}) hue-rotate(${s.hue || 0}deg)`; // small canvas: cheap
   def.render(g, size, s.color, s.fill, s.seed);
+  // Cartographic NW light: ONE soft drop shadow baked into the sprite, so the big canvas never blurs
+  const c = document.createElement('canvas');
+  c.width = cw;
+  c.height = ch;
+  const sg = c.getContext('2d');
+  sg.shadowColor = 'rgba(20, 15, 10, 0.35)';
+  sg.shadowBlur = Math.max(3, 6 * sc) * k;
+  // a flipped stamp is drawn mirrored, so mirror the baked offset to keep the light falling the same way
+  sg.shadowOffsetX = 2 * sc * k * (s.flipX ? -1 : 1);
+  sg.shadowOffsetY = 4 * sc * k * (s.flipY ? -1 : 1);
+  sg.drawImage(raw, 0, 0);
   sp = { canvas: c, pad };
   spriteCache.set(key, sp);
   if (spriteCache.size > 700) spriteCache.delete(spriteCache.keys().next().value);
@@ -768,14 +794,12 @@ function renderStamps(ctx, stamps, selectedStampId) {
     // anchor 'base': the placement point is the bottom-centre, so the stamp stands on the ground
     ctx.translate(-finalW / 2, s.anchor === 'base' ? -finalH : -finalH / 2);
 
-    // Cartographic 315° Northwest illumination & contact drop shadow
-    ctx.shadowColor = 'rgba(20, 15, 10, 0.35)';
-    ctx.shadowBlur = Math.max(3, 6 * (s.scale || 1.0));
-    ctx.shadowOffsetX = 2 * (s.scale || 1.0);
-    ctx.shadowOffsetY = 4 * (s.scale || 1.0);
-
-    // Custom image stamp or procedural vector stamp
+    // Custom image stamp or procedural vector stamp (procedural sprites carry their own baked shadow)
     if (s.customImage) {
+      ctx.shadowColor = 'rgba(20, 15, 10, 0.35)';
+      ctx.shadowBlur = Math.max(3, 6 * (s.scale || 1.0));
+      ctx.shadowOffsetX = 2 * (s.scale || 1.0);
+      ctx.shadowOffsetY = 4 * (s.scale || 1.0);
       const img = stampImage(s.customImage);
       if (img) ctx.drawImage(img, 0, 0, finalW, finalH);
     } else if (def && def.render) {

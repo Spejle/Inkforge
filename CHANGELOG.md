@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.7.2] - 2026-10-15
+
+### Fixed (performance)
+- Custom layers (and any layer with opacity or a blend mode) allocated a fresh full-size canvas on every repaint (~45 ms each at 2400x1500). One scratch canvas per size is now reused.
+- Each stamp's drop shadow is baked once into its cached sprite instead of being blurred on the big canvas for every stamp on every repaint. A flipped stamp mirrors the baked offset so light still falls the same way (a rotated stamp now rotates its shadow with it).
+- Net: on a map with custom layers and ~230 stamps, drawing a path or dragging a stamp costs about half as much per mouse move (about 107 ms -> 54 ms in a software-rendered browser).
+
+### Known
+- What remains is native canvas compositing (full-canvas layer blends, atmosphere, grid); JavaScript is under 10 ms per move. A GPU browser should be well below the numbers above.
+
 ## [1.7.1] - 2026-10-15
 
 ### Fixed
