@@ -11,6 +11,7 @@ import {
   Hand,
   Eraser
 } from 'lucide-react';
+import { shortcutOf } from '../utils/keymap';
 
 export const TOOLS = [
   { id: 'select', name: 'Select & Transform', icon: MousePointer, shortcut: 'V', desc: 'Select, move, scale and rotate stamps and labels' },
@@ -28,19 +29,20 @@ export const TOOLS = [
 // Draw tools build the map; utility tools navigate, select, erase and adjust it.
 const DRAW_IDS = ['mask', 'brush', 'stamp', 'path', 'text'];
 
-export default function ToolBar({ activeTool, setActiveTool }) {
+export default function ToolBar({ activeTool, setActiveTool, keymap }) {
   const group = (tools) =>
     tools.map((tool) => {
       const Icon = tool.icon;
+      const key = keymap ? shortcutOf(keymap, `tool.${tool.id}`) : tool.shortcut;
       return (
         <button
           key={tool.id}
           className={`tool-button ${activeTool === tool.id ? 'active' : ''}`}
           onClick={() => setActiveTool(tool.id)}
-          title={`${tool.name} (${tool.shortcut})\n${tool.desc}`}
+          title={`${tool.name}${key ? ` (${key})` : ''}\n${tool.desc}`}
         >
           <Icon size={20} className="tool-icon" />
-          <span className="tool-shortcut-badge">{tool.shortcut}</span>
+          <span className="tool-shortcut-badge">{key}</span>
         </button>
       );
     });

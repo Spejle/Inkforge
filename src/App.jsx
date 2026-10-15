@@ -10,6 +10,10 @@ import PrintDialog from './components/PrintDialog';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
 import { exportPrintPdf } from './utils/printUtils';
 import { sanitizeProject } from './utils/importGuard';
+import { actionFor, comboOf, loadKeymap, saveKeymap } from './utils/keymap';
+import { stepAngle, stepScale } from './utils/adjust';
+import { applyTheme, loadTheme } from './utils/theme';
+import SettingsDialog from './components/SettingsDialog';
 import { saveMap, loadMap, deleteMap, listMaps, newMapId, hydrateStamps } from './utils/autosave';
 import Home from './components/Home';
 import NewMapDialog from './components/NewMapDialog';
@@ -115,6 +119,10 @@ export default function App() {
   const [isStampDrawerOpen, setIsStampDrawerOpen] = useState(true);
 
   // Tool Specific Options
+  const [keymap, setKeymapState] = useState(loadKeymap);
+  const setKeymap = (m) => { setKeymapState(m); saveKeymap(m); };
+  const [theme, setTheme] = useState(loadTheme);
+  useEffect(() => { applyTheme(theme); }, [theme]);
   const [maskMode, setMaskMode] = useState('land');
   const [strokePreview, setStrokePreview] = usePref('inkforge-strokePreview', true); // live shape while dragging a mask / brush stroke
   const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
@@ -320,20 +328,15 @@ export default function App() {
     scheduleCommit();
   }, [selectedPathId, scheduleCommit]);
 
-  // Keyboard shortcut listener
+  // Keyboard shortcut listener: keys come from the rebindable keymap (Settings), arrows always nudge
   useEffect(() => {
+    const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand' };
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      const mod = e.ctrlKey || e.metaKey || e.altKey;
+      const combo = comboOf(e);
+      if (!combo) return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) handleRedo();
-        else handleUndo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-      } else if (e.key.startsWith('Arrow') && (selectedStampId || selectedTextId)) {
+      if (e.key.startsWith('Arrow') && (selectedStampId || selectedTextId)) {
         // nudge the selection by 1 px (10 with Shift)
         e.preventDefault();
         const step = e.shiftKey ? 10 : 1;
@@ -342,42 +345,107 @@ export default function App() {
         const move = (o) => ({ x: o.x + dx, y: o.y + dy });
         if (selectedStampId) handleUpdateSelectedStamp(move(docRef.current.stamps.find((t) => t.id === selectedStampId) || { x: 0, y: 0 }));
         else handleUpdateSelectedText(move(docRef.current.texts.find((t) => t.id === selectedTextId) || { x: 0, y: 0 }));
-      } else if (!mod && (e.key === '[' || e.key === ']') && selectedStampId) {
-        // rotate the selected stamp (15°, 1° with Shift)
-        const st = docRef.current.stamps.find((t) => t.id === selectedStampId);
-        const deg = (e.shiftKey ? 1 : 15) * (e.key === ']' ? 1 : -1);
-        if (st) handleUpdateSelectedStamp({ rotation: Number(((st.rotation || 0) + (deg * Math.PI) / 180).toFixed(3)) });
-      } else if (!mod && e.key.toLowerCase() === 'x') {
+        return;
+      }
+
+      const hit = actionFor(keymap, combo);
+      if (!hit) return;
+      if (TOOL_OF[hit.id]) {
+        setActiveTool(TOOL_OF[hit.id]);
+      } else if (hit.id === 'edit.undo') {
+        e.preventDefault();
+        handleUndo();
+      } else if (hit.id === 'edit.redo') {
+        e.preventDefault();
+        handleRedo();
+      } else if (hit.id === 'mask.swap') {
         // swap Add Land <-> Carve Water (jumps to the Landmass Sculptor if another tool is active)
         setActiveTool('mask');
         setMaskMode((m) => (m === 'land' ? 'water' : 'land'));
-      } else if (!mod && e.key.toLowerCase() === 'v') {
-        setActiveTool('select');
-      } else if (!mod && e.key.toLowerCase() === 'm') {
-        setActiveTool('mask');
-      } else if (!mod && e.key.toLowerCase() === 'b') {
-        setActiveTool('brush');
-      } else if (!mod && e.key.toLowerCase() === 's') {
-        setActiveTool('stamp');
-      } else if (!mod && e.key.toLowerCase() === 'p') {
-        setActiveTool('path');
-      } else if (!mod && e.key.toLowerCase() === 't') {
-        setActiveTool('text');
-      } else if (!mod && e.key.toLowerCase() === 'g') {
-        setActiveTool('grid');
-      } else if (!mod && e.key.toLowerCase() === 'a') {
-        setActiveTool('atmosphere');
-      } else if (!mod && e.key.toLowerCase() === 'e') {
-        setActiveTool('eraser');
-      } else if (!mod && e.key.toLowerCase() === 'h') {
-        setActiveTool('hand');
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      } else if ((hit.id === 'stamp.rotateCw' || hit.id === 'stamp.rotateCcw') && selectedStampId) {
+        // rotate the selected stamp (15 degrees, 1 with Shift)
+        const st = docRef.current.stamps.find((t) => t.id === selectedStampId);
+        const deg = (hit.fine ? 1 : 15) * (hit.id === 'stamp.rotateCw' ? 1 : -1);
+        if (st) handleUpdateSelectedStamp({ rotation: Number(((st.rotation || 0) + (deg * Math.PI) / 180).toFixed(3)) });
+      } else if (hit.id === 'edit.delete') {
         handleDeleteSelected();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleDeleteSelected, selectedStampId, selectedTextId, handleUpdateSelectedStamp, handleUpdateSelectedText]);
+  }, [keymap, handleUndo, handleRedo, handleDeleteSelected, selectedStampId, selectedTextId, handleUpdateSelectedStamp, handleUpdateSelectedText]);
+
+  // Shift + wheel (size) and Ctrl + wheel (rotation): applies to the selection with the Select tool, otherwise to what the
+  // active tool is about to place. Returns the text for the on-canvas hint, or null when there is nothing to adjust.
+  const adjustByWheel = (kind, steps, fine) => {
+    const doc = docRef.current;
+    const stamp = selectedStampId && doc.stamps.find((t) => t.id === selectedStampId);
+    const text = selectedTextId && doc.texts.find((t) => t.id === selectedTextId);
+    const path = selectedPathId && doc.paths.find((t) => t.id === selectedPathId);
+    const deg = fine ? 1 : 5;
+    const tool = activeTool;
+    if (kind === 'size') {
+      if (tool === 'select') {
+        if (stamp) {
+          const v = stepScale(stamp.scale || 1, steps, { min: 0.3, max: 3, factor: 1.06, decimals: 2 });
+          handleUpdateSelectedStamp({ scale: v });
+          return `Scale ${v.toFixed(2)}×`;
+        }
+        if (text) {
+          const v = stepScale(text.size || 28, steps, { min: 14, max: 96, factor: 1.06 });
+          handleUpdateSelectedText({ size: v });
+          return `Text size ${v}`;
+        }
+        if (path) {
+          const v = stepScale(path.width || 12, steps, { min: 4, max: 60, factor: 1.06 });
+          handleUpdateSelectedPath({ width: v });
+          return `Width ${v} px`;
+        }
+        return null;
+      }
+      if (tool === 'mask' || tool === 'brush' || tool === 'eraser') {
+        const v = stepScale(brushSize, steps, { min: 15, max: 240, factor: 1.08 });
+        setBrushSize(v);
+        return `Brush ${v} px`;
+      }
+      if (tool === 'stamp') {
+        const v = stepScale(stampScale, steps, { min: 0.3, max: 2.5, factor: 1.06, decimals: 2 });
+        setStampScale(v);
+        return `Stamp scale ${v.toFixed(2)}×`;
+      }
+      if (tool === 'path') {
+        const v = stepScale(pathWidth, steps, { min: 4, max: 40, factor: 1.06 });
+        setPathWidth(v);
+        return `Width ${v} px`;
+      }
+      if (tool === 'text') {
+        const v = stepScale(textSize, steps, { min: 16, max: 80, factor: 1.06 });
+        setTextSize(v);
+        return `Text size ${v}`;
+      }
+      return null;
+    }
+    // rotation
+    if (tool === 'select') {
+      if (stamp) {
+        const v = stepAngle(stamp.rotation || 0, steps, deg);
+        handleUpdateSelectedStamp({ rotation: v });
+        return `Rotation ${Math.round((v * 180) / Math.PI)}°`;
+      }
+      if (text) {
+        const v = stepAngle(text.rotation || 0, steps, deg);
+        handleUpdateSelectedText({ rotation: v });
+        return `Rotation ${Math.round((v * 180) / Math.PI)}°`;
+      }
+      return null;
+    }
+    if (tool === 'stamp') {
+      const v = stepAngle(stampRotation, steps, deg);
+      setStampRotation(v);
+      return `Stamp rotation ${Math.round((v * 180) / Math.PI)}°`;
+    }
+    return null;
+  };
 
   // Canvas Actions
   const handleAddBrushStroke = (stroke) => {
@@ -774,8 +842,9 @@ export default function App() {
   if (view === 'home') {
     return (
       <div className="inkforge-app">
-        <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} />
+        <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} onSettings={() => setDialog('settings')} />
         {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
+        {dialog === 'settings' && <SettingsDialog onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       </div>
     );
   }
@@ -784,6 +853,9 @@ export default function App() {
     <div className="inkforge-app">
       {/* Top Header */}
       <Header
+        theme={theme}
+        setTheme={setTheme}
+        onOpenSettings={() => setDialog('settings')}
         mapTitle={mapTitle}
         setMapTitle={setMapTitle}
         templateName={tpl.name}
@@ -812,7 +884,7 @@ export default function App() {
 
       {/* Main Studio Workspace */}
       <div className="studio-workspace">
-        <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} />
+        <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} keymap={keymap} />
 
         <ToolOptions
           strokePreview={strokePreview}
@@ -893,6 +965,7 @@ export default function App() {
 
 
           <CanvasArea
+            onWheelAdjust={adjustByWheel}
             strokePreview={strokePreview}
             brushRing={brushRing}
             mapWidth={mapWidth}
@@ -974,6 +1047,7 @@ export default function App() {
         />
       </div>
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
+      {dialog === 'settings' && <SettingsDialog onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
       {dialog === 'print' && (
         <PrintDialog

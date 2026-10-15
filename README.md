@@ -19,7 +19,8 @@ node server.js   # zero-dependency static server for dist/ on :5173
 
 ## Shortcuts
 `V` select, `M` sculptor, `B` brush, `S` stamp, `P` path, `T` text, `G` grid, `A` atmosphere, `E` eraser, `H` / Space pan.
-`X` swap Add land / Carve water. `Ctrl+Z` / `Ctrl+Shift+Z` undo / redo. `Delete` removes the selection.
+`X` swap Add land / Carve water. Every key can be changed in Settings (gear in the header), where the theme is chosen too.
+Mouse wheel: zoom; `Shift` + wheel size (brush, stamp, label, river, or the selection); `Ctrl` + wheel rotate (`Ctrl+Shift` in 1° steps). `Ctrl+Z` / `Ctrl+Shift+Z` undo / redo. `Delete` removes the selection.
 Selection: drag a corner handle to scale, the top handle to rotate (Shift = 15° steps), arrow keys nudge (Shift = 10 px), `[` `]` rotate.
 Paths: hold Shift for a straight segment, Alt as well to snap to 15°.
 

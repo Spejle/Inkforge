@@ -2,6 +2,7 @@ import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
+import { makeStepper } from '../utils/adjust';
 
 const HANDLE_R = 14;
 
@@ -36,6 +37,7 @@ function handleAt(s, x, y) {
 }
 
 export default function CanvasArea({
+  onWheelAdjust,
   strokePreview = true,
   brushRing = true,
   mapWidth,
@@ -233,17 +235,39 @@ export default function CanvasArea({
     imageTick
   ]);
 
-  // Cursor-anchored mouse wheel zoom. Native listener: React's onWheel is passive, so preventDefault would be ignored.
-  const viewRef = useRef({ zoom, setZoom, setPanOffset });
+  // Mouse wheel. Plain: cursor-anchored zoom. Shift: size. Ctrl: rotation (Ctrl+Shift: 1 degree steps). Native listener:
+  // React's onWheel is passive, so preventDefault (which also stops the browser zooming the page on Ctrl+wheel) would be ignored.
+  const viewRef = useRef({ zoom, setZoom, setPanOffset, onWheelAdjust });
   useEffect(() => {
-    viewRef.current = { zoom, setZoom, setPanOffset };
+    viewRef.current = { zoom, setZoom, setPanOffset, onWheelAdjust };
   });
+  const [hud, setHud] = useState('');
+  const hudTimer = useRef(0);
+  useEffect(() => () => clearTimeout(hudTimer.current), []);
+  const stepper = useRef(null);
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    stepper.current = makeStepper(100);
     const onWheel = (e) => {
       e.preventDefault();
-      const { zoom, setZoom, setPanOffset } = viewRef.current;
+      const { zoom, setZoom, setPanOffset, onWheelAdjust } = viewRef.current;
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        // Shift+wheel arrives as deltaX in some browsers; line and page modes are scaled to pixels
+        let delta = e.deltaY || e.deltaX;
+        if (e.deltaMode === 1) delta *= 33;
+        else if (e.deltaMode === 2) delta *= 400;
+        const steps = stepper.current(delta);
+        if (!steps || !onWheelAdjust) return;
+        const rotate = e.ctrlKey || e.metaKey;
+        const label = onWheelAdjust(rotate ? 'rotate' : 'size', steps, rotate && e.shiftKey);
+        if (label) {
+          setHud(label);
+          clearTimeout(hudTimer.current);
+          hudTimer.current = setTimeout(() => setHud(''), 900);
+        }
+        return;
+      }
       const rect = container.getBoundingClientRect();
       const mouseX = e.clientX - rect.left - rect.width / 2;
       const mouseY = e.clientY - rect.top - rect.height / 2;
@@ -708,6 +732,8 @@ export default function CanvasArea({
           />
         )}
       </div>
+
+      {hud && <div className="wheel-hud" role="status">{hud}</div>}
 
       {/* Floating Canvas Footer Info */}
       <div className="canvas-status-bar">

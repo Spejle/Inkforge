@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.10.0] - 2026-10-15
+
+### Added
+- **Wheel modifiers.** Shift + wheel changes size and Ctrl + wheel rotates (Ctrl + Shift: 1 degree steps instead of 5), and a small hint at the top of the canvas shows the new value. With the Select tool they act on the selected stamp (scale, rotation), label (size, rotation) or river (width); otherwise on what the active tool is about to place: brush size for the Sculptor, Biome and Eraser tools, stamp scale and rotation, river width, label size. Limits are the same as the sliders. Plain wheel still zooms; Ctrl + wheel no longer zooms the browser page.
+- **Settings** (gear in the header, and on the main menu). *Appearance* picks the theme from three cards: **Candlelit** (the dark one), **Parchment** and the new **Orbit** theme taken from the Orbit panel (neutral greys, heaven blue accent, hell red for danger). The header button still cycles the three. *Keyboard & mouse* lists every shortcut with its keys: click a key to change it, + adds another, x removes one, per-action and global reset; a key belongs to one action (giving it away shows what it was taken from). Tool badges and tooltips follow the bindings. Saved in the browser, like the theme.
+- Rotate keys also on `,` and `.` (Shift = 1 degree) because `[` and `]` need AltGr on Czech and many other layouts; AltGr is now read as the character it types instead of Ctrl+Alt, so those keys work there.
+
+### Fixed
+- Shift + `[` / `]` (fine rotation) never fired on a US layout because the browser reports `{` / `}`; keys are now matched by position.
+
 ## [1.9.1] - 2026-10-15
 
 ### Changed

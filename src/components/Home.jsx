@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Compass, FilePlus, FolderOpen, Copy, Trash2 } from 'lucide-react';
+import { Compass, FilePlus, FolderOpen, Copy, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import { PRESET_MAPS } from '../engine/presetMaps';
 import { getTemplate } from '../engine/mapTemplates';
 import { makeThumb } from '../utils/thumb';
@@ -14,7 +14,7 @@ function ago(t) {
   return new Date(t).toLocaleDateString();
 }
 
-export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImport, onOpenSample }) {
+export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImport, onOpenSample, onSettings }) {
   const fileRef = useRef(null);
   const [, bump] = useState(0);
 
@@ -47,6 +47,7 @@ export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImp
           <div className="home-actions">
             <button className="btn-primary" onClick={onNew}><FilePlus size={16} /> New map</button>
             <button className="btn-ghost" onClick={() => fileRef.current?.click()}><FolderOpen size={16} /> Open file</button>
+            <button className="btn-ghost" onClick={onSettings}><SettingsIcon size={16} /> Settings</button>
             <input ref={fileRef} type="file" accept=".inkforge,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ''; }} />
           </div>
         </div>

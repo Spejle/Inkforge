@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const THEMES = ['dark', 'parchment'];
-const readTheme = () => { try { return localStorage.getItem('inkforge-theme') || 'dark'; } catch { return 'dark'; } };
+import { THEMES } from '../utils/theme';
 import {
+  Settings as SettingsIcon,
   Download,
   FolderOpen,
   Save,
@@ -41,7 +41,10 @@ export default function Header({
   onExportJson,
   onImportJson,
   onNewMap,
-  onPrint
+  onPrint,
+  theme,
+  setTheme,
+  onOpenSettings
 }) {
   const fileInputRef = useRef(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -55,11 +58,8 @@ export default function Header({
     }
   };
 
-  const [theme, setTheme] = useState(readTheme);
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem('inkforge-theme', theme); } catch { /* private mode */ }
-  }, [theme]);
+  const themeIndex = Math.max(0, THEMES.findIndex((t) => t.id === theme));
+  const nextTheme = THEMES[(themeIndex + 1) % THEMES.length];
 
   return (
     <header className="header-bar">
@@ -89,11 +89,14 @@ export default function Header({
 
       <button
         className="theme-toggle"
-        onClick={() => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])}
-        title={`Theme: ${theme} (click for ${theme === 'dark' ? 'parchment' : 'candlelit'})`}
-        aria-label="Toggle theme"
+        onClick={() => setTheme(nextTheme.id)}
+        title={`Theme: ${THEMES[themeIndex].name} (click for ${nextTheme.name}, more in Settings)`}
+        aria-label="Switch theme"
       >
-        {theme === 'dark' ? '☀' : '☾'}
+        {theme === 'dark' ? '☾' : theme === 'parchment' ? '☀' : '◉'}
+      </button>
+      <button className="theme-toggle" onClick={onOpenSettings} title="Settings: themes, keyboard shortcuts" aria-label="Settings">
+        <SettingsIcon size={15} />
       </button>
 
       {/* History and Zoom Controls */}

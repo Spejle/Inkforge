@@ -71,6 +71,42 @@
   --gold-rgb: 168, 100, 26; --cyan-rgb: 47, 111, 99; --ruby-rgb: 168, 50, 31;
 }
 
+/* Orbit: the look of the Orbit management panel. Neutral greys, "heaven" blue as the main accent, "hell" red for danger. */
+:root[data-theme="orbit"] {
+  color-scheme: dark;
+  --bg-app: #121214;
+  --bg-deep: #0c0c0e;
+  --bg-raise: #232328;
+  --bg-vignette: #1a1a1e;
+  --bg-panel: #1a1a1e;
+  --bg-panel-hover: #26262c;
+  --bg-subtle: #202025;
+  --border-color: #303037;
+  --border-light: #46464f;
+
+  --primary-gold: #4a86ee;
+  --primary-gold-hover: #3a76de;
+  --primary-gold-glow: rgba(74, 134, 238, 0.28);
+
+  --accent-cyan: #6fa4ee;
+  --accent-emerald: #3fb950;
+  --accent-ruby: #ff4d57;
+  --accent-ink: #b32632;
+  --accent-ink-hi: #d8323d;
+  --on-accent: #07101f;
+
+  --text-main: #ececf0;
+  --text-strong: #ffffff;
+  --text-muted: #9b9ba6;
+  --text-dim: #6c6c78;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.7);
+  --paper-grain: rgba(255, 255, 255, 0.02);
+  --gold-rgb: 74, 134, 238; --cyan-rgb: 111, 164, 238; --ruby-rgb: 255, 77, 87;
+}
+
 .inkforge-app {
   display: flex;
   flex-direction: column;
@@ -1315,3 +1351,33 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 .filter-note { margin: 0 14px 6px; padding: 5px 9px; border-radius: 7px; border: 1px dashed var(--border-light); background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; text-align: left; }
 .filter-note:hover { color: var(--text-main); border-color: var(--primary-gold); }
 .filter-note u { color: var(--primary-gold); }
+
+
+/* ---- settings dialog, wheel hint ---- */
+.settings-dialog { width: min(720px, 100%); }
+.settings-tabs { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--border-color); }
+.settings-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; }
+.settings-tabs button:hover { color: var(--text-main); }
+.settings-tabs button.active { color: var(--primary-gold); border-bottom-color: var(--primary-gold); }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.theme-card { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 12px; border-radius: 8px; background: var(--bg-subtle); border: 2px solid var(--border-color); color: var(--text-main); cursor: pointer; font: inherit; }
+.theme-card:hover { border-color: var(--border-light); }
+.theme-card.active { border-color: var(--primary-gold); box-shadow: 0 0 0 3px var(--primary-gold-glow); }
+.theme-card .mute { font-size: 12px; color: var(--text-muted); }
+.theme-swatch { display: flex; height: 34px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
+.theme-swatch i { flex: 1; }
+.key-group h4 { margin: 10px 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.key-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--border-color); }
+.key-label small { color: var(--text-dim); }
+.key-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.key-chip-wrap { display: inline-flex; align-items: center; }
+.key-chip { min-width: 30px; padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border-light); background: var(--bg-raise); color: var(--text-strong); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; }
+.key-chip:hover { border-color: var(--primary-gold); }
+.key-chip.recording { border-color: var(--primary-gold); color: var(--primary-gold); background: var(--primary-gold-glow); }
+.key-chip.add { color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; }
+.key-chip.fixed { cursor: default; }
+.key-chip-wrap .key-chip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.key-chip-x { border: 1px solid var(--border-light); border-left: 0; background: var(--bg-subtle); color: var(--text-muted); border-radius: 0 5px 5px 0; padding: 0 5px; cursor: pointer; display: inline-flex; align-items: center; }
+.key-chip-x:hover { color: var(--accent-ruby); }
+.settings-note { color: var(--primary-gold); font-size: 12px; margin: 0; }
+.wheel-hud { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 4px 14px; border-radius: 6px; font-size: 12px; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-strong); box-shadow: var(--shadow-md); }
