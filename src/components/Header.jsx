@@ -14,16 +14,17 @@ import {
   Grid as GridIcon,
   Compass,
   FilePlus,
+  LayoutGrid,
   ChevronDown,
   Printer
 } from 'lucide-react';
-import { PRESET_MAPS } from '../engine/presetMaps';
 
 export default function Header({
   mapTitle,
   setMapTitle,
   mapType,
-  setMapType,
+  templateName,
+  onHome,
   zoom,
   setZoom,
   fitToScreen,
@@ -39,7 +40,6 @@ export default function Header({
   onExportVtt,
   onExportJson,
   onImportJson,
-  onLoadPreset,
   onNewMap,
   onPrint
 }) {
@@ -65,13 +65,13 @@ export default function Header({
     <header className="header-bar">
       {/* Brand & Map Title */}
       <div className="brand-section">
-        <div className="logo-badge">
+        <button className="logo-badge home-btn" onClick={onHome} title="Main menu (Your maps)">
           <Compass className="brand-icon" size={24} />
           <div className="logo-text">
             <span className="brand-name">INKFORGE</span>
             <span className="brand-sub">Fantasy Cartographer</span>
           </div>
-        </div>
+        </button>
 
         <div className="title-input-wrapper">
           <input
@@ -81,13 +81,9 @@ export default function Header({
             onChange={(e) => setMapTitle(e.target.value)}
             placeholder="Name your realm..."
           />
-          <button
-            className={`map-type-tag ${mapType}`}
-            onClick={() => setMapType(mapType === 'world' ? 'battle' : 'world')}
-            title="Click to toggle between World Cartography and Tactical Battlemap mode"
-          >
-            {mapType === 'world' ? 'World Cartography' : 'Tactical Battlemap'}
-          </button>
+          <span className={`map-type-tag ${mapType}`} title="The map core this map was created from">
+            {templateName}
+          </span>
         </div>
       </div>
 
@@ -99,25 +95,6 @@ export default function Header({
       >
         {theme === 'dark' ? '☀' : '☾'}
       </button>
-
-      {/* Preset Map Selector */}
-      <div className="preset-selector-group">
-        <label className="group-label">Template:</label>
-        <select
-          className="select-styled"
-          onChange={(e) => {
-            if (e.target.value) onLoadPreset(e.target.value);
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>Load Map Preset...</option>
-          {PRESET_MAPS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title} ({p.type === 'world' ? 'World' : 'Battle'})
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* History and Zoom Controls */}
       <div className="center-controls">
@@ -181,7 +158,12 @@ export default function Header({
 
       {/* Action Buttons: Export & Save */}
       <div className="action-buttons">
-        <button className="btn-ghost" onClick={onNewMap} title="Start fresh blank canvas">
+        <button className="btn-ghost" onClick={onHome} title="Main menu: all your maps">
+          <LayoutGrid size={16} />
+          <span>Maps</span>
+        </button>
+
+        <button className="btn-ghost" onClick={onNewMap} title="New map: pick a template">
           <FilePlus size={16} />
           <span>New</span>
         </button>

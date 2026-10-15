@@ -34,6 +34,8 @@ export default function ToolOptions({
   brushSize,
   setBrushSize,
   // Biome brush options
+  biomes = BIOMES,
+  allBiomes = false,
   activeBiome,
   setActiveBiome,
   brushOpacity,
@@ -395,11 +397,18 @@ export default function ToolOptions({
             value={activeBiome}
             onChange={(e) => setActiveBiome(e.target.value)}
           >
-            {BIOMES.map((b) => (
+            {biomes.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
             ))}
+            {allBiomes && (
+              <optgroup label="Other map types">
+                {BIOMES.filter((b) => !biomes.includes(b)).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
 
           <span className="segment-divider" />

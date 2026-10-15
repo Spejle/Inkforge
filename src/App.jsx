@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import ToolBar from './components/ToolBar';
 import Tooltip from './components/Tooltip';
@@ -9,7 +9,12 @@ import StampImportDialog from './components/StampImportDialog';
 import PrintDialog from './components/PrintDialog';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
 import { exportPrintPdf } from './utils/printUtils';
-import { saveAutosave, loadAutosave, hydrateStamps } from './utils/autosave';
+import { saveMap, loadMap, deleteMap, listMaps, newMapId, hydrateStamps } from './utils/autosave';
+import Home from './components/Home';
+import NewMapDialog from './components/NewMapDialog';
+import { getTemplate, biomesFor, blankProject } from './engine/mapTemplates';
+import { makeThumb } from './utils/thumb';
+import { getStampById } from './engine/stampsCatalog';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
   exportToPng,
@@ -44,6 +49,10 @@ export default function App() {
   // Map settings
   const [mapTitle, setMapTitle] = useState(defaultPreset.title);
   const [mapType, setMapType] = useState(defaultPreset.type);
+  const [template, setTemplate] = useState(defaultPreset.template || defaultPreset.type); // map core: filters brushes and stamps
+  const [view, setView] = useState('home'); // 'home' | 'editor'
+  const [currentMapId, setCurrentMapId] = useState(null);
+  const [library, setLibrary] = useState(null); // main-menu list (null = loading)
   const [mapWidth, setMapWidth] = useState(defaultPreset.width);
   const [mapHeight, setMapHeight] = useState(defaultPreset.height);
   const [landmasses, setLandmasses] = useState(defaultPreset.landmasses || []);
@@ -60,10 +69,11 @@ export default function App() {
   const [customStamps, setCustomStamps] = useState([]);
   const [activeLayer, setActiveLayer] = useState(''); // custom layer new objects are drawn on ('' = built-in layers)
   const [dialog, setDialog] = useState(null); // 'stamps' | 'print' | null
-  const layerVisibility = {
-    ...Object.fromEntries(Object.entries(layers).map(([k, v]) => [k, v.visible])),
-    atmosphere: true
-  };
+  // memoised: a new object every render re-ran the whole map paint on every zoom/pan tick
+  const layerVisibility = useMemo(
+    () => ({ ...Object.fromEntries(Object.entries(layers).map(([k, v]) => [k, v.visible])), atmosphere: true }),
+    [layers]
+  );
   const layerStyle = layers;
 
   // Undo / Redo history: one object so index and list always move together
@@ -354,41 +364,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo, handleDeleteSelected, selectedStampId, selectedTextId, handleUpdateSelectedStamp, handleUpdateSelectedText]);
 
-  // Load a preset map
-  const handleLoadPreset = (presetId) => {
-    const found = PRESET_MAPS.find((p) => p.id === presetId);
-    if (!found) return;
-
-    setMapTitle(found.title);
-    setMapType(found.type);
-    setMapWidth(found.width);
-    setMapHeight(found.height);
-    setLandmasses(found.landmasses || []);
-    setBrushStrokes(found.brushStrokes || []);
-    setStamps(found.stamps || []);
-    setPaths(found.paths || []);
-    setTexts(found.texts || []);
-    setGrid(found.grid);
-    setAtmosphere(found.atmosphere);
-    setCoastline(found.coastline || DEFAULT_COASTLINE);
-    setSelectedStampId(null);
-    setSelectedTextId(null);
-    setSelectedPathId(null);
-
-    setLayers({ ...DEFAULT_LAYERS, ...(found.layers || {}) });
-    resetHistory({
-      landmasses: found.landmasses || [],
-      brushStrokes: found.brushStrokes || [],
-      stamps: found.stamps || [],
-      paths: found.paths || [],
-      texts: found.texts || []
-    });
-  };
-
-  const handleNewMap = () => {
-    handleLoadPreset('blank_canvas');
-  };
-
   // Canvas Actions
   const handleAddBrushStroke = (stroke) => {
     setBrushStrokes((prev) => {
@@ -606,6 +581,7 @@ export default function App() {
   const buildProject = () => ({
     title: mapTitle,
     type: mapType,
+    template,
     width: mapWidth,
     height: mapHeight,
     landmasses,
@@ -630,8 +606,13 @@ export default function App() {
 
   // Load a parsed project (from a file or from autosave) into state and reset history
   const applyProject = (data) => {
+    const tpl = getTemplate(data.template || data.type);
     setMapTitle(data.title || 'Imported Realm');
-    setMapType(data.type || 'world');
+    setTemplate(tpl.id);
+    setMapType(tpl.mode);
+    if (tpl.biomes && !tpl.biomes.includes(activeBiome)) setActiveBiome(tpl.defaultBiome);
+    const activeCat = getStampById(activeStampId)?.category;
+    if (tpl.stampCategories && activeCat && !tpl.stampCategories.includes(activeCat)) setActiveStampId(tpl.defaultStamp);
     setMapWidth(data.width || 1920);
     setMapHeight(data.height || 1080);
     setLandmasses(data.landmasses || []);
@@ -642,7 +623,7 @@ export default function App() {
     setTexts(data.texts || []);
     if (data.grid) setGrid(data.grid);
     if (data.atmosphere) setAtmosphere(data.atmosphere);
-    if (data.coastline) setCoastline(data.coastline);
+    setCoastline(data.coastline || DEFAULT_COASTLINE);
     setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
     setCustomStamps(
       (data.customStamps || []).map((c) => {
@@ -672,47 +653,109 @@ export default function App() {
     }
   };
 
-  // Autosave to IndexedDB (debounced) and restore the last session on first load
+  // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
-  const applyRef = useRef(null);
-  useEffect(() => {
-    applyRef.current = applyProject;
-  });
-  useEffect(() => {
-    let cancelled = false;
-    loadAutosave().then((data) => {
-      if (cancelled || !data) return;
-      applyRef.current(data);
-      setAutosaveStatus('Restored last session');
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const restoredRef = useRef(false);
-  useEffect(() => {
-    // skip the very first run so the default preset never overwrites a saved session before it loads
-    if (!restoredRef.current) {
-      restoredRef.current = true;
-      return;
+  const thumbRef = useRef({ at: 0, url: null });
+  const persist = (project, id, withThumb) => {
+    if (withThumb || Date.now() - thumbRef.current.at > 10000) {
+      thumbRef.current = { at: Date.now(), url: makeThumb(project) };
     }
+    return saveMap(id, project, {
+      title: project.title, template: project.template, width: project.width, height: project.height, thumb: thumbRef.current.url
+    });
+  };
+  const refreshLibrary = () => listMaps().then(setLibrary).catch(() => setLibrary([]));
+  useEffect(() => {
+    refreshLibrary();
+  }, []);
+  useEffect(() => {
+    if (view !== 'editor' || !currentMapId) return;
     const t = setTimeout(() => {
-      saveAutosave(buildProject())
-        .then(() => setAutosaveStatus('Autosaved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
-        .catch(() => setAutosaveStatus('Autosave failed (storage full?)'));
+      persist(buildProject(), currentMapId, false)
+        .then(() => setAutosaveStatus('Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
+        .catch(() => setAutosaveStatus('Save failed (storage full?)'));
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapTitle, mapType, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
+  }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
+
+  const enterEditor = (id) => {
+    setCurrentMapId(id);
+    setAutosaveStatus('');
+    setPanOffset({ x: 0, y: 0 });
+    setActiveTool('select');
+    setView('editor');
+  };
+  const goHome = async () => {
+    if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+    await refreshLibrary();
+    setView('home');
+  };
+  const openMap = async (id) => {
+    const data = await loadMap(id);
+    if (!data) return;
+    applyProject(data);
+    enterEditor(id);
+  };
+  const adoptProject = async (project) => {
+    const id = newMapId();
+    applyProject(project);
+    await persist(project, id, true).catch(() => {});
+    enterEditor(id);
+  };
+  const createMap = (templateId, title, w, h) => {
+    setDialog(null);
+    adoptProject(blankProject(getTemplate(templateId), title, w, h));
+  };
+  const openSample = (presetId) => {
+    const found = PRESET_MAPS.find((p) => p.id === presetId);
+    if (found) adoptProject({ ...found, template: found.template || found.type, customStamps: [] });
+  };
+  const duplicateMap = async (id) => {
+    const data = await loadMap(id);
+    if (!data) return;
+    const copy = { ...data, title: data.title + ' (copy)' };
+    await persist(copy, newMapId(), true);
+    refreshLibrary();
+  };
+  const removeMap = async (id) => {
+    await deleteMap(id);
+    refreshLibrary();
+  };
+  const importFromHome = async (file) => {
+    try {
+      const data = await importFromJson(file);
+      if (data) adoptProject({ ...data, template: data.template || data.type });
+    } catch {
+      alert('Could not open file: invalid .inkforge JSON format.');
+    }
+  };
 
   const fitToScreen = () => {
-    setZoom(0.65);
+    // viewport minus the rails and stamp drawer (~380 px) and the header
+    setZoom(Math.max(0.1, Math.min(1, (window.innerWidth - 380) / mapWidth, (window.innerHeight - 120) / mapHeight)));
     setPanOffset({ x: 0, y: 0 });
   };
+
+  useEffect(() => {
+    if (view === 'editor') fitToScreen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, currentMapId]);
 
   const selectedStamp = stamps.find((s) => s.id === selectedStampId);
   const selectedText = texts.find((t) => t.id === selectedTextId);
   const selectedPath = paths.find((p) => p.id === selectedPathId);
+
+  const tpl = getTemplate(template);
+
+  if (view === 'home') {
+    return (
+      <div className="inkforge-app">
+        <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} />
+        {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
+      </div>
+    );
+  }
 
   return (
     <div className="inkforge-app">
@@ -720,8 +763,9 @@ export default function App() {
       <Header
         mapTitle={mapTitle}
         setMapTitle={setMapTitle}
+        templateName={tpl.name}
         mapType={mapType}
-        setMapType={setMapType}
+        onHome={goHome}
         zoom={zoom}
         setZoom={setZoom}
         fitToScreen={fitToScreen}
@@ -737,8 +781,7 @@ export default function App() {
         onExportVtt={handleExportVtt}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
-        onLoadPreset={handleLoadPreset}
-        onNewMap={handleNewMap}
+        onNewMap={() => setDialog('newmap')}
         onPrint={() => setDialog('print')}
       />
 
@@ -749,6 +792,8 @@ export default function App() {
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} />
 
         <ToolOptions
+          biomes={biomesFor(tpl)}
+          allBiomes={tpl.biomes !== null}
             activeTool={activeTool}
             maskMode={maskMode}
             setMaskMode={setMaskMode}
@@ -875,6 +920,8 @@ export default function App() {
         </div>
 
         <StampDrawer
+          allowedCategories={tpl.stampCategories}
+          templateName={tpl.name}
           isOpen={isStampDrawerOpen}
           setIsOpen={setIsStampDrawerOpen}
           activeStampId={activeStampId}
@@ -896,6 +943,7 @@ export default function App() {
           setCoastlineConfig={setCoastline}
         />
       </div>
+      {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
       {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
       {dialog === 'print' && (
         <PrintDialog

@@ -662,6 +662,34 @@ function renderPaths(ctx, paths, selectedPathId) {
   }
 }
 
+// Stamps are vector code; drawing them once into a small sprite makes repaints cheap, gives each stamp
+// ONE soft shadow (not one per sub-path) and keeps per-stamp tone/hue filters off the big canvas.
+const spriteCache = new Map();
+function stampSprite(ctx, def, s, size, w, h) {
+  const a = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
+  const k = Math.min(4, Math.max(0.25, 2 ** Math.ceil(Math.log2(a))));
+  const key = [s.stampId, Math.round(size), k, s.color, s.fill, s.seed, s.tone, s.hue].join('|');
+  let sp = spriteCache.get(key);
+  if (sp) {
+    spriteCache.delete(key); // refresh LRU order
+    spriteCache.set(key, sp);
+    return sp;
+  }
+  const pad = Math.ceil(size * 0.15);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil((w + pad * 2) * k));
+  c.height = Math.max(1, Math.ceil((h + pad * 2) * k));
+  const g = c.getContext('2d');
+  g.scale(k, k);
+  g.translate(pad, pad);
+  if (s.tone) g.filter = `brightness(${s.tone}) hue-rotate(${s.hue || 0}deg)`; // small canvas: cheap
+  def.render(g, size, s.color, s.fill, s.seed);
+  sp = { canvas: c, pad };
+  spriteCache.set(key, sp);
+  if (spriteCache.size > 700) spriteCache.delete(spriteCache.keys().next().value);
+  return sp;
+}
+
 /** Render stamps with true aspect ratio centering, handles, and isometric Y-sorting */
 function renderStamps(ctx, stamps, selectedStampId) {
   if (!stamps || stamps.length === 0) return;
@@ -708,9 +736,8 @@ function renderStamps(ctx, stamps, selectedStampId) {
       const img = stampImage(s.customImage);
       if (img) ctx.drawImage(img, 0, 0, finalW, finalH);
     } else if (def && def.render) {
-      if (s.tone) ctx.filter = `brightness(${s.tone}) hue-rotate(${s.hue || 0}deg)`;
-      def.render(ctx, finalSize, s.color, s.fill, s.seed);
-      ctx.filter = 'none';
+      const sp = stampSprite(ctx, def, s, finalSize, finalW, finalH);
+      ctx.drawImage(sp.canvas, -sp.pad, -sp.pad, finalW + sp.pad * 2, finalH + sp.pad * 2);
     }
 
     // Reset shadow before drawing selection indicator

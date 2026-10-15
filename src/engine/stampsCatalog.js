@@ -3900,6 +3900,8 @@ export const STAMPS = [
   }
 ].concat(EXTRA_STAMPS);
 
+let stampIndex = null;
 export function getStampById(id) {
-  return STAMPS.find((s) => s.id === id);
+  if (!stampIndex) stampIndex = new Map(STAMPS.map((s) => [s.id, s]));
+  return stampIndex.get(id);
 }

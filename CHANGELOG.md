@@ -2,6 +2,28 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.7.0] - 2026-10-15
+
+### Added
+- **Main menu**: the app opens on "Your maps" (preview, map type, size, last edited; duplicate and delete on hover) plus sample maps that open as copies and an "Open file" button. The Maps button and the logo return to it, saving first.
+- **Map library**: every map autosaves under its own id in IndexedDB. The old single autosave is migrated into the library on first run.
+- **New map wizard** with six cores: World, Region, Town & City, Battle Map, Dungeon, Free Canvas. Each sets canvas size (presets or custom), grid and atmosphere, and **filters brushes and stamps** to what fits (a dungeon offers 6 biomes and 19 stamps). "Show all" in the stamp drawer and an "Other map types" group in the biome list lift the filter.
+- **Sample maps**: Region "The Marchlands of Verrin", City "Port of Karrowmere", Battle "Ambush at Ravenford", and the stress test "The Obsidian Reach" (4000×2800, ~1,400 stamps).
+
+### Changed
+- Header: the old Load Map Preset dropdown is gone (samples live on the menu); the map-type tag now shows the core name; new Maps button.
+- Fit to screen fits the real viewport instead of a fixed 65%, and runs when a map opens.
+
+### Fixed (performance)
+- Jitter tone/hue used a canvas filter on the whole map (about 1 s per stamp per repaint). Stamps are now drawn once into small cached sprites; tone/hue is applied there.
+- Stamps get one soft shadow each instead of one per sub-path (that was ~84 % of stamp paint time).
+- Zoom and pan no longer repaint the whole map (layer visibility object is memoised). Stress map: 10 zoom ticks went from ~29 s to ~0.7 s.
+- Stamp lookup is a Map instead of a linear search.
+
+### Known issues
+- The stress map takes ~9 s to open; a 4x PNG export of it takes ~50 s and ~190 MB.
+- Water brush strokes ignore softness; coastal ripples are not drawn around carved bays and lakes; the grid is global only; no canvas-size control inside the editor yet.
+
 ## [1.6.2] - 2026-10-14
 
 ### Changed

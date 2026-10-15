@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 
 export default function StampDrawer({
+  allowedCategories = null,
+  templateName = '',
   isOpen,
   setIsOpen,
   activeStampId,
@@ -37,8 +39,13 @@ export default function StampDrawer({
   const [activeTab, setActiveTab] = useState('stamps'); // 'stamps' | 'fx'
   const [selectedCat, setSelectedCat] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  // The map core hides stamps that don't belong (a dungeon has no ships); "Show all" lifts that
+  const filtering = !!allowedCategories && !showAll;
+  const pool = filtering ? STAMPS.filter((st) => allowedCategories.includes(st.category)) : STAMPS;
+  const cats = filtering ? STAMP_CATEGORIES.filter((c) => allowedCategories.includes(c.id)) : STAMP_CATEGORIES;
 
-  const filteredStamps = (selectedCat === 'mine' ? [] : STAMPS).filter((stamp) => {
+  const filteredStamps = (selectedCat === 'mine' ? [] : pool).filter((stamp) => {
     const matchesCat = selectedCat === 'all' || stamp.category === selectedCat;
     const matchesSearch = stamp.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
@@ -73,7 +80,7 @@ export default function StampDrawer({
               className={`drawer-tab-btn ${activeTab === 'stamps' ? 'active' : ''}`}
               onClick={() => setActiveTab('stamps')}
             >
-              <Sparkles size={15} /> Stamps ({STAMPS.length})
+              <Sparkles size={15} /> Stamps ({pool.length})
             </button>
             <button
               className={`drawer-tab-btn ${activeTab === 'fx' ? 'active' : ''}`}
@@ -109,13 +116,20 @@ export default function StampDrawer({
                 />
               </div>
 
+              {allowedCategories && (
+                <button className={`filter-note ${showAll ? 'off' : ''}`} onClick={() => { setShowAll(!showAll); setSelectedCat('all'); }}
+                  title={showAll ? 'Hide stamps that do not fit this map type' : 'Show every stamp, even ones that do not fit this map type'}>
+                  {showAll ? 'Showing all stamps' : `Filtered for ${templateName}`} · <u>{showAll ? 'filter' : 'show all'}</u>
+                </button>
+              )}
+
               {/* Category Tabs */}
               <div className="category-chips">
                 <button
                   className={`chip ${selectedCat === 'all' ? 'active' : ''}`}
                   onClick={() => setSelectedCat('all')}
                 >
-                  All ({STAMPS.length})
+                  All ({pool.length})
                 </button>
                 {customStamps.length > 0 && (
                   <button
@@ -125,7 +139,7 @@ export default function StampDrawer({
                     My stamps ({customStamps.length})
                   </button>
                 )}
-                {STAMP_CATEGORIES.map((cat) => (
+                {cats.map((cat) => (
                   <button
                     key={cat.id}
                     className={`chip ${selectedCat === cat.id ? 'active' : ''}`}
