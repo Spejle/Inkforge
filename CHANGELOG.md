@@ -9,6 +9,8 @@ All notable changes to **InkForge** will be documented in this file.
 
 ### Added
 - **Preview switches** for the Mask and Brush tools (Preview: Stroke / Cursor ring), remembered between sessions. *Stroke* is the flat shape drawn while you drag (off: the stroke appears when you let go); *Cursor ring* is the dashed brush-size circle that follows the pointer.
+- **Open-source licensing & legal terms**: Added `LICENSE` under GNU AGPLv3 (AGPL-3.0-or-later) with an explicit User Output Ownership guarantee (100% commercial ownership of user-exported maps) and trademark protection for the InkForge identity. Added donation and community sponsorship channels to `README.md`.
+- **Customer discovery & validation strategy**: Documented 20-question Mom Test interview script and 30-day go/no-go roadmap in `CUSTOMER_DISCOVERY_STRATEGY.md`.
 
 ### Changed
 - The dev server ignores `.claude/` (agent worktrees inside the project exhausted the file-watch limit and made Vite serve stale modules).

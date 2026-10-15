@@ -22,3 +22,18 @@ node server.js   # zero-dependency static server for dist/ on :5173
 `X` swap Add land / Carve water. `Ctrl+Z` / `Ctrl+Shift+Z` undo / redo. `Delete` removes the selection.
 Selection: drag a corner handle to scale, the top handle to rotate (Shift = 15° steps), arrow keys nudge (Shift = 10 px), `[` `]` rotate.
 Paths: hold Shift for a straight segment, Alt as well to snap to 15°.
+
+## License & Map Ownership
+
+InkForge is Free and Open Source Software licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0-or-later)](LICENSE).
+
+- **User Output Ownership**: All maps, images (PNG, PDF, SVG), Universal VTT files (`.dd2vtt`), and project files (`.inkforge`) created by you in InkForge are your sole intellectual property. You have 100% unrestricted commercial ownership of your creations—publish, license, or sell them without royalties or fees.
+- **Copyleft Reciprocity**: Anyone hosting a modified version of InkForge over a computer network must make their corresponding modified source code available under AGPLv3.
+
+## Support & Donations
+
+InkForge has zero venture backing, zero cloud servers, and zero paywalled features. If InkForge saves you campaign prep time, consider supporting independent development:
+
+- **[GitHub Sponsors](https://github.com/sponsors/spejle)** (Recurring sponsorship & stamp roadmap voting)
+- **[Ko-fi / Buy Me a Coffee](https://ko-fi.com/)** (Tip the blacksmith)
+
