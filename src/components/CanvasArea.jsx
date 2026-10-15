@@ -36,6 +36,8 @@ function handleAt(s, x, y) {
 }
 
 export default function CanvasArea({
+  strokePreview = true,
+  brushRing = true,
   mapWidth,
   mapHeight,
   mapType,
@@ -188,7 +190,7 @@ export default function CanvasArea({
       mapType,
       landmasses,
       brushStrokes,
-      liveStroke,
+      liveStroke: strokePreview ? liveStroke : null,
       stamps,
       paths,
       texts,
@@ -216,6 +218,7 @@ export default function CanvasArea({
     landmasses,
     brushStrokes,
     liveStroke,
+    strokePreview,
     stamps,
     paths,
     texts,
@@ -692,7 +695,7 @@ export default function CanvasArea({
         )}
 
         {/* Brush Radius Preview Ring */}
-        {mousePos.inside && (activeTool === 'mask' || activeTool === 'brush') && (
+        {brushRing && mousePos.inside && (activeTool === 'mask' || activeTool === 'brush') && (
           <div
             className="brush-cursor-circle"
             style={{

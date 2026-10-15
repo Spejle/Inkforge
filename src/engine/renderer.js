@@ -334,6 +334,91 @@ function renderDungeonVoid(ctx, width, height) {
 }
 
 /**
+ * Shallow-water halo as a distance field from the finished land mask: ring i covers water within 5 + i * spacing px of
+ * land with alpha rippleOpacity * e^(-0.55 i), the same bands the geometric rings draw. Works at half resolution
+ * (chamfer 5-7 distance, two passes) and is scaled up smoothly.
+ */
+function drawMaskHalo(ctx, maskCanvas, width, height, cl, strength) {
+  const S = 0.5;
+  const w = Math.max(1, Math.round(width * S));
+  const h = Math.max(1, Math.round(height * S));
+  const small = document.createElement('canvas');
+  small.width = w;
+  small.height = h;
+  const sg = small.getContext('2d', { willReadFrequently: true });
+  sg.drawImage(maskCanvas, 0, 0, w, h);
+  const px = sg.getImageData(0, 0, w, h).data;
+
+  const INF = 65535;
+  const D = new Uint16Array(w * h);
+  for (let i = 0; i < D.length; i++) D[i] = px[i * 4 + 3] > 127 ? 0 : INF;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      let v = D[i];
+      if (!v) continue;
+      if (x > 0) v = Math.min(v, D[i - 1] + 5);
+      if (y > 0) {
+        v = Math.min(v, D[i - w] + 5);
+        if (x > 0) v = Math.min(v, D[i - w - 1] + 7);
+        if (x < w - 1) v = Math.min(v, D[i - w + 1] + 7);
+      }
+      D[i] = v;
+    }
+  }
+  for (let y = h - 1; y >= 0; y--) {
+    for (let x = w - 1; x >= 0; x--) {
+      const i = y * w + x;
+      let v = D[i];
+      if (!v) continue;
+      if (x < w - 1) v = Math.min(v, D[i + 1] + 5);
+      if (y < h - 1) {
+        v = Math.min(v, D[i + w] + 5);
+        if (x < w - 1) v = Math.min(v, D[i + w + 1] + 7);
+        if (x > 0) v = Math.min(v, D[i + w - 1] + 7);
+      }
+      D[i] = v;
+    }
+  }
+
+  // alpha by distance, with all rings that still reach that far composited
+  const count = Math.min(6, Math.max(1, cl.rippleCount || 4));
+  const spacing = cl.rippleSpacing || 11;
+  const base = (cl.rippleOpacity || 0.35) * strength;
+  const cMax = Math.ceil((5 + (count - 1) * spacing) * S * 5) + 8;
+  const lut = new Uint8Array(cMax + 1);
+  for (let c = 1; c <= cMax; c++) {
+    const d = c / (5 * S); // full-resolution pixels
+    let clear = 1;
+    for (let i = 0; i < count; i++) if (d <= 5 + i * spacing) clear *= 1 - base * Math.exp(-0.55 * i);
+    lut[c] = Math.round(255 * (1 - clear));
+  }
+
+  const tmp = document.createElement('canvas');
+  tmp.width = tmp.height = 1;
+  const tg = tmp.getContext('2d', { willReadFrequently: true });
+  tg.fillStyle = cl.rippleColor || '#bae6fd';
+  tg.fillRect(0, 0, 1, 1);
+  const [r, g, b] = tg.getImageData(0, 0, 1, 1).data;
+
+  const img = new ImageData(w, h);
+  for (let i = 0; i < D.length; i++) {
+    const c = D[i];
+    const o = i * 4;
+    img.data[o] = r;
+    img.data[o + 1] = g;
+    img.data[o + 2] = b;
+    img.data[o + 3] = c > cMax ? 0 : lut[c];
+  }
+  small.getContext('2d').putImageData(img, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(small, 0, 0, width, height);
+  ctx.restore();
+}
+
+/**
  * Render landmasses with true dual-layer sculpting, coastlines, and beach fringes.
  * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
  * Inkarnate clipping and non-destructive water carving.
@@ -425,7 +510,13 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   }
 
   // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
-  if (mapType === 'world' && cl.ripplesEnabled) {
+  // The rings below follow the land shapes as they were drawn, so once water has been carved out of land they would
+  // keep haloing land that is gone. With carving present the halo is measured from the finished mask instead.
+  const carved = (brushStrokes || []).some((st) => st.type === 'mask' && st.mode === 'water' && st.points && st.points.length > 0);
+  if (mapType === 'world' && cl.ripplesEnabled && carved) {
+    const hasPolygons = landmasses.some((l) => l.points && l.points.length >= 3);
+    drawMaskHalo(ctx, maskCanvas, width, height, cl, hasPolygons ? 1 : 0.7); // brush land halos are drawn 30% lighter
+  } else if (mapType === 'world' && cl.ripplesEnabled) {
     ctx.save();
     const count = Math.min(6, Math.max(1, cl.rippleCount || 4));
     const spacing = cl.rippleSpacing || 11;

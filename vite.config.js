@@ -26,4 +26,5 @@ const csp = () => ({
 export default defineConfig({
   base: './',
   plugins: [react(), csp()],
+  server: { watch: { ignored: ['**/.claude/**'] } }, // agent worktrees live inside the project and exhaust the file-watch limit
 })

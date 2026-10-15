@@ -22,6 +22,10 @@ import { getStampById } from '../engine/stampsCatalog';
 
 export default function ToolOptions({
   activeTool,
+  strokePreview = true,
+  setStrokePreview,
+  brushRing = true,
+  setBrushRing,
   // Mask options
   maskMode,
   setMaskMode,
@@ -484,6 +488,29 @@ export default function ToolOptions({
             <option value="overlay">Overlay (Vibrant Pop)</option>
             <option value="soft-light">Soft Light (Subtle Tint)</option>
           </select>
+        </div>
+      )}
+
+      {/* Preview switches shared by the two painting tools */}
+      {(activeTool === 'mask' || activeTool === 'brush') && (
+        <div className="options-segment">
+          <span className="segment-label">Preview:</span>
+          <div className="btn-group">
+            <button
+              className={`btn-toggle ${strokePreview ? 'active' : ''}`}
+              onClick={() => setStrokePreview?.(!strokePreview)}
+              title="Show the stroke while you drag. Off: it only appears when you let go."
+            >
+              Stroke
+            </button>
+            <button
+              className={`btn-toggle ${brushRing ? 'active' : ''}`}
+              onClick={() => setBrushRing?.(!brushRing)}
+              title="Show the dashed brush-size ring that follows the cursor"
+            >
+              Cursor ring
+            </button>
+          </div>
         </div>
       )}
 

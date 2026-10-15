@@ -2,6 +2,17 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.8.4] - 2026-10-15
+
+### Fixed
+- **Carving water left the old shallows behind.** The light-blue shallow-water halo was drawn from the land shapes as they were first painted, so when you carved water out of land the halo of the removed land stayed in the channel (lighter, smoother blue with the ocean's wave marks hidden). When a map has carved water, the halo is now measured from the finished land mask (distance field at half resolution, same ring distances and strengths), so carved channels show plain ocean and the shallows follow the real coastline. Maps without carving use the same rings as before.
+
+### Added
+- **Preview switches** for the Mask and Brush tools (Preview: Stroke / Cursor ring), remembered between sessions. *Stroke* is the flat shape drawn while you drag (off: the stroke appears when you let go); *Cursor ring* is the dashed brush-size circle that follows the pointer.
+
+### Changed
+- The dev server ignores `.claude/` (agent worktrees inside the project exhausted the file-watch limit and made Vite serve stale modules).
+
 ## [1.8.3] - 2026-10-15
 
 ### Changed

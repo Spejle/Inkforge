@@ -44,6 +44,18 @@ const DEFAULT_COASTLINE = {
   shadowColor: 'rgba(5, 18, 38, 0.45)'
 };
 
+// Small on/off preference kept in localStorage (the editor still works when storage is blocked)
+function usePref(key, fallback) {
+  const [v, setV] = useState(() => {
+    try { const x = localStorage.getItem(key); return x === null ? fallback : x === '1'; } catch { return fallback; }
+  });
+  const set = (n) => {
+    setV(n);
+    try { localStorage.setItem(key, n ? '1' : '0'); } catch { /* private mode */ }
+  };
+  return [v, set];
+}
+
 export default function App() {
   const defaultPreset = PRESET_MAPS[0]; // The Shattered Archipelago
 
@@ -104,6 +116,8 @@ export default function App() {
 
   // Tool Specific Options
   const [maskMode, setMaskMode] = useState('land');
+  const [strokePreview, setStrokePreview] = usePref('inkforge-strokePreview', true); // live shape while dragging a mask / brush stroke
+  const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
   const [maskShape, setMaskShape] = useState('rough');
   const [maskRoughness, setMaskRoughness] = useState(0.5);
 
@@ -801,6 +815,10 @@ export default function App() {
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} />
 
         <ToolOptions
+          strokePreview={strokePreview}
+          setStrokePreview={setStrokePreview}
+          brushRing={brushRing}
+          setBrushRing={setBrushRing}
           biomes={biomesFor(tpl)}
           allBiomes={tpl.biomes !== null}
             activeTool={activeTool}
@@ -875,6 +893,8 @@ export default function App() {
 
 
           <CanvasArea
+            strokePreview={strokePreview}
+            brushRing={brushRing}
             mapWidth={mapWidth}
             mapHeight={mapHeight}
             mapType={mapType}
