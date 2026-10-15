@@ -196,22 +196,34 @@ export function buildBattle() {
   placeAt('token_skull_marker', 11,  8, 1.0, { z: 10 }); // West Woods Skirmisher (Flanking between watchtower & ford)
 
   // 3. TACTICAL COVER PROPS
-  // Burned wagon, crates, and fallen logs providing half-cover along the road
-  placeAt('prop_barrel_crate', 10, 13, 0.95, { z: 2 });
-  placeAt('veg_log_fallen',     9, 13, 1.0,  { z: 1 });
-  placeAt('prop_barrel_stack', 10, 14, 0.95, { z: 2 });
+  // Burned wagon, crates, table, and fallen logs providing cover along the road
+  placeAt('prop_barrel_crate',     10, 13, 0.95, { z: 2, rot:  0.26 });
+  placeAt('veg_log_fallen_top',     9, 13, 1.00, { z: 1, rot: -0.52 });
+  placeAt('prop_barrel_stack_top', 10, 14, 0.95, { z: 2, rot:  0.52 });
+  placeAt('prop_table_tavern',      8, 13, 0.95, { z: 2, rot: -0.78 }); // Overturned merchant table
+  placeAt('prop_chest_wood_top',    8, 14, 0.85, { z: 2, rot:  0.52 }); // Spilled cargo chest
+  placeAt('prop_barrel_stack_top',  9, 14, 0.90, { z: 2, rot: -0.26 }); // Spilled supply barrels
+  placeAt('prop_barrel_crate',     10, 12, 0.90, { z: 2, rot:  0.78 }); // Roadside crate cover
+  placeAt('prop_barrel_crate',      8, 12, 0.90, { z: 2, rot: -0.52 }); // Merchant caravan cargo
+  placeAt('prop_barrel_crate',     12,  9, 0.85, { z: 2, rot:  0.26 }); // Roadside barrel cover before ford
 
   // Ruined Watchtower providing heavy stone cover & elevation on northwest ridge
-  placeAt('ruined_tower',       9,  6, 1.25, { z: 3 });
-  placeAt('boulder_cluster',    8,  6, 0.95, { z: 2 });
-  placeAt('veg_rock_mossy',    10,  6, 0.85, { z: 2 });
+  placeAt('ruined_tower_top',       9,  6, 1.25, { z: 3, rot:  0.26 });
+  placeAt('boulder_cluster',        8,  6, 0.95, { z: 2 });
+  placeAt('veg_rock_mossy',        10,  6, 0.85, { z: 2 });
+  placeAt('prop_altar_stone_top',   9,  5, 0.95, { z: 2, rot:  0.26 }); // Ancient stone altar at ruins
 
-  // Ambusher Camp on the Ridge (Campfire, tents, supply crates)
-  placeAt('camp_tent',         20,  2, 1.05, { z: 2 });
-  placeAt('prop_campfire',     21,  2, 0.95, { z: 2 });
-  placeAt('camp_tent',         22,  2, 1.05, { z: 2, flipX: true });
-  placeAt('prop_chest_wood',   21,  1, 0.85, { z: 2 });
-  placeAt('prop_barrel_crate', 20,  1, 0.90, { z: 2 });
+  // Ambusher Camp on the Ridge (Campfire, tents, supply crates, loot chests)
+  placeAt('camp_tent_top',         20,  2, 1.05, { z: 2, rot: -0.26 });
+  placeAt('prop_campfire',         21,  2, 0.95, { z: 2 });
+  placeAt('camp_tent_top',         22,  2, 1.05, { z: 2, rot:  0.26 });
+  placeAt('prop_chest_wood_top',   21,  1, 0.85, { z: 2, rot: -0.26 });
+  placeAt('prop_barrel_crate',     20,  1, 0.90, { z: 2, rot:  0.52 });
+  placeAt('camp_tent_top',         20,  0, 1.00, { z: 2, rot:  0.26 }); // Northern scout tent
+  placeAt('prop_barrel_stack_top', 21,  0, 0.90, { z: 2, rot: -0.26 }); // Ridge supply barrels
+  placeAt('prop_barrel_crate',     22,  0, 0.85, { z: 2, rot:  0.52 }); // Ridge supply crates
+  placeAt('prop_chest_treasure_top',22, 1, 0.90, { z: 2, rot:  0.26 }); // Bandits' locked loot chest
+  placeAt('prop_barrel_crate',     18,  4, 0.85, { z: 2, rot:  0.26 }); // Sniper's cover crate on ridge
 
   // The Ford Crossing: 6 stepping-stone boulder stamps across shallow water
   const fordStones = [

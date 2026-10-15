@@ -1888,60 +1888,104 @@ export const PRESET_MAPS = [
       }
     ],
     stamps: [
-      // === TECTONIC MOUNTAIN SPINE (Sorted strictly North-to-South for isometric depth) ===
-      { id: 'm1', stampId: 'mountain_grand', x: 520, y: 260, scale: 1.45, rotation: 0, zIndex: 0 },
-      { id: 'm2', stampId: 'mountain_grand', x: 660, y: 280, scale: 1.55, rotation: 0, zIndex: 0 },
-      { id: 'm3', stampId: 'mountain_grand', x: 800, y: 310, scale: 1.6, rotation: 0, zIndex: 0 },
-      { id: 'm4', stampId: 'mountain_range', x: 420, y: 320, scale: 1.25, rotation: 0, zIndex: 0 },
-      { id: 'm5', stampId: 'mountain_grand', x: 940, y: 340, scale: 1.4, rotation: 0, zIndex: 0 },
-      { id: 'm6', stampId: 'mountain_range', x: 590, y: 350, scale: 1.35, rotation: 0, zIndex: 0 },
-      { id: 'm7', stampId: 'mountain_range', x: 740, y: 380, scale: 1.4, rotation: 0, zIndex: 0 },
-      { id: 'm8', stampId: 'mountain_range', x: 880, y: 390, scale: 1.3, rotation: 0, zIndex: 0 },
-      { id: 'm9', stampId: 'mountain_range', x: 1040, y: 400, scale: 1.2, rotation: 0, zIndex: 0 },
-      // Foothills & Rolling Slopes
-      { id: 'h1', stampId: 'hills_rolling', x: 340, y: 380, scale: 1.05, rotation: 0, zIndex: 0 },
-      { id: 'h2', stampId: 'hills_rolling', x: 480, y: 410, scale: 1.1, rotation: 0, zIndex: 0 },
-      { id: 'h3', stampId: 'hills_rolling', x: 670, y: 440, scale: 1.15, rotation: 0, zIndex: 0 },
-      { id: 'h4', stampId: 'hills_rolling', x: 820, y: 450, scale: 1.05, rotation: 0, zIndex: 0 },
-      { id: 'h5', stampId: 'hills_rolling', x: 970, y: 460, scale: 1.0, rotation: 0, zIndex: 0 },
-      { id: 'h6', stampId: 'hills_rolling', x: 1120, y: 470, scale: 0.95, rotation: 0, zIndex: 0 },
-
-      // === WHISPERING WOODS & DEEP CANOPY FORESTS ===
-      { id: 'f1', stampId: 'tree_forest_cluster', x: 280, y: 460, scale: 1.35, rotation: 0, zIndex: 0 },
-      { id: 'f2', stampId: 'tree_pine', x: 220, y: 520, scale: 1.1, rotation: 0, zIndex: 0 },
-      { id: 'f3', stampId: 'tree_oak', x: 330, y: 520, scale: 1.15, rotation: 0, zIndex: 0 },
-      { id: 'f4', stampId: 'tree_forest_cluster', x: 420, y: 560, scale: 1.4, rotation: 0, zIndex: 0 },
-      { id: 'f5', stampId: 'tree_forest_cluster', x: 550, y: 590, scale: 1.3, rotation: 0, zIndex: 0 },
-      { id: 'f6', stampId: 'tree_oak', x: 630, y: 640, scale: 1.2, rotation: 0, zIndex: 0 },
-      { id: 'f7', stampId: 'tree_autumn', x: 740, y: 620, scale: 1.15, rotation: 0, zIndex: 0 },
-      { id: 'f8', stampId: 'tree_forest_cluster', x: 860, y: 650, scale: 1.3, rotation: 0, zIndex: 0 },
-      { id: 'f9', stampId: 'tree_oak', x: 970, y: 670, scale: 1.1, rotation: 0, zIndex: 0 },
-      { id: 'f10', stampId: 'tree_forest_cluster', x: 1080, y: 600, scale: 1.25, rotation: 0, zIndex: 0 },
-      { id: 'f11', stampId: 'tree_pine', x: 1180, y: 560, scale: 1.05, rotation: 0, zIndex: 0 },
-
-      // === CIVILIZATION, FORTS & SETTLEMENTS ===
-      // High King's Citadel guarding Kingsport Bay
-      { id: 'c1', stampId: 'castle_citadel', x: 480, y: 680, scale: 1.5, rotation: 0, zIndex: 0 },
-      // Kingsport Trading Village & Harbor Docks
-      { id: 'v1', stampId: 'village_houses', x: 640, y: 730, scale: 1.2, rotation: 0, zIndex: 0 },
-      { id: 'w1', stampId: 'windmill_stone', x: 730, y: 750, scale: 1.0, rotation: 0, zIndex: 0 },
-      // Mountain Watchtower guarding Ironspire Pass
-      { id: 't1', stampId: 'tower_wizard', x: 780, y: 340, scale: 1.3, rotation: 0, zIndex: 0 },
-      // Ancient Megalith Stone Circle in the enchanted glade
-      { id: 'r1', stampId: 'ruins_stonehenge', x: 320, y: 620, scale: 1.25, rotation: 0, zIndex: 0 },
-      // Eastern Desert Oasis & Citadel
-      { id: 'c2', stampId: 'fortress_keep', x: 1540, y: 380, scale: 1.35, rotation: 0, zIndex: 0 },
-      { id: 'v2', stampId: 'village_houses', x: 1640, y: 480, scale: 1.1, rotation: 0, zIndex: 0 },
-
-      // === OCEAN NAUTICAL EMBELLISHMENTS ===
-      // Ornate Golden Compass Rose
+      // === NORTHERN OCEAN & SKY ===
       { id: 'comp1', stampId: 'compass_rose', x: 1720, y: 190, scale: 1.6, rotation: 0, zIndex: 10 },
-      // Imperial Caravels & Galleons
-      { id: 'sh1', stampId: 'ship_caravel', x: 880, y: 880, scale: 1.25, rotation: 0.12, zIndex: 0 },
-      { id: 'sh2', stampId: 'ship_caravel', x: 1320, y: 750, scale: 1.1, rotation: -0.15, zIndex: 0 },
-      // Sea Monsters & Deep Leviathans
-      { id: 'serp1', stampId: 'sea_serpent', x: 240, y: 860, scale: 1.3, rotation: -0.1, zIndex: 0 },
-      { id: 'dr1', stampId: 'dragon_wyrm', x: 1020, y: 220, scale: 1.4, rotation: 0.15, zIndex: 10 }
+
+      // === MOUNTAIN SPINE: IRONPSIRE RIDGE (Sorted North-to-South) ===
+      { id: 'r_tow2', stampId: 'ruined_tower_side', x: 1630, y: 240, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'm_sp1', stampId: 'mountain_snow_peak_diag', x: 420, y: 260, scale: 1.4, rotation: 0, zIndex: 0 },
+      { id: 'm_gr1', stampId: 'mountain_grand_diag', x: 480, y: 280, scale: 1.45, rotation: 0, zIndex: 0 },
+      { id: 'm_rg3', stampId: 'mountain_range_diag', x: 570, y: 280, scale: 1.35, rotation: 0, zIndex: 0 },
+      { id: 'm_rg1', stampId: 'mountain_range_diag', x: 360, y: 290, scale: 1.3, rotation: 0, zIndex: 0 },
+      { id: 'm_gr3', stampId: 'mountain_grand', x: 650, y: 290, scale: 1.55, rotation: 0, zIndex: 0 },
+      { id: 'm_sp3', stampId: 'mountain_snow_peak_diag', x: 920, y: 300, scale: 1.4, rotation: 0, zIndex: 0 },
+      { id: 'm_gr2', stampId: 'mountain_grand_diag', x: 520, y: 310, scale: 1.5, rotation: 0, zIndex: 0 },
+      { id: 'm_gr4', stampId: 'mountain_grand_diag', x: 800, y: 310, scale: 1.6, rotation: 0, zIndex: 0 },
+      { id: 'm_rg2', stampId: 'mountain_range', x: 400, y: 330, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'm_sp2', stampId: 'mountain_snow_peak_diag', x: 850, y: 330, scale: 1.5, rotation: 0, zIndex: 0 },
+      { id: 'm_gr5', stampId: 'mountain_grand_diag', x: 970, y: 340, scale: 1.45, rotation: 0, zIndex: 0 },
+      { id: 'c_tmp2', stampId: 'civ_temple_front', x: 1480, y: 340, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 't_wiz1', stampId: 'tower_wizard_side', x: 780, y: 350, scale: 1.3, rotation: 0, zIndex: 0 },
+      { id: 'c_tent1', stampId: 'camp_tent_front', x: 730, y: 360, scale: 1.0, rotation: 0, zIndex: 0 },
+      { id: 'm_rg4', stampId: 'mountain_range_diag', x: 1040, y: 360, scale: 1.3, rotation: 0, zIndex: 0 },
+
+      // === FOOTHILLS & HIGHLAND VALLEYS ===
+      { id: 'h_rd1', stampId: 'hills_rolling_diag', x: 330, y: 380, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'h_r1', stampId: 'hills_rolling', x: 450, y: 380, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'm_rg5', stampId: 'mountain_range', x: 1120, y: 380, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'c_kps1', stampId: 'fortress_keep_side', x: 1550, y: 380, scale: 1.35, rotation: 0, zIndex: 0 },
+      { id: 'h_rd2', stampId: 'hills_rolling_diag', x: 540, y: 390, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'm_gr6', stampId: 'mountain_grand_diag', x: 1180, y: 410, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'v_vlt2', stampId: 'village_houses_top', x: 1630, y: 410, scale: 1.15, rotation: 0.25, zIndex: 0 },
+      { id: 'h_rd3', stampId: 'hills_rolling_diag', x: 660, y: 420, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'h_r2', stampId: 'hills_rolling', x: 840, y: 430, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'h_rd4', stampId: 'hills_rolling_diag', x: 940, y: 440, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'h_rd5', stampId: 'hills_rolling_diag', x: 1060, y: 450, scale: 1.0, rotation: 0, zIndex: 0 },
+
+      // === FORESTS, VALES & WOODLAND ANCIENTS ===
+      { id: 'f_p1', stampId: 'tree_pine', x: 220, y: 460, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'f_c1', stampId: 'tree_forest_cluster', x: 280, y: 460, scale: 1.35, rotation: 0, zIndex: 0 },
+      { id: 'h_r3', stampId: 'hills_rolling', x: 1150, y: 470, scale: 0.95, rotation: 0, zIndex: 0 },
+      { id: 'fm_t3', stampId: 'farm_homestead_top', x: 1500, y: 470, scale: 1.1, rotation: -0.2, zIndex: 0 },
+      { id: 'v_vil2', stampId: 'village_houses', x: 1620, y: 490, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'f_o1', stampId: 'tree_oak', x: 300, y: 500, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'f_c2', stampId: 'tree_forest_cluster', x: 450, y: 500, scale: 1.3, rotation: 0, zIndex: 0 },
+      { id: 'f_p2', stampId: 'tree_pine', x: 230, y: 520, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'dk_t2', stampId: 'port_dock_top', x: 1440, y: 530, scale: 1.15, rotation: 0.4, zIndex: 0 },
+      { id: 'f_aut1', stampId: 'tree_autumn', x: 760, y: 540, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'f_p4', stampId: 'tree_pine', x: 1140, y: 550, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'f_o6', stampId: 'tree_oak', x: 1630, y: 550, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'v_lgt1', stampId: 'veg_log_fallen_top', x: 380, y: 560, scale: 1.1, rotation: 0.45, zIndex: 0 },
+      { id: 'f_o2', stampId: 'tree_oak', x: 500, y: 560, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'f_c5', stampId: 'tree_forest_cluster', x: 840, y: 560, scale: 1.3, rotation: 0, zIndex: 0 },
+      { id: 'v_lgs1', stampId: 'veg_log_fallen_side', x: 250, y: 570, scale: 1.0, rotation: 0, zIndex: 0 },
+      { id: 'v_stp1', stampId: 'veg_stump_side', x: 310, y: 570, scale: 1.0, rotation: 0, zIndex: 0 },
+      { id: 'f_c3', stampId: 'tree_forest_cluster', x: 430, y: 570, scale: 1.35, rotation: 0, zIndex: 0 },
+      { id: 'f_c6', stampId: 'tree_forest_cluster', x: 1050, y: 570, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'c_lgt2', stampId: 'civ_lighthouse_side', x: 1410, y: 570, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'h_rd6', stampId: 'hills_rolling_diag', x: 1540, y: 570, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'fm_t1', stampId: 'farm_homestead_top', x: 680, y: 580, scale: 1.15, rotation: 0.2, zIndex: 0 },
+      { id: 'f_o4', stampId: 'tree_oak', x: 940, y: 580, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'f_c4', stampId: 'tree_forest_cluster', x: 560, y: 600, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'f_p3', stampId: 'tree_pine', x: 240, y: 630, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'r_sth1', stampId: 'ruins_stonehenge', x: 320, y: 630, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'f_o3', stampId: 'tree_oak', x: 380, y: 640, scale: 1.15, rotation: 0, zIndex: 0 },
+
+      // === PLAINS, SETTLEMENTS & HARBORS ===
+      { id: 'sh_glt1', stampId: 'ship_galleon_top', x: 1580, y: 650, scale: 1.15, rotation: 0.75, zIndex: 0 },
+      { id: 'fm_t2', stampId: 'farm_homestead_top', x: 700, y: 660, scale: 1.1, rotation: -0.15, zIndex: 0 },
+      { id: 'w_fr1', stampId: 'windmill_front', x: 780, y: 670, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'r_tow1', stampId: 'ruined_tower_side', x: 270, y: 680, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'c_cit1', stampId: 'castle_citadel', x: 470, y: 680, scale: 1.5, rotation: 0, zIndex: 0 },
+      { id: 'f_o5', stampId: 'tree_oak', x: 960, y: 680, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'w_rf1', stampId: 'windmill_rustic_front', x: 860, y: 690, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'br_s1', stampId: 'bridge_stone_side', x: 610, y: 695, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'c_tmp1', stampId: 'civ_temple_front', x: 340, y: 700, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'c_cits1', stampId: 'castle_citadel_side', x: 440, y: 730, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'sh_gld1', stampId: 'ship_galleon_diag', x: 1320, y: 730, scale: 1.3, rotation: 0, zIndex: 0 },
+      { id: 'v_vlt1', stampId: 'village_houses_top', x: 520, y: 740, scale: 1.2, rotation: 0.18, zIndex: 0 },
+      { id: 'v_vil1', stampId: 'village_houses', x: 580, y: 740, scale: 1.2, rotation: 0, zIndex: 0 },
+      { id: 'dk_s1', stampId: 'port_dock_side', x: 640, y: 770, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'm_msd1', stampId: 'mountain_mesa_diag', x: 1570, y: 770, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'h_dnd1', stampId: 'hills_dunes_diag', x: 1640, y: 770, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'c_lgt1', stampId: 'civ_lighthouse_side', x: 450, y: 780, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'c_tnt2', stampId: 'camp_tent_front', x: 1600, y: 820, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'sh_crv1', stampId: 'ship_caravel', x: 1100, y: 820, scale: 1.15, rotation: 0, zIndex: 0 },
+      { id: 'dk_t1', stampId: 'port_dock_top', x: 560, y: 825, scale: 1.1, rotation: 0.1, zIndex: 0 },
+      { id: 'sh_crt1', stampId: 'ship_caravel_top', x: 580, y: 845, scale: 1.05, rotation: -0.35, zIndex: 1 },
+
+      // === SOUTHERN SOUND, ATOLLS & DEEP WATERS ===
+      { id: 'serp_d1', stampId: 'sea_serpent_diag', x: 240, y: 860, scale: 1.35, rotation: 0, zIndex: 0 },
+      { id: 'sh_crd1', stampId: 'ship_caravel_diag', x: 880, y: 900, scale: 1.25, rotation: 0, zIndex: 0 },
+      { id: 'm_mst1', stampId: 'mountain_mesa_top', x: 1410, y: 900, scale: 1.2, rotation: 0.3, zIndex: 0 },
+      { id: 'h_dnd2', stampId: 'hills_dunes_diag', x: 1460, y: 920, scale: 1.05, rotation: 0, zIndex: 0 },
+      { id: 'serp_t1', stampId: 'sea_serpent_top', x: 1740, y: 920, scale: 1.2, rotation: 0.4, zIndex: 0 },
+      { id: 'r_tow3', stampId: 'ruined_tower_side', x: 1230, y: 930, scale: 1.1, rotation: 0, zIndex: 0 },
+      { id: 'm_vlt1', stampId: 'mountain_volcano_top', x: 450, y: 930, scale: 1.35, rotation: 0.55, zIndex: 0 },
+      { id: 'c_tmpt1', stampId: 'civ_temple_top', x: 390, y: 940, scale: 1.1, rotation: 0.25, zIndex: 0 },
+      { id: 'h_rd8', stampId: 'hills_rolling_diag', x: 490, y: 950, scale: 0.95, rotation: 0, zIndex: 0 },
+      { id: 'h_rd7', stampId: 'hills_rolling_diag', x: 1210, y: 970, scale: 0.95, rotation: 0, zIndex: 0 },
+      { id: 'krk_s1', stampId: 'nautical_kraken_side', x: 940, y: 990, scale: 1.4, rotation: 0, zIndex: 0 }
     ],
     paths: [
       // The Great Silverflow River (Hydrologically correct: High Peak runoff -> Meanders -> Bay Delta)

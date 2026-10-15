@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.9.1] - 2026-10-15
+
+### Changed
+- **Default world map remade** ("The Realm of Valoria & The Shattered Reach"): 87 stamps (was 38) using 33 of the new views: diagonal and side mountains, plan-view farms, villages and harbours, ships in several views, sea serpents and the kraken, lighthouses, windmills, temple fronts. The remake was laid out by the Gemini intern; this release also removes two stamps that referenced IDs that never existed (`windmill_stone`, `dragon_wyrm`, so they never drew) and a plan-view mountain ring that looked wrong.
+- **Battle map "Ambush at Ravenford" remade** with top-down props: bandit camp tents, chests, barrel stacks and crates, a ruined watchtower in plan view, an altar; 150 stamps (was 138). Terrain, river, ford and tokens unchanged.
+- Four weak stamp views redrawn: `castle_citadel_top` (proper plan with round roofed towers, no more "prohibited" signs), `village_houses_top` (clustered roofs and paths), `civ_lighthouse_side` (rocky base, balustrade, light beams), `windmill_front` (stone tower mill).
+
+### Known
+- The bandit camp sits close to the top edge of the battle map; a couple of tents are partly cut by it.
+
 ## [1.9.0] - 2026-10-15
 
 ### Added

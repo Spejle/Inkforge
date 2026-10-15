@@ -164,39 +164,69 @@ export const STAMPS_VIEWS_CIVA = [
       const h = size;
       const lw = h * 0.035;
 
-      groundShadow(ctx, w * 0.54, h * 0.54, w * 0.43, h * 0.43, 0.28);
+      groundShadow(ctx, w * 0.54, h * 0.54, w * 0.44, h * 0.44, 0.28);
 
-      // Outer curtain wall footprint
+      // Outer square curtain wall ring
       ctx.fillStyle = fill;
       ctx.fillRect(w * 0.16, h * 0.16, w * 0.68, h * 0.68);
-      // Wall walkway inner shade / courtyard
-      ctx.fillStyle = '#baa996';
-      ctx.fillRect(w * 0.26, h * 0.26, w * 0.48, h * 0.48);
 
-      // Inner courtyard floor
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.3, h * 0.3, w * 0.4, h * 0.4);
+      // Courtyard in a lighter tone
+      ctx.fillStyle = '#f5efe6';
+      ctx.fillRect(w * 0.28, h * 0.28, w * 0.44, h * 0.44);
 
-      // Shaded south/east wall walkways
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.25)';
-      ctx.fillRect(w * 0.16, h * 0.74, w * 0.68, h * 0.1);
-      ctx.fillRect(w * 0.74, h * 0.16, w * 0.1, h * 0.68);
+      // Shaded south and east wall walkways
+      ctx.fillStyle = 'rgba(30, 25, 20, 0.2)';
+      ctx.fillRect(w * 0.26, h * 0.72, w * 0.52, h * 0.08);
+      ctx.fillRect(w * 0.72, h * 0.26, w * 0.08, h * 0.52);
 
-      // Gatehouse projection at south
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.42, h * 0.8, w * 0.16, h * 0.1);
+      // Gatehouse notch in the south wall
+      ctx.fillStyle = '#f5efe6';
+      ctx.fillRect(w * 0.43, h * 0.8, w * 0.14, h * 0.08);
       ctx.fillStyle = '#1c1917';
-      ctx.fillRect(w * 0.47, h * 0.84, w * 0.06, h * 0.06);
+      ctx.fillRect(w * 0.47, h * 0.82, w * 0.06, h * 0.06);
 
-      // Outlines for walls
+      // Curtain wall outlines
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
       ctx.strokeRect(w * 0.16, h * 0.16, w * 0.68, h * 0.68);
-      ctx.strokeRect(w * 0.26, h * 0.26, w * 0.48, h * 0.48);
-      ctx.strokeRect(w * 0.42, h * 0.8, w * 0.16, h * 0.1);
+      ctx.strokeRect(w * 0.28, h * 0.28, w * 0.44, h * 0.44);
+      ctx.strokeRect(w * 0.43, h * 0.8, w * 0.14, h * 0.08);
 
-      // 4 concentric corner bastions (towers)
-      const r = w * 0.11;
+      // Crenellation ticks along curtain wall outer edge
+      ctx.lineWidth = lw * 0.75;
+      const ticks = [0.28, 0.36, 0.44, 0.52, 0.60, 0.68, 0.72];
+      ctx.beginPath();
+      for (const t of ticks) {
+        ctx.moveTo(w * t, h * 0.16); ctx.lineTo(w * t, h * 0.20);
+        ctx.moveTo(w * 0.84, h * t); ctx.lineTo(w * 0.80, h * t);
+        ctx.moveTo(w * 0.16, h * t); ctx.lineTo(w * 0.20, h * t);
+        if (t < 0.42 || t > 0.58) {
+          ctx.moveTo(w * t, h * 0.84); ctx.lineTo(w * t, h * 0.80);
+        }
+      }
+      ctx.stroke();
+
+      // Central keep with red roof ridge line
+      const kw = w * 0.26;
+      const kh = h * 0.20;
+      const kx = w * 0.37;
+      const ky = h * 0.38;
+      groundShadow(ctx, kx + kw * 0.52, ky + kh * 0.54, kw * 0.52, kh * 0.52, 0.2);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(kx, ky, kw, kh * 0.5);
+      ctx.fillStyle = '#991b1b';
+      ctx.fillRect(kx, ky + kh * 0.5, kw, kh * 0.5);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.strokeRect(kx, ky, kw, kh);
+      ctx.beginPath();
+      ctx.moveTo(kx, ky + kh * 0.5);
+      ctx.lineTo(kx + kw, ky + kh * 0.5);
+      ctx.stroke();
+
+      // Four round corner towers: grey stone circles with darker rim + 8-wedge red conical roof
+      const rStone = w * 0.11;
+      const rRoof = w * 0.082;
       const corners = [
         [w * 0.16, h * 0.16],
         [w * 0.84, h * 0.16],
@@ -204,14 +234,37 @@ export const STAMPS_VIEWS_CIVA = [
         [w * 0.84, h * 0.84]
       ];
       for (const [cx, cy] of corners) {
-        coneTop(ctx, cx, cy, r, '#b91c1c', color, lw);
-      }
+        ctx.beginPath();
+        ctx.arc(cx, cy, rStone, 0, Math.PI * 2);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = lw * 1.1;
+        ctx.stroke();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw * 0.7;
+        ctx.stroke();
 
-      // Central Great Keep tower
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.38, h * 0.38, w * 0.24, h * 0.24);
-      ctx.strokeRect(w * 0.38, h * 0.38, w * 0.24, h * 0.24);
-      coneTop(ctx, w * 0.5, h * 0.5, w * 0.15, '#b91c1c', color, lw);
+        for (let i = 0; i < 8; i++) {
+          const a0 = (i * Math.PI) / 4;
+          const a1 = ((i + 1) * Math.PI) / 4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, rRoof, a0, a1);
+          ctx.closePath();
+          const isShaded = i >= 1 && i <= 4;
+          ctx.fillStyle = isShaded ? (i % 2 === 0 ? '#991b1b' : '#b91c1c') : (i % 2 === 0 ? '#dc2626' : '#ef4444');
+          ctx.fill();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = lw * 0.4;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(1, rRoof * 0.12), 0, Math.PI * 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.fill();
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
@@ -385,15 +438,53 @@ export const STAMPS_VIEWS_CIVA = [
       ctx.save();
       const w = size * 1.3;
       const h = size;
-      const lw = h * 0.035;
+      const lw = h * 0.032;
 
-      groundShadow(ctx, w * 0.52, h * 0.54, w * 0.46, h * 0.38, 0.25);
+      groundShadow(ctx, w * 0.5, h * 0.52, w * 0.48, h * 0.42, 0.2);
 
-      // Clustered thatched roof silhouettes in top-down tactical view
+      // Slightly green ground tone
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, h * 0.5, w * 0.46, h * 0.42, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8d6af';
+      ctx.fill();
+
+      // Short dirt-path strips connecting houses
+      ctx.strokeStyle = '#d4b896';
+      ctx.lineWidth = w * 0.045;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(w * 0.22, h * 0.48);
+      ctx.lineTo(w * 0.48, h * 0.48);
+      ctx.lineTo(w * 0.78, h * 0.44);
+      ctx.moveTo(w * 0.48, h * 0.48);
+      ctx.lineTo(w * 0.46, h * 0.74);
+      ctx.moveTo(w * 0.48, h * 0.48);
+      ctx.lineTo(w * 0.52, h * 0.24);
+      ctx.stroke();
+
+      // Tiny well circle
+      const wellX = w * 0.48;
+      const wellY = h * 0.48;
+      ctx.beginPath();
+      ctx.arc(wellX, wellY, w * 0.038, 0, Math.PI * 2);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw * 0.8;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(wellX, wellY, w * 0.02, 0, Math.PI * 2);
+      ctx.fillStyle = '#0284c7';
+      ctx.fill();
+
+      // 6 clustered gabled house roofs with tile variations
       const houses = [
-        { x: 0.12, y: 0.28, w: 0.36, h: 0.26, roof: '#991b1b', vert: false },
-        { x: 0.56, y: 0.2, w: 0.32, h: 0.38, roof: '#854d0e', vert: true },
-        { x: 0.34, y: 0.54, w: 0.38, h: 0.26, roof: '#78350f', vert: false }
+        { x: 0.12, y: 0.18, w: 0.25, h: 0.18, vert: false, lit: '#ea580c', dark: '#9a3412', ch: [0.26, 0.21] },
+        { x: 0.54, y: 0.12, w: 0.18, h: 0.26, vert: true,  lit: '#dc2626', dark: '#991b1b', ch: [0.60, 0.16] },
+        { x: 0.74, y: 0.22, w: 0.22, h: 0.17, vert: false, lit: '#a16207', dark: '#713f12', ch: null },
+        { x: 0.10, y: 0.54, w: 0.18, h: 0.28, vert: true,  lit: '#b91c1c', dark: '#7f1d1d', ch: [0.14, 0.60] },
+        { x: 0.35, y: 0.68, w: 0.24, h: 0.18, vert: false, lit: '#854d0e', dark: '#582f0e', ch: null },
+        { x: 0.66, y: 0.58, w: 0.26, h: 0.19, vert: false, lit: '#d97706', dark: '#9a3412', ch: [0.82, 0.62] }
       ];
 
       for (const b of houses) {
@@ -402,51 +493,40 @@ export const STAMPS_VIEWS_CIVA = [
         const hw = w * b.w;
         const hh = h * b.h;
 
-        // Eaves drop shadow
         groundShadow(ctx, hx + hw * 0.52, hy + hh * 0.54, hw * 0.52, hh * 0.52, 0.2);
 
-        // Wall eaves peek (showing fill tone underneath roof)
-        ctx.fillStyle = fill;
-        ctx.fillRect(hx + hw * 0.06, hy + hh * 0.06, hw * 0.88, hh * 0.88);
-
-        // Roof slopes: one lit, one shaded
-        ctx.fillStyle = b.roof;
-        ctx.fillRect(hx, hy, hw, hh);
-
         if (b.vert) {
-          // North-south ridge: left slope lit, right slope shaded
-          ctx.fillStyle = 'rgba(30, 20, 15, 0.28)';
+          ctx.fillStyle = b.lit;
+          ctx.fillRect(hx, hy, hw * 0.5, hh);
+          ctx.fillStyle = b.dark;
           ctx.fillRect(hx + hw * 0.5, hy, hw * 0.5, hh);
           ctx.strokeStyle = color;
           ctx.lineWidth = lw;
           ctx.strokeRect(hx, hy, hw, hh);
-          // Ridge line
           ctx.beginPath();
           ctx.moveTo(hx + hw * 0.5, hy);
           ctx.lineTo(hx + hw * 0.5, hy + hh);
           ctx.stroke();
-          // Chimney
-          ctx.fillStyle = '#57534e';
-          ctx.fillRect(hx + hw * 0.42, hy + hh * 0.25, hw * 0.16, hh * 0.15);
-          ctx.fillStyle = '#1c1917';
-          ctx.fillRect(hx + hw * 0.46, hy + hh * 0.28, hw * 0.08, hh * 0.09);
         } else {
-          // East-west ridge: top slope lit, bottom slope shaded
-          ctx.fillStyle = 'rgba(30, 20, 15, 0.28)';
+          ctx.fillStyle = b.lit;
+          ctx.fillRect(hx, hy, hw, hh * 0.5);
+          ctx.fillStyle = b.dark;
           ctx.fillRect(hx, hy + hh * 0.5, hw, hh * 0.5);
           ctx.strokeStyle = color;
           ctx.lineWidth = lw;
           ctx.strokeRect(hx, hy, hw, hh);
-          // Ridge line
           ctx.beginPath();
           ctx.moveTo(hx, hy + hh * 0.5);
           ctx.lineTo(hx + hw, hy + hh * 0.5);
           ctx.stroke();
-          // Chimney
+        }
+
+        if (b.ch) {
           ctx.fillStyle = '#57534e';
-          ctx.fillRect(hx + hw * 0.25, hy + hh * 0.42, hw * 0.15, hh * 0.16);
+          ctx.fillRect(w * b.ch[0], h * b.ch[1], w * 0.035, h * 0.035);
+          ctx.strokeRect(w * b.ch[0], h * b.ch[1], w * 0.035, h * 0.035);
           ctx.fillStyle = '#1c1917';
-          ctx.fillRect(hx + hw * 0.28, hy + hh * 0.46, hw * 0.09, hh * 0.08);
+          ctx.fillRect(w * b.ch[0] + 1, h * b.ch[1] + 1, w * 0.02, h * 0.02);
         }
       }
 
@@ -470,76 +550,125 @@ export const STAMPS_VIEWS_CIVA = [
       ctx.save();
       const w = size * 0.9;
       const h = size;
-      const lw = h * 0.035;
+      const lw = h * 0.032;
 
-      groundShadow(ctx, w * 0.5, h * 0.92, w * 0.38, h * 0.06);
+      groundShadow(ctx, w * 0.5, h * 0.92, w * 0.40, h * 0.06);
 
-      // Symmetrical tapered tower
+      // Round whitewashed stone tower (warm stone palette)
       ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.88);
-      ctx.lineTo(w * 0.36, h * 0.35);
-      ctx.lineTo(w * 0.64, h * 0.35);
-      ctx.lineTo(w * 0.72, h * 0.88);
+      ctx.moveTo(w * 0.27, h * 0.89);
+      ctx.lineTo(w * 0.35, h * 0.40);
+      ctx.lineTo(w * 0.65, h * 0.40);
+      ctx.lineTo(w * 0.73, h * 0.89);
       ctx.closePath();
-      ctx.fillStyle = fill;
+      ctx.fillStyle = '#faf8f5';
       ctx.fill();
 
-      // Right shadow
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.22)';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.35);
-      ctx.lineTo(w * 0.64, h * 0.35);
-      ctx.lineTo(w * 0.72, h * 0.88);
-      ctx.lineTo(w * 0.5, h * 0.88);
-      ctx.closePath();
-      ctx.fill();
-
-      // Outlines
+      // Warm stone plinth at base
+      ctx.fillStyle = '#e7dfd5';
+      ctx.fillRect(w * 0.26, h * 0.87, w * 0.48, h * 0.04);
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
+      ctx.strokeRect(w * 0.26, h * 0.87, w * 0.48, h * 0.04);
+
+      // Curvature shading on right side
+      ctx.fillStyle = 'rgba(45, 35, 25, 0.18)';
       ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.88);
-      ctx.lineTo(w * 0.36, h * 0.35);
-      ctx.lineTo(w * 0.64, h * 0.35);
-      ctx.lineTo(w * 0.72, h * 0.88);
+      ctx.moveTo(w * 0.5, h * 0.40);
+      ctx.lineTo(w * 0.65, h * 0.40);
+      ctx.lineTo(w * 0.73, h * 0.87);
+      ctx.lineTo(w * 0.5, h * 0.87);
       ctx.closePath();
+      ctx.fill();
+
+      // Tower outlines
+      ctx.beginPath();
+      ctx.moveTo(w * 0.27, h * 0.87);
+      ctx.lineTo(w * 0.35, h * 0.40);
+      ctx.lineTo(w * 0.65, h * 0.40);
+      ctx.lineTo(w * 0.73, h * 0.87);
       ctx.stroke();
 
       // Arched wooden door
-      ctx.fillStyle = '#3e2723';
+      ctx.fillStyle = '#5c3d2e';
       ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.76, w * 0.07, Math.PI, 0);
-      ctx.lineTo(w * 0.57, h * 0.88);
-      ctx.lineTo(w * 0.43, h * 0.88);
+      ctx.arc(w * 0.5, h * 0.78, w * 0.07, Math.PI, 0);
+      ctx.lineTo(w * 0.57, h * 0.87);
+      ctx.lineTo(w * 0.43, h * 0.87);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
-      // Conical roof cap
-      coneRoof(ctx, w * 0.32, h * 0.35, w * 0.5, h * 0.2, w * 0.68, h * 0.35, '#78350f', color, lw);
+      // Two small windows (middle and upper floors)
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(w * 0.46, h * 0.60, w * 0.08, h * 0.07);
+      ctx.strokeRect(w * 0.46, h * 0.60, w * 0.08, h * 0.07);
+      ctx.fillRect(w * 0.465, h * 0.48, w * 0.07, h * 0.06);
+      ctx.strokeRect(w * 0.465, h * 0.48, w * 0.07, h * 0.06);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.60); ctx.lineTo(w * 0.5, h * 0.67);
+      ctx.moveTo(w * 0.5, h * 0.48); ctx.lineTo(w * 0.5, h * 0.54);
+      ctx.stroke();
 
-      // 4 Canvas sails facing front
+      // Thatched cone cap (straw gold/amber)
+      coneRoof(ctx, w * 0.31, h * 0.40, w * 0.5, h * 0.16, w * 0.69, h * 0.40, '#ca8a04', color, lw, 'rgba(120, 53, 15, 0.35)');
+
+      // Four wide sails with lattice cross-hatching in an X shape, hub in middle of cap (h * 0.28)
       ctx.save();
-      ctx.translate(w * 0.5, h * 0.35);
+      ctx.translate(w * 0.5, h * 0.28);
       ctx.rotate(Math.PI / 4);
       for (let i = 0; i < 4; i++) {
         ctx.rotate(Math.PI / 2);
+        // Main stock spar
         ctx.strokeStyle = color;
-        ctx.lineWidth = h * 0.025;
+        ctx.lineWidth = lw;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -w * 0.44);
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(240, 235, 220, 0.85)';
-        ctx.fillRect(w * 0.02, -w * 0.42, w * 0.1, w * 0.38);
-        ctx.strokeRect(w * 0.02, -w * 0.42, w * 0.1, w * 0.38);
+        // Wide sail frame
+        const fw = w * 0.12;
+        const fh = w * 0.34;
+        const fy = -w * 0.42;
+        ctx.fillStyle = 'rgba(250, 246, 238, 0.75)';
+        ctx.fillRect(w * 0.02, fy, fw, fh);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw * 0.7;
+        ctx.strokeRect(w * 0.02, fy, fw, fh);
+
+        // Lattice cross-hatching: longitudinal bar + crossbars + diagonals
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.08, fy);
+        ctx.lineTo(w * 0.08, fy + fh);
+        for (let r = 0; r <= 4; r++) {
+          const ry = fy + (fh * r) / 4;
+          ctx.moveTo(w * 0.02, ry);
+          ctx.lineTo(w * 0.02 + fw, ry);
+          if (r < 4) {
+            const nextRy = fy + (fh * (r + 1)) / 4;
+            ctx.moveTo(w * 0.02, ry);
+            ctx.lineTo(w * 0.02 + fw, nextRy);
+          }
+        }
+        ctx.stroke();
       }
-      // Axle hub
+
+      // Sail hub in the middle of the cap
       ctx.beginPath();
-      ctx.arc(0, 0, w * 0.04, 0, Math.PI * 2);
-      ctx.fillStyle = '#451a03';
+      ctx.arc(0, 0, w * 0.045, 0, Math.PI * 2);
+      ctx.fillStyle = '#78350f';
       ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
       ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, w * 0.02, 0, Math.PI * 2);
+      ctx.fillStyle = '#ca8a04';
+      ctx.fill();
       ctx.restore();
 
       ctx.restore();
@@ -960,114 +1089,125 @@ export const STAMPS_VIEWS_CIVA = [
     group: 'cas_guard',
     groupName: 'Watchtowers & Lighthouses',
     defaultScale: 1.1,
-    aspect: 0.8,
+    aspect: 0.85,
     render: (ctx, size, color = '#1c1917', fill = '#f5f5f4') => {
       ctx.save();
-      const w = size * 0.8;
+      const w = size * 0.85;
       const h = size;
       const lw = 2.5;
 
-      groundShadow(ctx, w * 0.5, h * 0.94, w * 0.42, h * 0.05);
-
-      // Rocky foundation
+      // Waves at the foot
+      ctx.fillStyle = '#0284c7';
       ctx.beginPath();
-      ctx.moveTo(w * 0.12, h * 0.94);
-      ctx.lineTo(w * 0.2, h * 0.84);
-      ctx.lineTo(w * 0.8, h * 0.84);
-      ctx.lineTo(w * 0.88, h * 0.94);
+      ctx.moveTo(0, h * 0.96);
+      for (let i = 0; i <= 6; i++) ctx.quadraticCurveTo(w * (i / 6 + 1 / 24), h * 0.91, w * (i / 6 + 1 / 12), h * 0.96);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
       ctx.closePath();
-      ctx.fillStyle = '#78716c';
+      ctx.fill();
+      ctx.strokeStyle = '#f0f9ff';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let i = 0; i <= 5; i++) {
+        ctx.moveTo(w * (i / 5), h * 0.96);
+        ctx.quadraticCurveTo(w * (i / 5 + 1 / 20), h * 0.92, w * (i / 5 + 1 / 10), h * 0.96);
+      }
+      ctx.stroke();
+
+      // Wide rocky base
+      ctx.beginPath();
+      ctx.moveTo(w * 0.06, h * 0.95);
+      ctx.lineTo(w * 0.12, h * 0.86);
+      ctx.lineTo(w * 0.25, h * 0.80);
+      ctx.lineTo(w * 0.34, h * 0.76);
+      ctx.lineTo(w * 0.66, h * 0.76);
+      ctx.lineTo(w * 0.78, h * 0.82);
+      ctx.lineTo(w * 0.90, h * 0.88);
+      ctx.lineTo(w * 0.94, h * 0.95);
+      ctx.closePath();
+      ctx.fillStyle = '#64748b';
+      ctx.fill();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.3)';
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.76);
+      ctx.lineTo(w * 0.66, h * 0.76);
+      ctx.lineTo(w * 0.78, h * 0.82);
+      ctx.lineTo(w * 0.90, h * 0.88);
+      ctx.lineTo(w * 0.94, h * 0.95);
+      ctx.lineTo(w * 0.5, h * 0.95);
+      ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
       ctx.stroke();
 
-      // Tower body
-      ctx.beginPath();
-      ctx.moveTo(w * 0.26, h * 0.84);
-      ctx.lineTo(w * 0.35, h * 0.28);
-      ctx.lineTo(w * 0.65, h * 0.28);
-      ctx.lineTo(w * 0.74, h * 0.84);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
+      // Stair path on the rocks
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2.0;
+      for (const [x1, y1, x2, y2] of [[0.15, 0.91, 0.22, 0.91], [0.20, 0.87, 0.27, 0.87], [0.25, 0.83, 0.32, 0.83], [0.30, 0.79, 0.37, 0.79]]) {
+        ctx.beginPath(); ctx.moveTo(w * x1, h * y1); ctx.lineTo(w * x2, h * y2); ctx.stroke();
+      }
 
-      // Red stripes
-      ctx.fillStyle = '#dc2626';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.7);
-      ctx.lineTo(w * 0.31, h * 0.56);
-      ctx.lineTo(w * 0.69, h * 0.56);
-      ctx.lineTo(w * 0.72, h * 0.7);
-      ctx.closePath();
-      ctx.fill();
+      // Tall slender tower shaft with three red/white bands
+      const bands = [{ y1: 0.28, y2: 0.37, r: true }, { y1: 0.37, y2: 0.46, r: false }, { y1: 0.46, y2: 0.56, r: true }, { y1: 0.56, y2: 0.66, r: false }, { y1: 0.66, y2: 0.76, r: true }];
+      for (const b of bands) {
+        const x1L = w * (0.38 - (b.y1 - 0.28) * (0.04 / 0.48)), x1R = w * (0.62 + (b.y1 - 0.28) * (0.04 / 0.48));
+        const x2L = w * (0.38 - (b.y2 - 0.28) * (0.04 / 0.48)), x2R = w * (0.62 + (b.y2 - 0.28) * (0.04 / 0.48));
+        ctx.beginPath(); ctx.moveTo(x1L, h * b.y1); ctx.lineTo(x1R, h * b.y1); ctx.lineTo(x2R, h * b.y2); ctx.lineTo(x2L, h * b.y2); ctx.closePath();
+        ctx.fillStyle = b.r ? '#dc2626' : fill;
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        ctx.stroke();
+      }
 
-      ctx.beginPath();
-      ctx.moveTo(w * 0.33, h * 0.42);
-      ctx.lineTo(w * 0.35, h * 0.28);
-      ctx.lineTo(w * 0.65, h * 0.28);
-      ctx.lineTo(w * 0.67, h * 0.42);
-      ctx.closePath();
-      ctx.fill();
-
-      // Right shadow
+      // Right shade on tower
       ctx.fillStyle = 'rgba(20, 15, 10, 0.25)';
       ctx.beginPath();
       ctx.moveTo(w * 0.5, h * 0.28);
-      ctx.lineTo(w * 0.65, h * 0.28);
-      ctx.lineTo(w * 0.74, h * 0.84);
-      ctx.lineTo(w * 0.5, h * 0.84);
+      ctx.lineTo(w * 0.62, h * 0.28);
+      ctx.lineTo(w * 0.66, h * 0.76);
+      ctx.lineTo(w * 0.5, h * 0.76);
       ctx.closePath();
       ctx.fill();
 
-      // Tower outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.beginPath();
-      ctx.moveTo(w * 0.26, h * 0.84);
-      ctx.lineTo(w * 0.35, h * 0.28);
-      ctx.lineTo(w * 0.65, h * 0.28);
-      ctx.lineTo(w * 0.74, h * 0.84);
-      ctx.closePath();
-      ctx.stroke();
-
-      // Side keeper's door
+      // Keeper's entrance door at tower base
       ctx.fillStyle = '#3e2723';
-      ctx.fillRect(w * 0.32, h * 0.74, w * 0.08, h * 0.1);
+      ctx.fillRect(w * 0.36, h * 0.68, w * 0.08, h * 0.08);
 
-      // Walkway platform
+      // Gallery walkway platform & railing with balusters
       ctx.fillStyle = '#334155';
-      ctx.fillRect(w * 0.28, h * 0.26, w * 0.44, h * 0.03);
-      ctx.strokeRect(w * 0.28, h * 0.26, w * 0.44, h * 0.03);
-
-      // Railing
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.23);
-      ctx.lineTo(w * 0.72, h * 0.23);
-      ctx.moveTo(w * 0.3, h * 0.26);
-      ctx.lineTo(w * 0.3, h * 0.23);
-      ctx.moveTo(w * 0.7, h * 0.26);
-      ctx.lineTo(w * 0.7, h * 0.23);
-      ctx.stroke();
-
-      // Lantern room
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(w * 0.36, h * 0.16, w * 0.28, h * 0.1);
+      ctx.fillRect(w * 0.34, h * 0.26, w * 0.32, h * 0.025);
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.36, h * 0.16, w * 0.28, h * 0.1);
+      ctx.strokeRect(w * 0.34, h * 0.26, w * 0.32, h * 0.025);
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.16);
-      ctx.lineTo(w * 0.5, h * 0.26);
+      ctx.moveTo(w * 0.34, h * 0.22);
+      ctx.lineTo(w * 0.66, h * 0.22);
+      for (let bx = 0.36; bx <= 0.65; bx += 0.05) { ctx.moveTo(w * bx, h * 0.26); ctx.lineTo(w * bx, h * 0.22); }
       ctx.stroke();
 
-      // Cupola roof
-      coneRoof(ctx, w * 0.32, h * 0.16, w * 0.5, h * 0.06, w * 0.68, h * 0.16, '#0f172a', color, lw);
+      // Light beam: two translucent yellow wedges to left and right
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.38)';
+      ctx.beginPath(); ctx.moveTo(w * 0.40, h * 0.17); ctx.lineTo(0, h * 0.06); ctx.lineTo(0, h * 0.30); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(w * 0.60, h * 0.17); ctx.lineTo(w, h * 0.06); ctx.lineTo(w, h * 0.30); ctx.closePath(); ctx.fill();
 
-      // Finial
+      // Glassed lantern room
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(w * 0.40, h * 0.12, w * 0.20, h * 0.10);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.strokeRect(w * 0.40, h * 0.12, w * 0.20, h * 0.10);
       ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.05, w * 0.03, 0, Math.PI * 2);
+      ctx.moveTo(w * 0.47, h * 0.12); ctx.lineTo(w * 0.47, h * 0.22);
+      ctx.moveTo(w * 0.53, h * 0.12); ctx.lineTo(w * 0.53, h * 0.22);
+      ctx.stroke();
+
+      // Cupola roof and finial
+      coneRoof(ctx, w * 0.36, h * 0.12, w * 0.50, h * 0.04, w * 0.64, h * 0.12, '#0f172a', color, lw);
+      ctx.beginPath();
+      ctx.arc(w * 0.50, h * 0.035, w * 0.03, 0, Math.PI * 2);
       ctx.fillStyle = '#f59e0b';
       ctx.fill();
       ctx.stroke();
