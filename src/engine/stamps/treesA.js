@@ -708,10 +708,10 @@ const T = (id, name, g, scale, render) => ({ id: 'tr_' + id, name, category: 'wo
 
 const G_BROAD = G('tree_broadleaf', 'Broadleaf Trees');
 const G_CONIF = G('tree_conifer', 'Conifers');
-const G_SNOW = G('tree_snowy', 'Snowy Conifers');
-const G_AUT = G('tree_autumn_grp', 'Autumn Trees');
-const G_WILL = G('tree_willow', 'Willows');
-const G_BIRCH = G('tree_birch', 'Birches');
+const G_SNOW = G('tree_conifer', 'Conifers');
+const G_AUT = G('tree_broadleaf', 'Broadleaf Trees');
+const G_WILL = G('tree_broadleaf', 'Broadleaf Trees');
+const G_BIRCH = G('tree_broadleaf', 'Broadleaf Trees');
 const G_TROP = G('tree_tropical', 'Palms');
 const G_SAV = G('tree_savanna', 'Savanna Trees');
 const G_DEAD = G('tree_dead_grp', 'Dead & Gnarled');

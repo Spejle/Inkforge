@@ -189,17 +189,21 @@ export default function StampDrawer({
                       </div>
                       {isGroup && openGroup === stamp.group && (
                         <div className="stamp-variants">
-                          {members.map((m) => (
+                          {members.map((m) => {
+                            // the original art of a directional stamp has no suffix in its name; new views already do
+                            const label = m.view && !/\([^)]+\)$/.test(m.name) ? `${m.name} (${m.view[0].toUpperCase()}${m.view.slice(1)})` : m.name;
+                            return (
                             <div
                               key={m.id}
                               className={`stamp-card small ${activeStampId === m.id ? 'selected' : ''}`}
                               onClick={() => setActiveStampId(m.id)}
-                              title={m.name}
+                              title={label}
                             >
                               <div className="stamp-preview-canvas-box"><StampThumbnail stamp={m} /></div>
-                              <span className="stamp-name-caption">{m.name}</span>
+                              <span className="stamp-name-caption">{label}</span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </React.Fragment>

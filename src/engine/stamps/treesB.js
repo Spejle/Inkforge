@@ -347,7 +347,7 @@ export const STAMPS_TREESB = [
     defaultScale: 0.6,
     aspect: 1,
     group: 'veg_grass',
-    groupName: 'Grass, Flowers & Ferns',
+    groupName: 'Grass, Flowers & Fungi',
     render: (ctx, size, color = OUT, fill = '#6aa84a') => {
       ctx.save();
       const s = size;
@@ -364,7 +364,7 @@ export const STAMPS_TREESB = [
     defaultScale: 0.7,
     aspect: 1,
     group: 'veg_grass',
-    groupName: 'Grass, Flowers & Ferns',
+    groupName: 'Grass, Flowers & Fungi',
     render: (ctx, size, color = '#2b2414', fill = '#d2c76a') => {
       ctx.save();
       const s = size;
@@ -413,7 +413,7 @@ export const STAMPS_TREESB = [
     defaultScale: 0.7,
     aspect: 1,
     group: 'veg_grass',
-    groupName: 'Grass, Flowers & Ferns',
+    groupName: 'Grass, Flowers & Fungi',
     render: (ctx, size, color = OUT, fill = '#5a9a40') => {
       ctx.save();
       const s = size;
@@ -443,7 +443,7 @@ export const STAMPS_TREESB = [
     defaultScale: 0.8,
     aspect: 1,
     group: 'veg_grass',
-    groupName: 'Grass, Flowers & Ferns',
+    groupName: 'Grass, Flowers & Fungi',
     render: (ctx, size, color = '#16281a', fill = '#5aa75a') => {
       ctx.save();
       const s = size;
@@ -504,7 +504,7 @@ export const STAMPS_TREESB = [
     defaultScale: 0.8,
     aspect: 1,
     group: 'veg_wetland',
-    groupName: 'Reeds & Bamboo',
+    groupName: 'Reeds & Wetland Plants',
     render: (ctx, size, color = '#1d2616', fill = '#6f9a45') => {
       ctx.save();
       const s = size;
@@ -557,7 +557,7 @@ export const STAMPS_TREESB = [
     defaultScale: 1,
     aspect: 1,
     group: 'veg_wetland',
-    groupName: 'Reeds & Bamboo',
+    groupName: 'Reeds & Wetland Plants',
     render: (ctx, size, color = '#16281a', fill = '#7aa843') => {
       ctx.save();
       const s = size;
@@ -638,8 +638,8 @@ export const STAMPS_TREESB = [
     rotate: 'tilt',
     defaultScale: 0.7,
     aspect: 1,
-    group: 'veg_fungi',
-    groupName: 'Mushrooms',
+    group: 'veg_grass',
+    groupName: 'Grass, Flowers & Fungi',
     render: (ctx, size, color = '#2a1612', fill = '#c9342b') => {
       ctx.save();
       const s = size;

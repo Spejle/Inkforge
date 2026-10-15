@@ -2,6 +2,12 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.8.3] - 2026-10-15
+
+### Changed
+- **Stamps grouped much further.** 58 groups now cover 193 of the 195 stamps (only the compass rose and the boss marker stand alone), down from 135 grouped. Related stamps share one tile in the drawer: broadleaf, autumn, willow and birch trees; conifers with the snowy ones; mountains with volcanoes; hills with dunes and mesas; desert plants; rocks, logs and stumps; reeds and wetland plants; grass with flowers and fungi; ponds with whirlpools; campfires with braziers. Grouping was proposed by the Gemini intern and merged and checked here (no group has two names).
+- Stamp definitions can carry `family` and `view` (`side`, `top`, `diag`, `front`). 44 directional stamps are tagged with the view their art shows; extra views will join them in the same group, and a view always inherits its base stamp's group and category, so regrouping a base regroups its views. The drawer's variant list shows the view in each name.
+
 ## [1.8.2] - 2026-10-15
 
 ### Security
