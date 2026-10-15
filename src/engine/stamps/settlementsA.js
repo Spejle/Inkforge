@@ -698,7 +698,9 @@ export const STAMPS_SETTLEMENTSA = Object.keys(R).flatMap((key) =>
     const id = `set_${key === 'lizard' ? 'lizardfolk' : key}_${['hamlet', 'village', 'town', 'city', 'capital'][li]}`;
     // 4-level races use Camp/Village/Town/City names with level index 0..3 mapped onto LV 0..3
     return {
-      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization', defaultScale: [2.1, 1.8, 1.7, 1.6, 1.6][li], aspect: LV[li].asp,
+      id, name: `${NAMES[key][0]} ${NAMES[key][1][li]}`, category: 'world_civilization',
+      rotate: 'fixed',
+      defaultScale: [2.1, 1.8, 1.7, 1.6, 1.6][li], aspect: LV[li].asp,
       group: `set_${key === 'lizard' ? 'lizardfolk' : key}`, groupName: `${GROUPNAMES[key]} Settlements`,
       render: makeRender(key, li, id),
     };

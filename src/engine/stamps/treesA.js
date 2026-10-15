@@ -704,7 +704,7 @@ function grove(ctx, s, items, shared) {
 
 const FC = '#2a2018';
 const G = (group, groupName) => ({ group, groupName });
-const T = (id, name, g, scale, render) => ({ id: 'tr_' + id, name, category: 'world_nature', defaultScale: scale, aspect: 1, ...g, render });
+const T = (id, name, g, scale, render) => ({ id: 'tr_' + id, name, category: 'world_nature', rotate: 'fixed', defaultScale: scale, aspect: 1, ...g, render });
 
 const G_BROAD = G('tree_broadleaf', 'Broadleaf Trees');
 const G_CONIF = G('tree_conifer', 'Conifers');

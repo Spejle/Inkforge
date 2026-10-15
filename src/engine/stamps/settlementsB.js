@@ -279,7 +279,9 @@ function house(c, P, x, by, w, h, roof, o = {}) {
 
 const ALL = [];
 const mk = (id, name, group, groupName, aspect, scale, seed, draw) => (ALL.push({
-  id: 'cas_' + id, name, category: 'world_civilization', defaultScale: scale, aspect,
+  id: 'cas_' + id, name, category: 'world_civilization',
+  rotate: 'fixed',
+  defaultScale: scale, aspect,
   group: 'cas_' + group, groupName,
   render: (ctx, size, color = '#271c19', fill = '#e2d9cc') => {
     ctx.save();

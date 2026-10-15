@@ -20,6 +20,7 @@ export const STAMPS = [
     id: 'mountain_grand',
     name: 'Grand Mountain Peak',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
@@ -93,6 +94,7 @@ export const STAMPS = [
     id: 'mountain_range',
     name: 'Mountain Ridge Cluster',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.4,
     aspect: 1.5,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
@@ -193,6 +195,7 @@ export const STAMPS = [
     id: 'mountain_snow_peak',
     name: 'Glacial Horn Peak',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1,
     render: (ctx, size, color = '#1e293b', fill = '#f8fafc') => {
@@ -246,6 +249,7 @@ export const STAMPS = [
     id: 'mountain_volcano',
     name: 'Volcanic Caldera',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.3,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#4a3f35') => {
@@ -320,6 +324,7 @@ export const STAMPS = [
     id: 'mountain_mesa',
     name: 'Desert Mesa Plateau',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.3,
     aspect: 1.4,
     render: (ctx, size, color = '#451a03', fill = '#d97706') => {
@@ -375,6 +380,7 @@ export const STAMPS = [
     id: 'hills_rolling',
     name: 'Rolling Green Hills',
     category: 'world_nature',
+    rotate: 'tilt',
     defaultScale: 1.0,
     aspect: 1.3,
     render: (ctx, size, color = '#2c221e', fill = '#dbe5c5') => {
@@ -427,6 +433,7 @@ export const STAMPS = [
     id: 'hills_dunes',
     name: 'Desert Sand Dunes',
     category: 'world_nature',
+    rotate: 'tilt',
     defaultScale: 1.1,
     aspect: 1.4,
     render: (ctx, size, color = '#78350f', fill = '#fde68a') => {
@@ -472,6 +479,7 @@ export const STAMPS = [
     id: 'tree_pine',
     name: 'Evergreen Pine',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 0.8,
     render: (ctx, size, color = '#2c221e', fill = '#4a6741') => {
@@ -524,6 +532,7 @@ export const STAMPS = [
     id: 'tree_oak',
     name: 'Ancient Oak',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
@@ -580,6 +589,7 @@ export const STAMPS = [
     id: 'tree_autumn',
     name: 'Autumn Maple',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#3f2212', fill = '#d97706') => {
@@ -617,6 +627,7 @@ export const STAMPS = [
     id: 'tree_dead',
     name: 'Gnarled Dead Tree',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 0.9,
     render: (ctx, size, color = '#1c1917', fill = '#44403c') => {
@@ -649,6 +660,7 @@ export const STAMPS = [
     id: 'tree_forest_cluster',
     name: 'Dense Woodland Canopy',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.4,
     render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
@@ -696,6 +708,7 @@ export const STAMPS = [
     id: 'castle_citadel',
     name: 'Royal Citadel & Keep',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.3,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#e2d9cc') => {
@@ -775,6 +788,7 @@ export const STAMPS = [
     id: 'fortress_keep',
     name: 'Stone Bastion Keep',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.1,
     render: (ctx, size, color = '#1c1917', fill = '#cbd5e1') => {
@@ -814,6 +828,7 @@ export const STAMPS = [
     id: 'village_houses',
     name: 'Village Settlement',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 1.3,
     render: (ctx, size, color = '#2c221e', fill = '#dcd4c0') => {
@@ -863,6 +878,7 @@ export const STAMPS = [
     id: 'windmill',
     name: 'Windmill & Farm',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 0.9,
     render: (ctx, size, color = '#2c221e', fill = '#f5f5f4') => {
@@ -917,6 +933,7 @@ export const STAMPS = [
     id: 'tower_wizard',
     name: 'Spire of High Sorcery',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 0.7,
     render: (ctx, size, color = '#1e1b4b', fill = '#c7d2fe') => {
@@ -964,6 +981,7 @@ export const STAMPS = [
     id: 'ruins_stonehenge',
     name: 'Ancient Megalith Circle',
     category: 'world_civilization',
+    rotate: 'tilt',
     defaultScale: 1.2,
     aspect: 1.3,
     render: (ctx, size, color = '#292524', fill = '#a8a29e') => {
@@ -1006,6 +1024,7 @@ export const STAMPS = [
     id: 'compass_rose',
     name: 'Nautical Compass Rose',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.5,
     aspect: 1,
     render: (ctx, size, color = '#2c221e', fill = '#d4af37') => {
@@ -1067,6 +1086,7 @@ export const STAMPS = [
     id: 'ship_caravel',
     name: 'Merchant Caravel',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 1.2,
     render: (ctx, size, color = '#2c221e', fill = '#fafafa') => {
@@ -1114,6 +1134,7 @@ export const STAMPS = [
     id: 'sea_serpent',
     name: 'Mythic Leviathan',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.3,
     render: (ctx, size, color = '#0f172a', fill = '#0d9488') => {
@@ -1169,6 +1190,7 @@ export const STAMPS = [
     id: 'dungeon_wall_block',
     name: 'Stone Wall Section',
     category: 'battle_rooms',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#0f172a', fill = '#334155') => {
@@ -1198,6 +1220,7 @@ export const STAMPS = [
     id: 'dungeon_door_wooden',
     name: 'Iron-Banded Wood Door',
     category: 'battle_rooms',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#1c1917', fill = '#78350f') => {
@@ -1231,6 +1254,7 @@ export const STAMPS = [
     id: 'dungeon_pillar',
     name: 'Carved Dungeon Pillar',
     category: 'battle_rooms',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#0f172a', fill = '#475569') => {
@@ -1268,6 +1292,7 @@ export const STAMPS = [
     id: 'dungeon_stairs_down',
     name: 'Descending Stone Stairs',
     category: 'battle_rooms',
+    rotate: 'free',
     defaultScale: 1.1,
     aspect: 1,
     render: (ctx, size, color = '#0f172a', fill = '#334155') => {
@@ -1297,6 +1322,7 @@ export const STAMPS = [
     id: 'prop_table_tavern',
     name: 'Long Tavern Feast Table',
     category: 'battle_props',
+    rotate: 'free',
     defaultScale: 1.1,
     aspect: 1.8,
     render: (ctx, size, color = '#2c1810', fill = '#854d0e') => {
@@ -1332,6 +1358,7 @@ export const STAMPS = [
     id: 'prop_chest_treasure',
     name: 'Gilded Treasure Chest',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#92400e') => {
@@ -1361,6 +1388,7 @@ export const STAMPS = [
     id: 'prop_campfire',
     name: 'Roaring Campfire',
     category: 'battle_props',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#2c221e') => {
@@ -1415,6 +1443,7 @@ export const STAMPS = [
     id: 'prop_barrel_crate',
     name: 'Storage Crates & Barrels',
     category: 'battle_props',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#a16207') => {
@@ -1450,6 +1479,7 @@ export const STAMPS = [
     id: 'prop_throne_royal',
     name: 'Gilded Royal Throne',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 1,
     render: (ctx, size, color = '#1c1917', fill = '#b91c1c') => {
@@ -1479,6 +1509,7 @@ export const STAMPS = [
     id: 'prop_brazier_lit',
     name: 'Iron Fire Brazier',
     category: 'battle_props',
+    rotate: 'free',
     defaultScale: 0.9,
     aspect: 1,
     render: (ctx, size, color = '#0f172a') => {
@@ -1522,6 +1553,7 @@ export const STAMPS = [
     id: 'token_hero_warrior',
     name: 'Knight Hero Token',
     category: 'battle_tokens',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#1e293b', fill = '#3b82f6') => {
@@ -1558,6 +1590,7 @@ export const STAMPS = [
     id: 'token_hero_mage',
     name: 'Arcanist Mage Token',
     category: 'battle_tokens',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#1e1b4b', fill = '#8b5cf6') => {
@@ -1594,6 +1627,7 @@ export const STAMPS = [
     id: 'token_hero_rogue',
     name: 'Shadow Rogue Token',
     category: 'battle_tokens',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#0f172a', fill = '#15803d') => {
@@ -1628,6 +1662,7 @@ export const STAMPS = [
     id: 'token_monster_dragon',
     name: 'Elder Red Dragon',
     category: 'battle_tokens',
+    rotate: 'free',
     defaultScale: 1.5,
     aspect: 1,
     render: (ctx, size, color = '#450a0a', fill = '#dc2626') => {
@@ -1666,6 +1701,7 @@ export const STAMPS = [
     id: 'token_skull_marker',
     name: 'Boss / Skull Marker',
     category: 'battle_tokens',
+    rotate: 'free',
     defaultScale: 1.0,
     aspect: 1,
     render: (ctx, size, color = '#18181b', fill = '#f43f5e') => {
@@ -1707,6 +1743,7 @@ export const STAMPS = [
     id: 'tree_dead_barren',
     name: 'Dead Tree',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 0.9,
     render: (ctx, size, color = '#1c1917', fill = '#57534e') => {
@@ -1809,6 +1846,7 @@ export const STAMPS = [
     id: 'tree_palm',
     name: 'Palm Tree',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 1.0,
     render: (ctx, size, color = '#2c221e', fill = '#15803d') => {
@@ -1902,6 +1940,7 @@ export const STAMPS = [
     id: 'cactus_saguaro',
     name: 'Desert Cactus',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 0.8,
     render: (ctx, size, color = '#1c1917', fill = '#166534') => {
@@ -2021,6 +2060,7 @@ export const STAMPS = [
     id: 'boulder_cluster',
     name: 'Boulder Cluster',
     category: 'world_nature',
+    rotate: 'tilt',
     defaultScale: 1.1,
     aspect: 1.4,
     render: (ctx, size, color = '#2c221e', fill = '#a8a29e') => {
@@ -2160,6 +2200,7 @@ export const STAMPS = [
     id: 'nature_reeds',
     name: 'Freshwater Reeds',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 0.8,
     render: (ctx, size, color = '#2c221e', fill = '#4d7c0f') => {
@@ -2239,6 +2280,7 @@ export const STAMPS = [
     id: 'nature_lily_pond',
     name: 'Lily Pond',
     category: 'world_nature',
+    rotate: 'free',
     defaultScale: 1.2,
     aspect: 1.3,
     render: (ctx, size, color = '#1e293b', fill = '#38bdf8') => {
@@ -2320,6 +2362,7 @@ export const STAMPS = [
     id: 'volcano_lite',
     name: 'Volcano',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#57534e') => {
@@ -2398,6 +2441,7 @@ export const STAMPS = [
     id: 'tree_snowy_pine',
     name: 'Snowy Pine',
     category: 'world_nature',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 0.9,
     render: (ctx, size, color = '#1c1917', fill = '#14532d') => {
@@ -2475,6 +2519,7 @@ export const STAMPS = [
     id: 'windmill_rustic',
     name: 'Rustic Windmill',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 0.9,
     render: (ctx, size, color = '#2c221e', fill = '#e7e5e4') => {
@@ -2581,6 +2626,7 @@ export const STAMPS = [
     id: 'civ_lighthouse',
     name: 'Coastal Lighthouse',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 0.8,
     render: (ctx, size, color = '#1c1917', fill = '#f5f5f4') => {
@@ -2700,6 +2746,7 @@ export const STAMPS = [
     id: 'ruined_tower',
     name: 'Ruined Tower',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 0.9,
     render: (ctx, size, color = '#271c19', fill = '#d6d3d1') => {
@@ -2807,6 +2854,7 @@ export const STAMPS = [
     id: 'bridge_stone',
     name: 'Stone Arch Bridge',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.6,
     render: (ctx, size, color = '#271c19', fill = '#cbd5e1') => {
@@ -2885,6 +2933,7 @@ export const STAMPS = [
     id: 'farm_homestead',
     name: 'Farm Homestead',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.4,
     render: (ctx, size, color = '#2c221e', fill = '#fde68a') => {
@@ -2977,6 +3026,7 @@ export const STAMPS = [
     id: 'port_dock',
     name: 'Port Dock',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.5,
     render: (ctx, size, color = '#271c19', fill = '#854d0e') => {
@@ -3049,6 +3099,7 @@ export const STAMPS = [
     id: 'civ_temple',
     name: 'Ancient Temple',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.3,
     render: (ctx, size, color = '#271c19', fill = '#f5f5f4') => {
@@ -3126,6 +3177,7 @@ export const STAMPS = [
     id: 'camp_tent',
     name: 'Camp Tent',
     category: 'world_civilization',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 1.1,
     render: (ctx, size, color = '#2c221e', fill = '#fde047') => {
@@ -3219,6 +3271,7 @@ export const STAMPS = [
     id: 'nautical_kraken',
     name: 'Giant Kraken',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.3,
     aspect: 1.2,
     render: (ctx, size, color = '#1e1b4b', fill = '#4338ca') => {
@@ -3309,6 +3362,7 @@ export const STAMPS = [
     id: 'ship_galleon',
     name: 'War Galleon',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.3,
     aspect: 1.3,
     render: (ctx, size, color = '#271c19', fill = '#fafafa') => {
@@ -3404,6 +3458,7 @@ export const STAMPS = [
     id: 'nautical_whirlpool',
     name: 'Maelstrom Whirlpool',
     category: 'world_nautical',
+    rotate: 'free',
     defaultScale: 1.2,
     aspect: 1.2,
     render: (ctx, size, color = '#0f172a', fill = '#0284c7') => {
@@ -3480,6 +3535,7 @@ export const STAMPS = [
     id: 'sea_serpent_head',
     name: 'Sea Serpent Head',
     category: 'world_nautical',
+    rotate: 'fixed',
     defaultScale: 1.2,
     aspect: 1.1,
     render: (ctx, size, color = '#0f172a', fill = '#047857') => {
@@ -3605,6 +3661,7 @@ export const STAMPS = [
     id: 'prop_chest_wood',
     name: 'Dungeon Chest',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 0.9,
     aspect: 1.1,
     render: (ctx, size, color = '#271c19', fill = '#78350f') => {
@@ -3671,6 +3728,7 @@ export const STAMPS = [
     id: 'prop_barrel_stack',
     name: 'Barrel Stack',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 1.0,
     aspect: 1.3,
     render: (ctx, size, color = '#271c19', fill = '#a16207') => {
@@ -3738,6 +3796,7 @@ export const STAMPS = [
     id: 'prop_altar_stone',
     name: 'Ritual Stone Altar',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 1.4,
     render: (ctx, size, color = '#1c1917', fill = '#64748b') => {
@@ -3810,6 +3869,7 @@ export const STAMPS = [
     id: 'prop_bookshelf',
     name: 'Library Bookshelf',
     category: 'battle_props',
+    rotate: 'fixed',
     defaultScale: 1.1,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#78350f') => {
