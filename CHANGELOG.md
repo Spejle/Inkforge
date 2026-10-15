@@ -2,6 +2,11 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.7.4] - 2026-10-15
+
+### Added (tooling)
+- TypeScript: `tsconfig.json` (strict, `allowJs`, `checkJs` off, so existing `.js` is untouched) and `npm run typecheck`. `src/types.ts` holds the stamp and layer-style types; new code is written in `.ts` and old files convert one at a time.
+
 ## [1.7.3] - 2026-10-15
 
 ### Changed (performance)
