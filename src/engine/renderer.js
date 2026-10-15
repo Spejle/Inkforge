@@ -44,6 +44,7 @@ export function renderMap({
   mapType = 'world',
   landmasses = [],
   brushStrokes = [], // freehand land & texture strokes
+  liveStroke = null, // stroke still being painted: cheap preview, the real pipeline runs once on release
   stamps = [],
   paths = [],
   texts = [],
@@ -71,7 +72,10 @@ export function renderMap({
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    layerPass(ctx, st('land'), (c) => landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline));
+    layerPass(ctx, st('land'), (c) => {
+      landLayer(c, width, height, landmasses, brushStrokes, mapType, coastline);
+      if (liveStroke) drawLiveStroke(c, liveStroke);
+    });
   }
 
   // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
@@ -115,6 +119,45 @@ export function renderMap({
   }
 
   ctx.restore();
+}
+
+/** Quick look at a stroke mid-drag: no coast ripples, sand or outline until it is committed. */
+function drawLiveStroke(c, s) {
+  const pts = s.points;
+  if (!pts || pts.length === 0) return;
+  c.save();
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.lineWidth = s.size;
+  const trace = () => {
+    c.beginPath();
+    c.moveTo(pts[0].x, pts[0].y);
+    if (pts.length === 1) c.lineTo(pts[0].x + 0.01, pts[0].y);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+  };
+  if (s.type === 'brush') {
+    c.globalAlpha = s.opacity ?? 1;
+    c.globalCompositeOperation = s.blendMode || 'source-over';
+    c.strokeStyle = getBiomePattern(c, s.biome || 'grassland');
+    trace();
+    c.stroke();
+  } else if (s.mode === 'water') {
+    c.globalAlpha = 0.85;
+    c.strokeStyle = '#1e3f66';
+    trace();
+    c.stroke();
+  } else {
+    c.globalAlpha = 0.9;
+    c.strokeStyle = '#3d2b1f';
+    c.lineWidth = s.size + 5;
+    trace();
+    c.stroke();
+    c.strokeStyle = '#7da35a';
+    c.lineWidth = s.size;
+    trace();
+    c.stroke();
+  }
+  c.restore();
 }
 
 // The land pass (mask, ripples, terrain, sand, outline) is the expensive one and does not change while

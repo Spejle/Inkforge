@@ -2,6 +2,15 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.7.1] - 2026-10-15
+
+### Fixed
+- **Mask and brush painting lag**: every mouse move rebuilt the whole land layer (coast ripples, sand, outline, every stroke), 290-780 ms per move on the sample maps. A stroke in progress is now drawn as a light preview over the finished land layer and the full coastline is rebuilt once on release. An 80-move brush drag on the default map went from 23 s to 5.6 s (most of the rest is the test driver); one long task remains, the rebuild on release.
+- A stroke is now committed on release as exactly one undo step.
+
+### Known
+- While dragging, the preview is hard-edged and has no ripples, sand or outline yet; the soft edge and coastline appear when you let go.
+
 ## [1.7.0] - 2026-10-15
 
 ### Added

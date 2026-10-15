@@ -377,6 +377,13 @@ export default function App() {
     });
   };
 
+  // A finished mask/brush stroke: add it and record one undo step (docRef is not refreshed until the next render)
+  const handleCommitStroke = (stroke) => {
+    const next = [...docRef.current.brushStrokes.filter((b) => b.id !== stroke.id), stroke];
+    setBrushStrokes(next);
+    recordHistory({ brushStrokes: next });
+  };
+
   // Deleting a custom layer sends its objects back to the built-in layers
   const handleDeleteLayer = (key) => {
     const strip = (list) => list.map((o) => (o.layer === key ? { ...o, layer: undefined } : o));
@@ -897,6 +904,7 @@ export default function App() {
             pathDashed={pathDashed}
             pathColor={pathColor}
             onAddBrushStroke={handleAddBrushStroke}
+            onCommitStroke={handleCommitStroke}
             onAddStamp={handleAddStamp}
             onUpdateStamp={handleUpdateStamp}
             onAddPath={handleAddPath}

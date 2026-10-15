@@ -67,7 +67,7 @@ export default function CanvasArea({
   pathDashed,
   pathColor,
   // Mutation callbacks
-  onAddBrushStroke,
+  onCommitStroke,
   onAddStamp,
   onUpdateStamp,
   onAddPath,
@@ -94,6 +94,7 @@ export default function CanvasArea({
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const activeStrokeRef = useRef(null);
+  const [liveStroke, setLiveStroke] = useState(null); // stroke being painted: drawn as a cheap preview, committed on release
   const activePathRef = useRef(null);
   const pathStabRef = useRef(null); // lazy-rope cursor so drawn rivers don't wobble
   const straightAnchorRef = useRef(null);
@@ -159,6 +160,7 @@ export default function CanvasArea({
       mapType,
       landmasses,
       brushStrokes,
+      liveStroke,
       stamps,
       paths,
       texts,
@@ -178,6 +180,7 @@ export default function CanvasArea({
     mapType,
     landmasses,
     brushStrokes,
+    liveStroke,
     stamps,
     paths,
     texts,
@@ -392,7 +395,7 @@ export default function CanvasArea({
         points: [{ x: Math.round(x), y: Math.round(y) }]
       };
       activeStrokeRef.current = newStroke;
-      onAddBrushStroke(newStroke);
+      setLiveStroke({ ...newStroke });
     }
 
     // 3. BRUSH TOOL (Biomes & Textures)
@@ -410,7 +413,7 @@ export default function CanvasArea({
         points: [{ x: Math.round(x), y: Math.round(y) }]
       };
       activeStrokeRef.current = newStroke;
-      onAddBrushStroke(newStroke);
+      setLiveStroke({ ...newStroke });
     }
 
     if (activeTool === 'eraser' && onEraseAt) onEraseAt(x, y, brushSize / 2);
@@ -534,7 +537,7 @@ export default function CanvasArea({
         pts.push({ x: targetX, y: targetY });
       }
 
-      onAddBrushStroke({ ...activeStrokeRef.current });
+      setLiveStroke({ ...activeStrokeRef.current });
       return;
     }
 
@@ -592,8 +595,14 @@ export default function CanvasArea({
       const done = { ...activePathRef.current, points: simplifyPath(all, 2.5) };
       onAddPath(done);
     }
-    if (isInteractingRef.current && onCommitAction) {
-      onCommitAction();
+    if (isInteractingRef.current) {
+      const done = activeStrokeRef.current;
+      if (done && (activeTool === 'mask' || activeTool === 'brush') && onCommitStroke) {
+        onCommitStroke(done); // adds the stroke and records ONE undo step
+        setLiveStroke(null);
+      } else if (onCommitAction) {
+        onCommitAction();
+      }
     }
     isInteractingRef.current = false;
     isPanningRef.current = false;
