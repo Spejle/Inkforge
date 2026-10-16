@@ -59,6 +59,7 @@ export interface AtmosphereSettings {
   darkness?: number;
   lights?: { x: number; y: number; r: number }[];
   walls?: number[][][];
+  blocks?: number[][][];
 }
 export type PlanItem =
   | { kind: 'layer'; name: string; style?: LayerStyle; parts: Part[] }
@@ -73,6 +74,6 @@ export interface Plan {
 export type AtmoOp =
   | { type: 'grain'; alpha: number }
   | { type: 'solid'; rgb: [number, number, number]; alpha: number; blend: 'multiply' | 'screen' }
-  | { type: 'lighting'; darkness: number; lights: { x: number; y: number; r: number }[]; walls: number[][][] }
+  | { type: 'lighting'; darkness: number; lights: { x: number; y: number; r: number }[]; walls: number[][][]; blocks?: number[][][] }
   | { type: 'weather'; kind: 'rain' | 'snow'; amount: number }
   | { type: 'vignette'; vignette: number };

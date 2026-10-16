@@ -1212,6 +1212,23 @@ export const isLightStamp = (s) => /campfire|brazier/.test(s.stampId || '');
 /** Light reach in map px: 6 grid squares at stamp scale 1. */
 export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
 
+// Stamps that stop light, by group: dungeon walls, pillars and doors, furniture, mountains and trees.
+const BLOCKER_GROUP = /^(dungeon_(walls|pillars|doors)|prop_(tables|chests|storage|altars|shelves)|geo_mountains|tree_)/;
+/** The footprint of a light-blocking stamp as a closed polyline (trees only block with their trunk and inner crown). */
+function blockerOutline(s) {
+  const def = getStampById(s.stampId);
+  if (!def || !BLOCKER_GROUP.test(def.group || '')) return null;
+  const k = /^tree_/.test(def.group) ? 0.45 : 1;
+  const h = 80 * (s.scale || 1) * k;
+  const w = h * stampAspect(s);
+  const cy = s.anchor === 'base' ? -h / 2 : 0;
+  const cos = Math.cos(s.rotation || 0), sin = Math.sin(s.rotation || 0);
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([a, b]) => {
+    const u = a * w / 2, v = cy + b * h / 2;
+    return [s.x + u * cos - v * sin, s.y + u * sin + v * cos];
+  });
+}
+
 // Darkness needs the lights and walls, which live outside the atmosphere settings. The result is memoised so the Pixi
 // view, which rebuilds its texture whenever the object changes, only does so when a light, a wall or a setting did.
 let lightMemo = { a: null, s: null, p: null, g: null, out: null };
@@ -1222,7 +1239,8 @@ function withLighting(a, stamps, paths, grid) {
   const out = {
     ...a,
     lights: stamps.filter(isLightStamp).map((s) => ({ x: s.x, y: s.y, r: lightRange(s, grid) })),
-    walls: paths.filter((p) => p.type === 'wall' && p.points && p.points.length > 1).map((p) => p.points)
+    walls: paths.filter((p) => p.type === 'wall' && p.points && p.points.length > 1).map((p) => p.points),
+    blocks: stamps.filter((s) => !isLightStamp(s)).map(blockerOutline).filter(Boolean)
   };
   lightMemo = { a, s: stamps, p: paths, g: grid, out };
   return out;
@@ -1274,7 +1292,7 @@ export function drawLighting(ctx, width, height, op) {
   g.fillRect(0, 0, width, height);
   const glow = [];
   for (const l of op.lights) {
-    const poly = visibilityPolygon(l.x, l.y, l.r, op.walls);
+    const poly = visibilityPolygon(l.x, l.y, l.r, [...op.walls, ...(op.blocks || [])]);
     if (poly.length < 3) continue;
     const grad = g.createRadialGradient(l.x, l.y, l.r * 0.1, l.x, l.y, l.r);
     grad.addColorStop(0, 'rgba(0,0,0,1)');
@@ -1322,7 +1340,7 @@ export function atmosphereOps(a) {
   }
   if (a.tint && a.tintAmount > 0) ops.push({ type: 'solid', rgb: a.tint, alpha: a.tintAmount, blend: a.tintBlend || 'multiply' });
   if (a.weather && a.weatherAmount > 0) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
-  if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [] });
+  if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
   if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
   return ops;
 }
