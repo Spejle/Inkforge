@@ -193,13 +193,33 @@ export function drawLiveStroke(c, s) {
   c.restore();
 }
 
+// Offscreen layer for a pass that may run scaled (zoomed live view, high-resolution export): `s` canvas pixels per map
+// unit, so masks and coastlines stay sharp. The scale is capped by area so a 16K export cannot allocate gigabytes; above
+// the cap the pass falls back to scaling up, as it always did.
+const MAX_LAYER_PX = 24e6;
+function layerScale(ctx, width, height) {
+  const t = ctx.getTransform();
+  const S = Math.hypot(t.a, t.b) || 1;
+  return S <= 1 ? S : Math.min(S, Math.max(1, Math.sqrt(MAX_LAYER_PX / (width * height))));
+}
+function makeLayer(width, height, s) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(width * s));
+  c.height = Math.max(1, Math.round(height * s));
+  const g = c.getContext('2d');
+  g.scale(c.width / width, c.height / height); // everything on it is still drawn in map units
+  return { c, g };
+}
+
 // Each layer is rasterised into its own canvas and only redrawn when its inputs change (compared by identity),
 // so dragging a stamp or drawing a path repaints one layer and composites the rest. Only the 1:1 preview is
-// cached; scaled exports render directly so they stay sharp.
+// cached when it is a uniform scale; exports render directly.
 // ponytail: one full-size canvas per layer (~45 MB each at 4000x2800); merge into below/above bitmaps if memory bites.
 const layerCache = new Map();
 function cachedPass(cache, ctx, name, deps, style, draw) {
-  if (!cache || ctx.getTransform().a !== 1) return layerPass(ctx, style, draw);
+  const t = ctx.getTransform();
+  // a uniform scale (the zoomed live view) is cached too, keyed by the transform so a zoom change redraws
+  if (!cache || t.b || t.c || t.a !== t.d) return layerPass(ctx, style, draw);
   const { width: w, height: h } = ctx.canvas;
   let e = layerCache.get(name);
   if (!e || e.canvas.width !== w || e.canvas.height !== h) {
@@ -209,13 +229,17 @@ function cachedPass(cache, ctx, name, deps, style, draw) {
     e = { canvas, deps: null };
     layerCache.set(name, e);
   }
-  if (!e.deps || e.deps.some((d, i) => !Object.is(d, deps[i]))) {
+  const key = [...deps, t.a, t.e, t.f];
+  if (!e.deps || e.deps.length !== key.length || e.deps.some((d, i) => !Object.is(d, key[i]))) {
     const g = e.canvas.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, w, h);
+    g.setTransform(t);
     draw(g);
-    e.deps = deps;
+    e.deps = key;
   }
   ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = style?.opacity ?? 1;
   ctx.globalCompositeOperation = style?.blend || 'source-over';
   ctx.drawImage(e.canvas, 0, 0);
@@ -258,12 +282,12 @@ function layerPass(ctx, style, draw) {
 
 /** Ocean / Sea background with navigational rhumb lines and ripples */
 function renderOceanBackground(ctx, width, height) {
-  const bgKey = `${width}x${height}`;
+  const sc = layerScale(ctx, width, height);
+  const bgKey = `${width}x${height}@${sc.toFixed(3)}`;
   if (!backgroundCache || lastBgKey !== bgKey) {
-    backgroundCache = document.createElement('canvas');
-    backgroundCache.width = width;
-    backgroundCache.height = height;
-    const bctx = backgroundCache.getContext('2d');
+    const layer = makeLayer(width, height, sc);
+    backgroundCache = layer.c;
+    const bctx = layer.g;
 
     // Gradient ocean base
     const oceanGrad = bctx.createLinearGradient(0, 0, width, height);
@@ -311,7 +335,7 @@ function renderOceanBackground(ctx, width, height) {
     lastBgKey = bgKey;
   }
 
-  ctx.drawImage(backgroundCache, 0, 0);
+  ctx.drawImage(backgroundCache, 0, 0, width, height);
 }
 
 /** Tactical Battlemap Dungeon Void */
@@ -442,11 +466,9 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     ...(coastline || {})
   };
 
-  // 1. Build the Offscreen Land Mask Canvas
-  const maskCanvas = document.createElement('canvas');
-  maskCanvas.width = width;
-  maskCanvas.height = height;
-  const mctx = maskCanvas.getContext('2d');
+  // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
+  const ls = layerScale(ctx, width, height);
+  const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
 
   // Draw preset polygon landmasses onto mask
   mctx.fillStyle = '#ffffff';
@@ -566,17 +588,14 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     ctx.shadowBlur = cl.shadowBlur || 10;
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 5;
-    ctx.drawImage(maskCanvas, 0, 0);
+    ctx.drawImage(maskCanvas, 0, 0, width, height);
     ctx.restore();
   }
 
   // 4a. Draw Background / Water Brush Strokes (Clipped outside land)
   const waterBrushStrokes = (brushStrokes || []).filter(s => s.type === 'brush' && s.target === 'background');
   if (waterBrushStrokes.length > 0) {
-    const waterCanvas = document.createElement('canvas');
-    waterCanvas.width = width;
-    waterCanvas.height = height;
-    const wctx = waterCanvas.getContext('2d');
+    const { c: waterCanvas, g: wctx } = makeLayer(width, height, ls);
 
     for (const stroke of waterBrushStrokes) {
       if (!stroke.points || stroke.points.length === 0) continue;
@@ -603,17 +622,14 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     // Clip to outside land
     wctx.save();
     wctx.globalCompositeOperation = 'destination-out';
-    wctx.drawImage(maskCanvas, 0, 0);
+    wctx.drawImage(maskCanvas, 0, 0, width, height);
     wctx.restore();
 
-    ctx.drawImage(waterCanvas, 0, 0);
+    ctx.drawImage(waterCanvas, 0, 0, width, height);
   }
 
   // 4b. Build the Offscreen Terrain Buffer (Base Biomes + FG Brush Strokes)
-  const terrainCanvas = document.createElement('canvas');
-  terrainCanvas.width = width;
-  terrainCanvas.height = height;
-  const tctx = terrainCanvas.getContext('2d');
+  const { c: terrainCanvas, g: tctx } = makeLayer(width, height, ls);
 
   // Default base terrain wash
   tctx.fillStyle = getBiomePattern(tctx, 'grassland');
@@ -649,10 +665,7 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
       const minY = Math.floor(Math.min(...ys) - r);
       const bw = Math.ceil(Math.max(...xs) + r) - minX;
       const bh = Math.ceil(Math.max(...ys) + r) - minY;
-      const sc = document.createElement('canvas');
-      sc.width = Math.max(1, bw);
-      sc.height = Math.max(1, bh);
-      const sctx = sc.getContext('2d');
+      const { c: sc, g: sctx } = makeLayer(bw, bh, ls);
       sctx.translate(-minX, -minY);
       for (const pt of stroke.points) {
         const grad = sctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
@@ -666,7 +679,7 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
       sctx.globalCompositeOperation = 'source-in';
       sctx.fillStyle = getBiomePattern(sctx, stroke.biome || 'grassland');
       sctx.fillRect(minX, minY, bw, bh);
-      tctx.drawImage(sc, minX, minY);
+      tctx.drawImage(sc, minX, minY, bw, bh);
     } else {
       tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
       tctx.fillStyle = tctx.strokeStyle;
@@ -690,58 +703,49 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   // 5. CLIP Terrain Buffer to Land Mask Buffer (True Masking!)
   tctx.save();
   tctx.globalCompositeOperation = 'destination-in';
-  tctx.drawImage(maskCanvas, 0, 0);
+  tctx.drawImage(maskCanvas, 0, 0, width, height);
   tctx.restore();
 
   // Draw the clipped terrain onto the destination canvas
-  ctx.drawImage(terrainCanvas, 0, 0);
+  ctx.drawImage(terrainCanvas, 0, 0, width, height);
 
   // 6. Beach / Sand Fringe along the inner coastline of ALL land (presets, added land, carved bays):
   // dilate the water (inverse mask) inward by half the beach width, keep the part that lies on land.
   if (mapType === 'world' && cl.sandEnabled && cl.sandWidth > 0) {
-    const water = document.createElement('canvas');
-    water.width = width;
-    water.height = height;
-    const wc = water.getContext('2d');
+    const { c: water, g: wc } = makeLayer(width, height, ls);
     wc.fillStyle = '#fff';
     wc.fillRect(0, 0, width, height);
     wc.globalCompositeOperation = 'destination-out';
-    wc.drawImage(maskCanvas, 0, 0);
-    const sand = document.createElement('canvas');
-    sand.width = width;
-    sand.height = height;
-    const sc = sand.getContext('2d');
+    wc.drawImage(maskCanvas, 0, 0, width, height);
+    const { c: sand, g: sc } = makeLayer(width, height, ls);
     const reach = cl.sandWidth / 2;
-    sc.drawImage(water, 0, 0);
+    sc.drawImage(water, 0, 0, width, height);
     for (let i = 0; i < 12; i++) {
       const ang = (i / 12) * Math.PI * 2;
-      sc.drawImage(water, Math.cos(ang) * reach, Math.sin(ang) * reach);
+      sc.drawImage(water, Math.cos(ang) * reach, Math.sin(ang) * reach, width, height);
     }
     sc.globalCompositeOperation = 'source-in';
     sc.fillStyle = cl.sandColor || '#d4be8d';
     sc.fillRect(0, 0, width, height);
     sc.globalCompositeOperation = 'destination-in';
-    sc.drawImage(maskCanvas, 0, 0);
-    ctx.drawImage(sand, 0, 0);
+    sc.drawImage(maskCanvas, 0, 0, width, height);
+    ctx.drawImage(sand, 0, 0, width, height);
   }
 
   // 7. Crisp Ink Coastline Contour: the true edge of the land mask (presets, added land and carved water)
   if (cl.outlineWidth > 0) {
-    const ring = document.createElement('canvas');
-    ring.width = width;
-    ring.height = height;
-    const rctx = ring.getContext('2d');
+    const { c: ring, g: rctx } = makeLayer(width, height, ls);
     const reach = cl.outlineWidth;
     for (let i = 0; i < 12; i++) {
       const ang = (i / 12) * Math.PI * 2;
-      rctx.drawImage(maskCanvas, Math.cos(ang) * reach, Math.sin(ang) * reach);
+      rctx.drawImage(maskCanvas, Math.cos(ang) * reach, Math.sin(ang) * reach, width, height);
     }
     rctx.globalCompositeOperation = 'source-in';
     rctx.fillStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
     rctx.fillRect(0, 0, width, height);
     rctx.globalCompositeOperation = 'destination-out';
-    rctx.drawImage(maskCanvas, 0, 0);
-    ctx.drawImage(ring, 0, 0);
+    rctx.drawImage(maskCanvas, 0, 0, width, height);
+    ctx.drawImage(ring, 0, 0, width, height);
   }
 }
 
@@ -888,7 +892,7 @@ export function stampSprite(ctx, def, s, size, w, h) {
   sg.shadowOffsetX = 2 * sc * k * (s.flipX ? -1 : 1);
   sg.shadowOffsetY = 4 * sc * k * (s.flipY ? -1 : 1);
   sg.drawImage(raw, 0, 0);
-  sp = { canvas: c, pad };
+  sp = { canvas: c, pad, k };
   spriteCache.set(key, sp);
   if (spriteCache.size > 700) spriteCache.delete(spriteCache.keys().next().value);
   return sp;

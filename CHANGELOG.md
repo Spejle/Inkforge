@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.10.1] - 2026-10-16
+
+### Fixed
+- **Stamps and everything else turned into blurry bitmaps when you zoomed in.** The map was drawn once at 1 pixel per map unit and the browser merely enlarged it. The live view now redraws at the density of the zoom (zoom x screen scale, in steps 1 / 1.5 / 2 / 3 / 4) a quarter of a second after you stop zooming, so stamps, rivers, labels, the grid and the coastline stay sharp. Pointer positions are measured in map units, so selecting and painting are unaffected.
+- The terrain and ocean textures follow: biome tiles are painted at the matching density (grass tufts stay crisp), and the land pass (coast mask, sand, outline) builds its offscreen buffers at the drawn scale instead of at 1x. This also sharpens coastlines in high-resolution PNG exports, which used to be enlarged 1x masks.
+
+### Notes
+- Memory is capped: the live canvas uses at most 36 million pixels (so a 2800x1800 map goes to 2.67x, a small map to 4x, a 4000x2800 map stays near 1.8x), each raster layer at most 12 million, and offscreen buffers in a render at most 24 million, so big maps and 16K exports fall back to enlarging instead of allocating gigabytes.
+- Not changed: the ocean wave marks, the parchment grain and the live-stroke preview stay at 1x.
+
 ## [1.10.0] - 2026-10-15
 
 ### Added

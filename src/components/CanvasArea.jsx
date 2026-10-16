@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
 import { makeStepper } from '../utils/adjust';
+import { pickQuality } from '../utils/quality';
 
 const HANDLE_R = 14;
 
@@ -146,15 +147,25 @@ export default function CanvasArea({
     return layerVisibility?.[key] !== false && !layerStyle?.[key]?.locked;
   };
 
-  // Convert client viewport coordinates to canvas pixel space
+  // Canvas pixels per map unit. The canvas is shown scaled by the zoom, so a 1x canvas turns blurry when you zoom in: once
+  // the zoom settles it is redrawn at a density that matches it (capped by map size, see utils/quality.js).
+  const [quality, setQuality] = useState(1);
+  useEffect(() => {
+    const t = setTimeout(() => setQuality((cur) => pickQuality(zoom * (window.devicePixelRatio || 1), cur, mapWidth, mapHeight)), 250);
+    return () => clearTimeout(t);
+  }, [zoom, mapWidth, mapHeight]);
+  // the Canvas 2D fallback keeps a cache canvas per layer, so it gets a lower cap than the GPU view
+  const drawQuality = Math.max(1, Math.min(quality, Math.sqrt(12e6 / (mapWidth * mapHeight))));
+
+  // Convert client viewport coordinates to map space (the canvas backing size depends on the quality, the map does not)
   const clientToCanvas = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const x = (clientX - rect.left) * (mapWidth / rect.width);
+    const y = (clientY - rect.top) * (mapHeight / rect.height);
     return { x, y };
-  }, []);
+  }, [mapWidth, mapHeight]);
 
   // Pixi view: created lazily (the engine is its own chunk) and rebuilt when the map size changes
   useEffect(() => {
@@ -207,13 +218,21 @@ export default function CanvasArea({
     };
     // one repaint per frame, however many state updates landed in it
     const raf = requestAnimationFrame(() => {
-      if (view) view.render(buildPlan(props));
-      else if (fallback && canvasRef.current) renderMap({ ctx: canvasRef.current.getContext('2d'), cache: true, ...props });
+      if (view) {
+        view.setQuality(quality, mapWidth, mapHeight);
+        view.render(buildPlan(props));
+      } else if (fallback && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(canvas.width / mapWidth, 0, 0, canvas.height / mapHeight, 0, 0); // draw in map units at the canvas density
+        renderMap({ ctx, cache: true, ...props });
+      }
     });
     return () => cancelAnimationFrame(raf);
   }, [
     view,
     fallback,
+    quality,
     mapWidth,
     mapHeight,
     mapType,
@@ -713,7 +732,7 @@ export default function CanvasArea({
         }}
       >
         {fallback ? (
-          <canvas ref={canvasRef} width={mapWidth} height={mapHeight} className="main-map-canvas" />
+          <canvas ref={canvasRef} width={Math.round(mapWidth * drawQuality)} height={Math.round(mapHeight * drawQuality)} style={{ width: mapWidth, height: mapHeight }} className="main-map-canvas" />
         ) : (
           <div ref={hostRef} style={{ width: mapWidth, height: mapHeight }} />
         )}

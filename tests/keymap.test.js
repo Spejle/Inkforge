@@ -85,3 +85,25 @@ test('stepAngle: degrees per step, wraps at +-PI', () => {
   assert.equal(stepAngle(3.1, 1, 5), -3.096); // crosses PI
   assert.equal(stepAngle(-3.1, -1, 5), 3.096);
 });
+
+import { pickQuality, qualityCap } from '../src/utils/quality.js';
+
+test('qualityCap: small maps can go to 4x, big maps stay near 1x', () => {
+  assert.equal(qualityCap(1000, 700), 4);
+  assert.ok(Math.abs(qualityCap(2800, 1800) - 2.67) < 0.01);
+  assert.ok(qualityCap(4000, 2800) < 1.8);
+  assert.equal(qualityCap(20000, 20000), 1);
+});
+
+test('pickQuality: rises in steps, falls only well below, respects the cap', () => {
+  assert.equal(pickQuality(0.5, 1, 1920, 1080), 1);
+  assert.equal(pickQuality(1.2, 1, 1920, 1080), 1.5);
+  assert.equal(pickQuality(2, 1, 1920, 1080), 2);
+  assert.equal(pickQuality(4, 1, 1920, 1080), 4);
+  assert.equal(pickQuality(8, 1, 1920, 1080), 4); // never above 4
+  assert.equal(pickQuality(2.5, 4, 1920, 1080), 4); // not below half of the current level: stays
+  assert.equal(pickQuality(1.6, 4, 1920, 1080), 2); // well below: drops to the level that is nearly enough
+  assert.equal(pickQuality(1.5, 4, 1920, 1080), 1.5);
+  assert.equal(pickQuality(4, 1, 2800, 1800), qualityCap(2800, 1800)); // capped by map size
+  assert.equal(pickQuality(0.2, 2, 1920, 1080), 1);
+});

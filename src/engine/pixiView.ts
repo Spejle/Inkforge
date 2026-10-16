@@ -4,7 +4,7 @@
 //   - stamps: one sprite per stamp, so moving one stamp touches one sprite instead of redrawing the whole layer
 //   - layer opacity / blend and the atmosphere run on the GPU
 import 'pixi.js/unsafe-eval'; // Pixi's code generation uses new Function; this build avoids it so the page needs no 'unsafe-eval'
-import { Application, Container, Rectangle, RenderTexture, Sprite, Texture, TilingSprite } from 'pixi.js';
+import { Application, CanvasSource, Container, Rectangle, RenderTexture, Sprite, Texture, TilingSprite } from 'pixi.js';
 import 'pixi.js/advanced-blend-modes'; // overlay and soft-light
 import {
   atmosphereOps,
@@ -66,8 +66,10 @@ export class PixiMapView {
   private live: { sprite: Sprite; canvas: HTMLCanvasElement } | null = null;
   private atmo: { key: AtmosphereSettings | null; size: string; container: Container } = { key: null, size: '', container: new Container() };
   private canvasTex = new WeakMap<HTMLCanvasElement, Texture>();
-  private customTex = new Map<string, { canvas: HTMLCanvasElement; pad: number }>();
+  private customTex = new Map<string, { canvas: HTMLCanvasElement; pad: number; res: number }>();
   private dead = false;
+  private q = 1; // canvas pixels per map unit (the zoom you are looking at), see setQuality
+  private rr = 1; // the same for the raster layers, capped lower because there is one canvas per layer
 
   private constructor(app: Application) {
     this.app = app;
@@ -80,7 +82,7 @@ export class PixiMapView {
       width,
       height,
       resolution: 1,
-      autoDensity: false,
+      autoDensity: true, // css size stays in map units whatever the backing resolution
       antialias: false,
       backgroundAlpha: 0,
       preference: 'webgl',
@@ -97,10 +99,38 @@ export class PixiMapView {
     this.app.destroy({ removeView: true }, { children: true });
   }
 
+  /**
+   * Render at `q` canvas pixels per map unit (zoom x devicePixelRatio) so stamps and layers stay sharp when you zoom in.
+   * The caller already caps q by map size; the raster layers (one canvas each) get a lower cap. Returns true on change.
+   */
+  setQuality(q: number, width: number, height: number): boolean {
+    const rr = Math.max(1, Math.min(q, Math.sqrt(12e6 / (width * height))));
+    if (q === this.q && rr === this.rr) return false;
+    this.q = q;
+    this.rr = rr;
+    for (const node of this.nodes.values()) {
+      node.rendered = false;
+      for (const pn of node.parts) {
+        if (!pn) continue;
+        pn.deps = null; // everything is redrawn at the new density on the next render
+        if (pn.kind === 'stamps') {
+          for (const e of pn.entries.values()) e.src = null;
+          pn.selSrc = null;
+        }
+      }
+    }
+    this.atmo.key = null;
+    return true;
+  }
+
+  private canvasTexture(canvas: HTMLCanvasElement, resolution: number): Texture {
+    return new Texture({ source: new CanvasSource({ resource: canvas, resolution }) });
+  }
+
   render(plan: Plan) {
     if (this.dead) return;
     const { renderer, stage } = this.app;
-    if (renderer.width !== plan.width || renderer.height !== plan.height) renderer.resize(plan.width, plan.height);
+    if (renderer.width !== plan.width || renderer.height !== plan.height || renderer.resolution !== this.q) renderer.resize(plan.width, plan.height, this.q);
 
     const order: Container[] = [];
     for (const it of plan.items) {
@@ -177,24 +207,31 @@ export class PixiMapView {
       if (pn) pn.sprite.visible = false;
       return was;
     }
+    const rr = this.rr;
+    const cw = Math.max(1, Math.round(plan.width * rr));
+    const ch = Math.max(1, Math.round(plan.height * rr));
     if (!pn) {
       const canvas = document.createElement('canvas');
-      canvas.width = plan.width;
-      canvas.height = plan.height;
-      pn = { kind: 'raster', sprite: new Sprite(Texture.from(canvas)), canvas, deps: null };
+      canvas.width = cw;
+      canvas.height = ch;
+      pn = { kind: 'raster', sprite: new Sprite(this.canvasTexture(canvas, cw / plan.width)), canvas, deps: null };
       node.parts[i] = pn;
       node.container.addChildAt(pn.sprite, Math.min(i, node.container.children.length));
-    } else if (pn.canvas.width !== plan.width || pn.canvas.height !== plan.height) {
-      pn.canvas.width = plan.width;
-      pn.canvas.height = plan.height;
-      pn.sprite.texture.source.resize(plan.width, plan.height);
+    } else if (pn.canvas.width !== cw || pn.canvas.height !== ch) {
+      // map size or density changed: a new canvas and texture (a texture cannot change resolution in place)
+      pn.canvas.width = cw;
+      pn.canvas.height = ch;
+      pn.sprite.texture.destroy(true);
+      pn.sprite.texture = this.canvasTexture(pn.canvas, cw / plan.width);
       pn.deps = null;
     }
     let changed = !pn.sprite.visible;
     pn.sprite.visible = true;
     if (!sameDeps(pn.deps, part.deps)) {
       const g = pn.canvas.getContext('2d') as Ctx2D;
+      g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, pn.canvas.width, pn.canvas.height);
+      g.setTransform(pn.canvas.width / plan.width, 0, 0, pn.canvas.height / plan.height, 0, 0); // draw in map units
       part.draw(g);
       pn.sprite.texture.source.update();
       pn.deps = part.deps;
@@ -205,31 +242,35 @@ export class PixiMapView {
 
   // ---- stamps ------------------------------------------------------------------------------------------------------
 
-  private textureOf(canvas: HTMLCanvasElement): Texture {
+  private textureOf(canvas: HTMLCanvasElement, resolution = 1): Texture {
     let t = this.canvasTex.get(canvas);
     if (!t) {
-      t = Texture.from(canvas);
+      t = this.canvasTexture(canvas, resolution);
       this.canvasTex.set(canvas, t);
     }
     return t;
   }
 
-  /** Custom image stamp with its drop shadow baked in, like procedural stamps. */
+  /** Custom image stamp with its drop shadow baked in, like procedural stamps, at the current density. */
   private customSprite(src: string, img: HTMLImageElement, fw: number, fh: number, sc: number) {
-    const key = `${src.length}:${src.slice(-48)}|${Math.round(fw)}|${Math.round(fh)}|${sc}`;
+    const q = this.q;
+    const key = `${src.length}:${src.slice(-48)}|${Math.round(fw)}|${Math.round(fh)}|${sc}|${q}`;
     let c = this.customTex.get(key);
     if (!c) {
       const pad = Math.ceil(16 * sc);
+      const lw = fw + pad * 2;
+      const lh = fh + pad * 2;
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.ceil(fw + pad * 2));
-      canvas.height = Math.max(1, Math.ceil(fh + pad * 2));
+      canvas.width = Math.max(1, Math.ceil(lw * q));
+      canvas.height = Math.max(1, Math.ceil(lh * q));
       const g = canvas.getContext('2d') as Ctx2D;
+      g.scale(canvas.width / lw, canvas.height / lh);
       g.shadowColor = 'rgba(20, 15, 10, 0.35)';
-      g.shadowBlur = Math.max(3, 6 * sc);
-      g.shadowOffsetX = 2 * sc;
-      g.shadowOffsetY = 4 * sc;
+      g.shadowBlur = Math.max(3, 6 * sc) * q; // shadow blur and offsets are in canvas pixels, not map units
+      g.shadowOffsetX = 2 * sc * q;
+      g.shadowOffsetY = 4 * sc * q;
       g.drawImage(img, pad, pad, fw, fh);
-      c = { canvas, pad };
+      c = { canvas, pad, res: canvas.width / lw };
       this.customTex.set(key, c);
       if (this.customTex.size > 200) this.customTex.delete(this.customTex.keys().next().value as string);
     }
@@ -252,16 +293,18 @@ export class PixiMapView {
     const sp = e.sprite;
     let canvas: HTMLCanvasElement | null = null;
     let pad = 0;
+    let res = 1;
     if (s.customImage) {
       const img = stampImage(s.customImage);
-      if (img) ({ canvas, pad } = this.customSprite(s.customImage, img, fw, fh, s.scale || 1));
+      if (img) ({ canvas, pad, res } = this.customSprite(s.customImage, img, fw, fh, s.scale || 1));
     } else {
       const def = getStampById(s.stampId);
       if (def?.render) {
-        // k = 1: the live canvas is 1:1 with the map, zoom is CSS
-        const r = stampSprite({ getTransform: () => ({ a: 1, b: 0 }) }, def, s, size, fw, fh);
+        // baked at the density the canvas is drawn at (1, 2 or 4 pixels per map unit)
+        const r = stampSprite({ getTransform: () => ({ a: this.q, b: 0 }) }, def, s, size, fw, fh);
         canvas = r.canvas;
         pad = r.pad;
+        res = r.k;
       }
     }
     if (!canvas) {
@@ -269,7 +312,7 @@ export class PixiMapView {
       return;
     }
     sp.visible = true;
-    sp.texture = this.textureOf(canvas);
+    sp.texture = this.textureOf(canvas, res);
     this.place(sp, s, fw, fh, -pad, -pad, fw + pad * 2, fh + pad * 2);
   }
 
@@ -317,19 +360,22 @@ export class PixiMapView {
     } else if (pn.selSrc !== sel || pn.selEpoch !== part.epoch) {
       const { fw, fh } = stampFrame(sel);
       const ox = 12, oy = 30;
+      const lw = fw + ox * 2;
+      const lh = fh + oy + 12;
       const canvas = document.createElement('canvas');
-      canvas.width = Math.ceil(fw + ox * 2);
-      canvas.height = Math.ceil(fh + oy + 12);
+      canvas.width = Math.ceil(lw * this.q);
+      canvas.height = Math.ceil(lh * this.q);
       const g = canvas.getContext('2d') as Ctx2D;
+      g.scale(canvas.width / lw, canvas.height / lh);
       g.translate(ox, oy);
       drawStampSelection(g, fw, fh);
       pn.sel ??= new Sprite();
       if (!pn.sel.parent) pn.container.addChild(pn.sel);
       pn.sel.zIndex = 1e9;
       pn.sel.texture.destroy(true);
-      pn.sel.texture = Texture.from(canvas);
+      pn.sel.texture = this.canvasTexture(canvas, canvas.width / lw);
       pn.sel.visible = true;
-      this.place(pn.sel, sel, fw, fh, -ox, -oy, canvas.width, canvas.height);
+      this.place(pn.sel, sel, fw, fh, -ox, -oy, lw, lh);
       pn.selSrc = sel;
       pn.selEpoch = part.epoch;
     }

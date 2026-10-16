@@ -309,7 +309,12 @@ function makeKit(ctx, rng) {
       const n3 = makeNoise(rng, 14);
       const a = parse(c1);
       const b = parse(c2);
-      const img = ctx.getImageData(0, 0, S, S);
+      // per-pixel work happens at S x S on a scratch canvas and is drawn scaled, so it also fills a denser tile
+      const scratch = document.createElement('canvas');
+      scratch.width = S;
+      scratch.height = S;
+      const sctx = scratch.getContext('2d');
+      const img = sctx.createImageData(S, S);
       const d = img.data;
       for (let y = 0; y < S; y++) {
         for (let x = 0; x < S; x++) {
@@ -322,7 +327,8 @@ function makeKit(ctx, rng) {
           d[i + 3] = 255;
         }
       }
-      ctx.putImageData(img, 0, 0);
+      sctx.putImageData(img, 0, 0);
+      ctx.drawImage(scratch, 0, 0, S, S);
     },
     fill(c) {
       ctx.fillStyle = c;
@@ -1104,15 +1110,22 @@ const patternCache = new Map();
  * Creates or retrieves a rich, seamless procedural CanvasPattern for textured biome rendering
  */
 export function getBiomePattern(ctx, biomeId) {
-  if (patternCache.has(biomeId)) {
-    return patternCache.get(biomeId);
+  // The tile is painted at the density it will be shown at (1x, 2x or 4x), so texture detail stays sharp when the pass
+  // runs scaled (zoomed view, high-resolution export); the pattern transform keeps its size in map units unchanged.
+  const t = ctx.getTransform ? ctx.getTransform() : null;
+  const a = t ? Math.hypot(t.a, t.b) : 1;
+  const T = a <= 1 ? 1 : a <= 2 ? 2 : 4;
+  const key = T === 1 ? biomeId : `${biomeId}@${T}`;
+  if (patternCache.has(key)) {
+    return patternCache.get(key);
   }
 
   const biome = getBiomeById(biomeId);
   const offscreen = document.createElement('canvas');
-  offscreen.width = SIZE;
-  offscreen.height = SIZE;
+  offscreen.width = SIZE * T;
+  offscreen.height = SIZE * T;
   const octx = offscreen.getContext('2d');
+  octx.scale(T, T);
 
   octx.fillStyle = biome.color;
   octx.fillRect(0, 0, SIZE, SIZE);
@@ -1124,7 +1137,8 @@ export function getBiomePattern(ctx, biomeId) {
 
   const pattern = ctx.createPattern(offscreen, 'repeat');
   if (pattern) {
-    patternCache.set(biomeId, pattern);
+    if (T > 1 && pattern.setTransform) pattern.setTransform(new DOMMatrix([1 / T, 0, 0, 1 / T, 0, 0]));
+    patternCache.set(key, pattern);
   }
   return pattern || biome.color;
 }
