@@ -1,6 +1,6 @@
 import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
+import { generateRiver, renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
 import { makeStepper } from '../utils/adjust';
 import { pickQuality } from '../utils/quality';
@@ -87,6 +87,7 @@ export default function CanvasArea({
   onCommitAction,
   selectedStampId,
   setSelectedStampId,
+  riverGen,
   groupIds = [],
   setGroupIds,
   selectedTextId,
@@ -554,6 +555,14 @@ export default function CanvasArea({
     }
 
     // 5. PATH TOOL (Rivers, Roads, Walls)
+    if (activeTool === 'path' && pathType === 'river' && riverGen) {
+      const pts = generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000);
+      isInteractingRef.current = false;
+      if (!pts) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }
+      onAddPath({ id: 'path_' + Date.now(), type: 'river', color: pathColor, width: pathWidth, points: simplifyPath(pts, 3) });
+      onCommitAction?.();
+      return;
+    }
     if (activeTool === 'path') {
       const pathId = 'path_' + Date.now();
       const newPath = {

@@ -2,6 +2,7 @@
 import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
 import { safeImageSrc } from '../utils/importGuard.js';
+import { coastDistance, flowRiver } from './riverGen.js';
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -443,7 +444,7 @@ function drawMaskHalo(ctx, maskCanvas, width, height, cl, strength) {
 }
 
 /** Paints the land mask (white = land) from the preset polygons and the add-land / carve-water strokes. */
-function drawLandMask(mctx, landmasses, brushStrokes) {
+export function drawLandMask(mctx, landmasses, brushStrokes) {
   // Draw preset polygon landmasses onto mask
   mctx.fillStyle = '#ffffff';
   for (const land of landmasses) {
@@ -1413,4 +1414,18 @@ export function snapToGrid(x, y, grid) {
       y: row * h + rowOffset + offY
     };
   }
+}
+
+/** A generated river from (x, y) to the nearest sea in map px, or null when (x, y) is not on land. */
+export function generateRiver(width, height, landmasses, brushStrokes, x, y, seed) {
+  if (!hasLand(landmasses, brushStrokes)) return null;
+  const cell = Math.max(4, Math.round(Math.max(width, height) / 400));
+  const w = Math.ceil(width / cell), h = Math.ceil(height / cell);
+  const { c, g } = makeLayer(width, height, 1 / cell);
+  drawLandMask(g, landmasses, brushStrokes);
+  const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  const land = new Uint8Array(c.width * c.height);
+  for (let i = 0; i < land.length; i++) land[i] = px[i * 4 + 3] > 127 ? 1 : 0;
+  const pts = flowRiver(coastDistance(land, c.width, c.height), c.width, c.height, x / cell, y / cell, seed);
+  return pts && pts.map(([a, b]) => [Math.round(a * cell), Math.round(b * cell)]);
 }

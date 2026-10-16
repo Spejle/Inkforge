@@ -145,6 +145,7 @@ export default function App() {
   const [pathType, setPathType] = useState('river');
   const [pathWidth, setPathWidth] = useState(12);
   const [pathDashed, setPathDashed] = useState(false);
+  const [riverGen, setRiverGen] = useState(false); // path tool: a click makes a river from there to the sea
   const [pathColor, setPathColor] = useState('#2563eb');
 
   const [newTextContent, setNewTextContent] = useState('');
@@ -956,6 +957,8 @@ export default function App() {
             pathWidth={pathWidth}
             setPathWidth={setPathWidth}
             pathDashed={pathDashed}
+            riverGen={riverGen}
+            setRiverGen={setRiverGen}
             setPathDashed={setPathDashed}
             pathColor={pathColor}
             setPathColor={setPathColor}
@@ -1024,6 +1027,8 @@ export default function App() {
             pathType={pathType}
             pathWidth={pathWidth}
             pathDashed={pathDashed}
+            riverGen={riverGen}
+            setRiverGen={setRiverGen}
             pathColor={pathColor}
             onAddBrushStroke={handleAddBrushStroke}
             onCommitStroke={handleCommitStroke}

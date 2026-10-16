@@ -69,6 +69,8 @@ export default function ToolOptions({
   setPathWidth,
   pathDashed,
   setPathDashed,
+  riverGen,
+  setRiverGen,
   pathColor,
   setPathColor,
   // Text options
@@ -622,6 +624,16 @@ export default function ToolOptions({
               Wall
             </button>
           </div>
+
+          {pathType === 'river' && (
+            <button
+              className={`btn-toggle ${riverGen ? 'active' : ''}`}
+              title="Click on land: a river is generated from that spot to the nearest coast. Each click gives a different course."
+              onClick={() => setRiverGen(!riverGen)}
+            >
+              Generate on click
+            </button>
+          )}
 
           <label className="option-label">
             Width: <span className="val-badge">{pathWidth}px</span>
