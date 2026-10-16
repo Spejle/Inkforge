@@ -23,8 +23,10 @@ import { getStampById } from '../engine/stampsCatalog';
 
 export default function ToolOptions({
   activeTool,
-  strokePreview = true,
-  setStrokePreview,
+  strokeOutline = false,
+  setStrokeOutline,
+  livePreview = true,
+  setLivePreview,
   brushRing = true,
   setBrushRing,
   // Mask options
@@ -500,11 +502,18 @@ export default function ToolOptions({
           <span className="segment-label">Preview:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${strokePreview ? 'active' : ''}`}
-              onClick={() => setStrokePreview?.(!strokePreview)}
-              title="Show the stroke while you drag. Off: it only appears when you let go."
+              className={`btn-toggle ${livePreview ? 'active' : ''}`}
+              onClick={() => setLivePreview?.(!livePreview)}
+              title="Render the real coastline, sand and biome fill while you drag (at half resolution). Off on a slow machine."
             >
-              Stroke
+              Live preview
+            </button>
+            <button
+              className={`btn-toggle ${strokeOutline ? 'active' : ''}`}
+              onClick={() => setStrokeOutline?.(!strokeOutline)}
+              title="Cheap outline of the stroke while you drag (used when Live preview is off)."
+            >
+              Stroke outline
             </button>
             <button
               className={`btn-toggle ${brushRing ? 'active' : ''}`}

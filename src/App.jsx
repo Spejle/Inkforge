@@ -124,7 +124,8 @@ export default function App() {
   const [theme, setTheme] = useState(loadTheme);
   useEffect(() => { applyTheme(theme); }, [theme]);
   const [maskMode, setMaskMode] = useState('land');
-  const [strokePreview, setStrokePreview] = usePref('inkforge-strokePreview', true); // live shape while dragging a mask / brush stroke
+  const [strokeOutline, setStrokeOutline] = usePref('inkforge-strokeOutline', false); // cheap outline while dragging a mask / brush stroke
+  const [livePreview, setLivePreview] = usePref('inkforge-livePreview', true); // real land render while dragging (reduced scale)
   const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
   const [maskShape, setMaskShape] = useState('rough');
   const [maskRoughness, setMaskRoughness] = useState(0.5);
@@ -915,8 +916,10 @@ export default function App() {
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} keymap={keymap} />
 
         <ToolOptions
-          strokePreview={strokePreview}
-          setStrokePreview={setStrokePreview}
+          strokeOutline={strokeOutline}
+          setStrokeOutline={setStrokeOutline}
+          livePreview={livePreview}
+          setLivePreview={setLivePreview}
           brushRing={brushRing}
           setBrushRing={setBrushRing}
           biomes={biomesFor(tpl)}
@@ -996,7 +999,8 @@ export default function App() {
 
           <CanvasArea
             onWheelAdjust={adjustByWheel}
-            strokePreview={strokePreview}
+            strokeOutline={strokeOutline}
+            livePreview={livePreview}
             brushRing={brushRing}
             mapWidth={mapWidth}
             mapHeight={mapHeight}

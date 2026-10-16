@@ -51,7 +51,8 @@ export function buildPlan({
   mapType = 'world',
   landmasses = [],
   brushStrokes = [], // freehand land & texture strokes
-  liveStroke = null, // stroke still being painted: cheap preview, the real pipeline runs once on release
+  liveStroke = null, // stroke still being painted: cheap outline preview
+  landStroke = null, // stroke still being painted, rendered for real into the land layer at reduced scale (live preview)
   stamps = [],
   paths = [],
   texts = [],
@@ -93,8 +94,11 @@ export function buildPlan({
 
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
-    layer('land', raster([landmasses, brushStrokes, coastline, mapType, width, height],
-      (c) => renderLandmasses(c, width, height, landmasses, brushStrokes, mapType, coastline)));
+    // while stroking, the in-progress stroke is a new input every frame (so the cache key changes) and the pass runs at
+    // LIVE_SCALE; on release landStroke is null again, the key returns to the committed arrays and one full-quality pass runs
+    const strokes = withLiveStroke(brushStrokes, landStroke);
+    layer('land', raster([landmasses, strokes, coastline, mapType, width, height],
+      (c) => renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, landStroke ? LIVE_SCALE : 1)));
     if (liveStroke) items.push({ kind: 'live', style: st('land'), stroke: liveStroke });
   }
 
@@ -133,6 +137,12 @@ export function buildPlan({
     layer('grid', raster([grid, width, height], (c) => renderGrid(c, width, height, grid)));
   }
   return { width, height, items };
+}
+
+export const LIVE_SCALE = 0.5;
+/** Committed strokes plus the one being painted; the committed array itself when nothing is being painted. */
+export function withLiveStroke(brushStrokes, stroke) {
+  return stroke ? [...brushStrokes, stroke] : brushStrokes;
 }
 
 /**
@@ -513,7 +523,7 @@ export function drawLandMask(mctx, landmasses, brushStrokes) {
  * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
  * Inkarnate clipping and non-destructive water carving.
  */
-function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline) {
+function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline, quality = 1) {
   if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
 
   const cl = {
@@ -533,7 +543,7 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   };
 
   // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
-  const ls = layerScale(ctx, width, height);
+  const ls = layerScale(ctx, width, height) * quality;
   const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
 
   drawLandMask(mctx, landmasses, brushStrokes);
