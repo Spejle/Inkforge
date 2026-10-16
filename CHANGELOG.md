@@ -2,6 +2,13 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.11.1] - 2026-10-16
+
+### Changed
+- **Soft dynamic lighting shadows (penumbra).** Lights now cast soft-edged shadows by averaging cuts from 3 jittered positions around the light emitter with destination-out, giving objects natural penumbra that widens with distance.
+- **Improved occluder footprints.** Trees now block light using an octagonal footprint representing the trunk and inner crown rather than a rectangular bounding box, letting light penetrate the outer canopy. Pillars block light with a 12-sided circular polygon, while walls, doors, tables, and chests retain rectangular box occluders.
+- **Smooth light and shadow falloff.** The radial lighting gradient now uses a multi-stop ease to fade smoothly to zero at the light radius, preventing hard cuts at the boundary of light reach.
+
 ## [1.11.0] - 2026-10-16
 
 ### Added

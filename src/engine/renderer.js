@@ -1215,18 +1215,45 @@ export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
 // Stamps that stop light, by group: dungeon walls, pillars and doors, furniture, mountains and trees.
 const BLOCKER_GROUP = /^(dungeon_(walls|pillars|doors)|prop_(tables|chests|storage|altars|shelves)|geo_mountains|tree_)/;
 /** The footprint of a light-blocking stamp as a closed polyline (trees only block with their trunk and inner crown). */
-function blockerOutline(s) {
+export function blockerOutline(s) {
   const def = getStampById(s.stampId);
   if (!def || !BLOCKER_GROUP.test(def.group || '')) return null;
-  const k = /^tree_/.test(def.group) ? 0.45 : 1;
+  const isTree = /^tree_/.test(def.group);
+  const isPillar = def.group === 'dungeon_pillars';
+  const k = isTree ? 0.45 : 1;
   const h = 80 * (s.scale || 1) * k;
   const w = h * stampAspect(s);
   const cy = s.anchor === 'base' ? -h / 2 : 0;
   const cos = Math.cos(s.rotation || 0), sin = Math.sin(s.rotation || 0);
-  return [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([a, b]) => {
-    const u = a * w / 2, v = cy + b * h / 2;
+
+  let coords;
+  if (isTree) {
+    // Octagon (trunk + inner crown)
+    coords = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      coords.push([Math.cos(a), Math.sin(a)]);
+    }
+    coords.push(coords[0]);
+  } else if (isPillar) {
+    // Circle approximation (12-gon)
+    coords = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI) / 6;
+      coords.push([Math.cos(a), Math.sin(a)]);
+    }
+    coords.push(coords[0]);
+  } else {
+    // Bounding box for walls, doors, tables, chests, etc.
+    coords = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
+  }
+
+  const pts = coords.map(([a, b]) => {
+    const u = (a * w) / 2, v = cy + (b * h) / 2;
     return [s.x + u * cos - v * sin, s.y + u * sin + v * cos];
   });
+  pts[pts.length - 1] = pts[0];
+  return pts;
 }
 
 // Darkness needs the lights and walls, which live outside the atmosphere settings. The result is memoised so the Pixi
@@ -1291,42 +1318,69 @@ export function drawLighting(ctx, width, height, op) {
   g.fillStyle = `rgba(8, 12, 34, ${op.darkness})`;
   g.fillRect(0, 0, width, height);
   const glow = [];
-  for (const l of op.lights) {
-    const poly = visibilityPolygon(l.x, l.y, l.r, [...op.walls, ...(op.blocks || [])]);
-    if (poly.length < 3) continue;
-    const grad = g.createRadialGradient(l.x, l.y, l.r * 0.1, l.x, l.y, l.r);
-    grad.addColorStop(0, 'rgba(0,0,0,1)');
-    grad.addColorStop(0.6, 'rgba(0,0,0,0.75)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.save();
-    g.beginPath();
-    poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-    g.closePath();
-    g.clip();
-    g.globalCompositeOperation = 'destination-out';
-    g.fillStyle = grad;
-    g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
-    g.restore();
-    glow.push([l, poly]);
+  const allOccluders = [...(op.walls || []), ...(op.blocks || [])];
+
+  for (const l of op.lights || []) {
+    const jitR = Math.max(3, Math.min(8, l.r * 0.025));
+    // 3 jittered light positions around the light center to cast soft penumbra
+    const angles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
+    const jitters = angles.map((ang) => [
+      l.x + jitR * Math.cos(ang),
+      l.y + jitR * Math.sin(ang)
+    ]);
+
+    for (const [jx, jy] of jitters) {
+      const poly = visibilityPolygon(jx, jy, l.r, allOccluders);
+      if (poly.length < 3) continue;
+
+      // Radial gradient fading smoothly out to l.r so there is no hard cut at the radius
+      const grad = g.createRadialGradient(jx, jy, l.r * 0.05, jx, jy, l.r);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.75)');
+      grad.addColorStop(0.8, 'rgba(0,0,0,0.3)');
+      grad.addColorStop(0.95, 'rgba(0,0,0,0.06)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      g.save();
+      g.beginPath();
+      poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.clip();
+      g.globalCompositeOperation = 'destination-out';
+      g.globalAlpha = 1 / 3;
+      g.fillStyle = grad;
+      const pad = jitR + 4;
+      g.fillRect(jx - l.r - pad, jy - l.r - pad, (l.r + pad) * 2, (l.r + pad) * 2);
+      g.restore();
+
+      glow.push({ l, poly, jx, jy, pad });
+    }
   }
+
   ctx.drawImage(c, 0, 0, width, height);
+
   // a warm tint where the light falls
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  for (const [l, poly] of glow) {
-    const grad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-    grad.addColorStop(0, 'rgba(255, 170, 70, 0.30)');
-    grad.addColorStop(1, 'rgba(255, 170, 70, 0)');
+  if (glow.length > 0) {
     ctx.save();
-    ctx.beginPath();
-    poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
-    ctx.clip();
-    ctx.fillStyle = grad;
-    ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 1 / 3;
+    for (const { l, poly, jx, jy, pad } of glow) {
+      const grad = ctx.createRadialGradient(jx, jy, 0, jx, jy, l.r);
+      grad.addColorStop(0, 'rgba(255, 170, 70, 0.30)');
+      grad.addColorStop(0.5, 'rgba(255, 170, 70, 0.18)');
+      grad.addColorStop(0.8, 'rgba(255, 170, 70, 0.06)');
+      grad.addColorStop(1, 'rgba(255, 170, 70, 0)');
+      ctx.save();
+      ctx.beginPath();
+      poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = grad;
+      ctx.fillRect(jx - l.r - pad, jy - l.r - pad, (l.r + pad) * 2, (l.r + pad) * 2);
+      ctx.restore();
+    }
     ctx.restore();
   }
-  ctx.restore();
 }
 
 /** The atmosphere as drawing steps: grain tile (multiply), flat tints (multiply / screen), vignette (normal). */
