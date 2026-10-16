@@ -118,7 +118,7 @@ export function buildPlan({
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
-  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere });
+  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere: withLighting(atmosphere, stamps, paths, grid) });
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
@@ -1206,6 +1206,110 @@ export function getNoiseCanvas() {
   return noiseCanvas;
 }
 
+/** Stamps that give light: campfires and braziers. Shared with the VTT export, so what you see is what Foundry gets. */
+export const isLightStamp = (s) => /campfire|brazier/.test(s.stampId || '');
+/** Light reach in map px: 6 grid squares at stamp scale 1. */
+export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
+
+// Darkness needs the lights and walls, which live outside the atmosphere settings. The result is memoised so the Pixi
+// view, which rebuilds its texture whenever the object changes, only does so when a light, a wall or a setting did.
+let lightMemo = { a: null, s: null, p: null, g: null, out: null };
+function withLighting(a, stamps, paths, grid) {
+  if (!(a.darkness > 0)) return a;
+  const m = lightMemo;
+  if (m.a === a && m.s === stamps && m.p === paths && m.g === grid) return m.out;
+  const out = {
+    ...a,
+    lights: stamps.filter(isLightStamp).map((s) => ({ x: s.x, y: s.y, r: lightRange(s, grid) })),
+    walls: paths.filter((p) => p.type === 'wall' && p.points && p.points.length > 1).map((p) => p.points)
+  };
+  lightMemo = { a, s: stamps, p: paths, g: grid, out };
+  return out;
+}
+
+/** Visible region from (lx, ly) within r, as a polygon, given wall polylines: classic ray casting to every wall end. */
+export function visibilityPolygon(lx, ly, r, walls) {
+  const segs = [];
+  const box = [[lx - r, ly - r], [lx + r, ly - r], [lx + r, ly + r], [lx - r, ly + r], [lx - r, ly - r]];
+  const add = (pts) => {
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+      if (Math.max(ax, bx) < lx - r || Math.min(ax, bx) > lx + r || Math.max(ay, by) < ly - r || Math.min(ay, by) > ly + r) continue;
+      segs.push([ax, ay, bx, by]);
+    }
+  };
+  add(box);
+  walls.forEach(add);
+  const angles = [];
+  for (const [ax, ay, bx, by] of segs) {
+    for (const [px, py] of [[ax, ay], [bx, by]]) {
+      const a = Math.atan2(py - ly, px - lx);
+      angles.push(a - 0.0002, a, a + 0.0002);
+    }
+  }
+  angles.sort((x, y) => x - y);
+  const out = [];
+  for (const a of angles) {
+    const dx = Math.cos(a), dy = Math.sin(a);
+    let best = Infinity;
+    for (const [ax, ay, bx, by] of segs) {
+      const ex = bx - ax, ey = by - ay;
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = ((ax - lx) * ey - (ay - ly) * ex) / den; // distance along the ray
+      const u = ((ax - lx) * dy - (ay - ly) * dx) / den; // position along the wall
+      if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
+    }
+    if (best < Infinity) out.push([lx + dx * best, ly + dy * best]);
+  }
+  return out;
+}
+
+/** Night over the map with the lights cut through it; walls throw shadows. */
+export function drawLighting(ctx, width, height, op) {
+  const ls = layerScale(ctx, width, height);
+  const { c, g } = makeLayer(width, height, ls);
+  g.fillStyle = `rgba(8, 12, 34, ${op.darkness})`;
+  g.fillRect(0, 0, width, height);
+  const glow = [];
+  for (const l of op.lights) {
+    const poly = visibilityPolygon(l.x, l.y, l.r, op.walls);
+    if (poly.length < 3) continue;
+    const grad = g.createRadialGradient(l.x, l.y, l.r * 0.1, l.x, l.y, l.r);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.75)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.save();
+    g.beginPath();
+    poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    g.clip();
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = grad;
+    g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    g.restore();
+    glow.push([l, poly]);
+  }
+  ctx.drawImage(c, 0, 0, width, height);
+  // a warm tint where the light falls
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (const [l, poly] of glow) {
+    const grad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+    grad.addColorStop(0, 'rgba(255, 170, 70, 0.30)');
+    grad.addColorStop(1, 'rgba(255, 170, 70, 0)');
+    ctx.save();
+    ctx.beginPath();
+    poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = grad;
+    ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 /** The atmosphere as drawing steps: grain tile (multiply), flat tints (multiply / screen), vignette (normal). */
 export function atmosphereOps(a) {
   const ops = [];
@@ -1217,6 +1321,7 @@ export function atmosphereOps(a) {
   }
   if (a.tint && a.tintAmount > 0) ops.push({ type: 'solid', rgb: a.tint, alpha: a.tintAmount, blend: a.tintBlend || 'multiply' });
   if (a.weather && a.weatherAmount > 0) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
+  if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [] });
   if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
   return ops;
 }
@@ -1275,6 +1380,8 @@ function renderAtmosphere(ctx, width, height, atmosphere) {
       ctx.fillRect(0, 0, width, height);
     } else if (op.type === 'weather') {
       drawWeather(ctx, width, height, op.kind, op.amount);
+    } else if (op.type === 'lighting') {
+      drawLighting(ctx, width, height, op);
     } else {
       drawVignette(ctx, width, height, op.vignette);
     }

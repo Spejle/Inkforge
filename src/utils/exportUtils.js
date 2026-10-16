@@ -1,6 +1,6 @@
 // Export and Import utilities for InkForge
 import { sanitizeProject } from './importGuard.js';
-import { renderMap } from '../engine/renderer.js';
+import { renderMap, isLightStamp, lightRange } from '../engine/renderer.js';
 
 /** Standard 1x PNG download */
 export function exportToPng(canvas, filename = 'fantasy_map.png') {
@@ -140,14 +140,14 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
 
   // Extract light sources (braziers, campfires)
   const lights = [];
-  const lightStamps = stamps.filter((s) => s.stampId.includes('campfire') || s.stampId.includes('brazier'));
+  const lightStamps = stamps.filter(isLightStamp);
   for (const l of lightStamps) {
     lights.push({
       position: {
         x: Number((l.x / gridSize).toFixed(3)),
         y: Number((l.y / gridSize).toFixed(3))
       },
-      range: 6.0,
+      range: Number((lightRange(l, grid) / gridSize).toFixed(2)),
       intensity: 0.8,
       color: 'ffff9933',
       shadows: true
@@ -171,7 +171,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     paths,
     texts,
     grid: { ...grid, enabled: false },
-    atmosphere,
+    atmosphere: { ...atmosphere, darkness: 0 }, // the VTT does the darkness itself, from the lights above
     coastline,
     ...(layerVisibility && { layerVisibility }),
     layerStyle,

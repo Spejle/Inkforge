@@ -793,6 +793,17 @@ export default function ToolOptions({
           {Object.entries(LIGHT_PRESETS).map(([name, preset]) => (
             <button key={name} className="chip" onClick={() => setAtmosphereConfig((prev) => ({ ...prev, ...preset }))}>{name}</button>
           ))}
+          <label className="option-label" title="Darkens the map; campfires and braziers cut light through it, walls cast shadows">
+            Darkness: <span className="val-badge">{Math.round((atmosphereConfig.darkness || 0) * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="0.95"
+              step="0.05"
+              value={atmosphereConfig.darkness || 0}
+              onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, darkness: parseFloat(e.target.value) }))}
+            />
+          </label>
           {atmosphereConfig.weather && (
             <label className="option-label">
               {atmosphereConfig.weather === 'snow' ? 'Snow' : 'Rain'}: <span className="val-badge">{Math.round((atmosphereConfig.weatherAmount || 0) * 100)}%</span>
