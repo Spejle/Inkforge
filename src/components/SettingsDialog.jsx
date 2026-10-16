@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, RotateCcw, Plus, Palette, Keyboard } from 'lucide-react';
+import { X, RotateCcw, Plus, Palette, Keyboard, PanelRight } from 'lucide-react';
+import { DEFAULT_LAYOUT, PANEL_MIN, PANEL_MAX } from '../utils/layout';
 import { THEMES } from '../utils/theme';
 import { ACTIONS, comboOf, bind, unbind, defaultKeymap } from '../utils/keymap';
 
@@ -13,7 +14,7 @@ const WHEEL = [
 
 const labelOf = (id) => ACTIONS.find((a) => a.id === id)?.label || id;
 
-export default function SettingsDialog({ onClose, theme, setTheme, keymap, setKeymap, initialTab = 'appearance' }) {
+export default function SettingsDialog({ layout, setLayout, onClose, theme, setTheme, keymap, setKeymap, initialTab = 'appearance' }) {
   const [tab, setTab] = useState(initialTab);
   const [rec, setRec] = useState(null); // the binding slot waiting for a key: { id, index } (index -1 = a new one)
   const [note, setNote] = useState('');
@@ -56,6 +57,7 @@ export default function SettingsDialog({ onClose, theme, setTheme, keymap, setKe
         </div>
         <div className="settings-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'appearance'} className={tab === 'appearance' ? 'active' : ''} onClick={() => setTab('appearance')}><Palette size={14} /> Appearance</button>
+          <button role="tab" aria-selected={tab === 'layout'} className={tab === 'layout' ? 'active' : ''} onClick={() => setTab('layout')}><PanelRight size={14} /> Layout</button>
           <button role="tab" aria-selected={tab === 'keys'} className={tab === 'keys' ? 'active' : ''} onClick={() => setTab('keys')}><Keyboard size={14} /> Keyboard &amp; mouse</button>
         </div>
 
@@ -69,6 +71,41 @@ export default function SettingsDialog({ onClose, theme, setTheme, keymap, setKe
                   <span className="mute">{t.desc}</span>
                 </button>
               ))}
+            </div>
+          )}
+
+          {tab === 'layout' && layout && (
+            <div className="layout-settings">
+              <p className="mute">Where the tool rail and the tool panel sit. Drag the edge of the panel to resize it.</p>
+              <div className="layout-grid">
+                {[
+                  ['left', 'right', 'Tools left, panel right'],
+                  ['right', 'left', 'Panel left, tools right'],
+                  ['left', 'left', 'Tools and panel left'],
+                  ['right', 'right', 'Tools and panel right']
+                ].map(([toolbarSide, panelSide, name]) => (
+                  <button
+                    key={name}
+                    className={`layout-card ${layout.toolbarSide === toolbarSide && layout.panelSide === panelSide ? 'active' : ''}`}
+                    aria-pressed={layout.toolbarSide === toolbarSide && layout.panelSide === panelSide}
+                    onClick={() => setLayout((l) => ({ ...l, toolbarSide, panelSide }))}
+                  >
+                    <span className="layout-diagram" data-tb={toolbarSide} data-panel={panelSide}>
+                      <i className="ld-tools" /><i className="ld-stage" /><i className="ld-panel" />
+                    </span>
+                    <b>{name}</b>
+                  </button>
+                ))}
+              </div>
+              <label className="option-label" style={{ marginTop: 14 }}>
+                Panel width: <span className="val-badge">{layout.panelWidth}px</span>
+                <input type="range" min={PANEL_MIN} max={PANEL_MAX} step="10" value={layout.panelWidth} onChange={(e) => setLayout((l) => ({ ...l, panelWidth: parseInt(e.target.value, 10) }))} />
+              </label>
+              <label className="checkbox-label" style={{ marginTop: 10 }}>
+                <input type="checkbox" checked={layout.statusBar} onChange={(e) => setLayout((l) => ({ ...l, statusBar: e.target.checked }))} />
+                Show the status bar (cursor position, canvas size)
+              </label>
+              <button className="chip" style={{ marginTop: 12 }} onClick={() => setLayout({ ...DEFAULT_LAYOUT })}><RotateCcw size={12} /> Reset layout</button>
             </div>
           )}
 

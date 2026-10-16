@@ -3,6 +3,7 @@ import Header from './components/Header';
 import ToolBar from './components/ToolBar';
 import Tooltip from './components/Tooltip';
 import ToolOptions from './components/ToolOptions';
+import { loadLayout, saveLayout, applyLayout } from './utils/layout';
 import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
 import StampImportDialog from './components/StampImportDialog';
@@ -125,6 +126,8 @@ export default function App() {
   useEffect(() => { applyTheme(theme); }, [theme]);
   const [maskMode, setMaskMode] = useState('land');
   const [strokePreview, setStrokePreview] = usePref('inkforge-strokePreview', true); // live shape while dragging a mask / brush stroke
+  const [layout, setLayout] = useState(loadLayout);
+  useEffect(() => { applyLayout(layout); saveLayout(layout); }, [layout]);
   const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
   const [maskShape, setMaskShape] = useState('rough');
   const [maskRoughness, setMaskRoughness] = useState(0.5);
@@ -872,7 +875,7 @@ export default function App() {
       <div className="inkforge-app">
         <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} onSettings={() => setDialog('settings')} />
         {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
-        {dialog === 'settings' && <SettingsDialog onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
+        {dialog === 'settings' && <SettingsDialog layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       </div>
     );
   }
@@ -981,6 +984,8 @@ export default function App() {
         </div>
 
         <StampDrawer
+          layout={layout}
+          setLayout={setLayout}
           activeTool={activeTool}
           toolOptions={
 <ToolOptions
@@ -1085,7 +1090,7 @@ export default function App() {
         />
       </div>
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
-      {dialog === 'settings' && <SettingsDialog onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
+      {dialog === 'settings' && <SettingsDialog layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
       {dialog === 'print' && (
         <PrintDialog

@@ -1406,3 +1406,29 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 .tool-pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .tool-pane.compact { flex: 0 0 auto; max-height: 38%; }
 .stamp-drawer .tool-options-ribbon .coastline-fx-popover { position: static; max-width: none; }
+
+/* ---- Customisable layout (src/utils/layout.js sets these variables and data attributes) ---- */
+.tool-bar { order: var(--order-toolbar, 0); }
+.center-stage { order: var(--order-stage, 2); }
+.stamp-drawer { order: var(--order-panel, 4); }
+.stamp-drawer.open { width: var(--panel-w, 320px); }
+[data-toolbar-side='right'] .tool-bar { border-right: none; border-left: 1px solid var(--border-color); }
+[data-panel-side='left'] .stamp-drawer { border-left: none; border-right: 1px solid var(--border-color); }
+[data-panel-side='left'] .drawer-toggle-btn { left: auto; right: -20px; border-right: 1px solid var(--border-color); border-left: none; border-radius: 0 6px 6px 0; }
+[data-status-bar='off'] .canvas-status-bar { display: none; }
+.drawer-resize { position: absolute; top: 0; bottom: 0; left: -3px; width: 7px; cursor: col-resize; z-index: 36; }
+[data-panel-side='left'] .drawer-resize { left: auto; right: -3px; }
+.drawer-resize:hover { background: var(--primary-gold-glow); }
+.layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.layout-card { display: flex; flex-direction: column; gap: 6px; align-items: stretch; padding: 10px; border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; text-align: left; }
+.layout-card.active { border-color: var(--primary-gold); box-shadow: 0 0 0 1px var(--primary-gold-glow); }
+.layout-card b { font-size: 12px; }
+.layout-diagram { display: flex; height: 46px; gap: 3px; }
+.layout-diagram i { display: block; border-radius: 3px; }
+.ld-tools { width: 8px; background: var(--text-dim); } .ld-stage { flex: 1; background: var(--bg-deep); border: 1px dashed var(--border-light); } .ld-panel { width: 22px; background: var(--primary-gold); opacity: .8; }
+.layout-diagram .ld-tools { order: var(--t, 0); } .layout-diagram .ld-stage { order: 2; } .layout-diagram .ld-panel { order: var(--p, 4); }
+.layout-diagram[data-tb='left'][data-panel='right'] { --t: 0; --p: 4; }
+.layout-diagram[data-tb='right'][data-panel='left'] { --t: 4; --p: 0; }
+.layout-diagram[data-tb='left'][data-panel='left'] { --t: 0; --p: 1; }
+.layout-diagram[data-tb='right'][data-panel='right'] { --t: 4; --p: 3; }
+.layout-settings { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; } .layout-settings .layout-grid, .layout-settings .option-label { align-self: stretch; }

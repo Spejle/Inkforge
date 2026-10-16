@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TOOLS } from './ToolBar';
+import { PANEL_MIN, PANEL_MAX } from '../utils/layout';
 import LayersPanel from './LayersPanel';
 import ObjectsPanel from './ObjectsPanel';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
@@ -34,6 +35,8 @@ export default function StampDrawer({
   objects,
   activeTool,
   toolOptions,
+  layout,
+  setLayout,
   gridConfig,
   setGridConfig,
   atmosphereConfig,
@@ -82,6 +85,24 @@ export default function StampDrawer({
       >
         {isOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
+
+      {isOpen && setLayout && (
+        <div
+          className="drawer-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          title="Drag to resize the panel"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            const x0 = e.clientX, w0 = layout.panelWidth, dir = layout.panelSide === 'right' ? -1 : 1;
+            const move = (ev) => setLayout((l) => ({ ...l, panelWidth: Math.min(PANEL_MAX, Math.max(PANEL_MIN, Math.round(w0 + dir * (ev.clientX - x0)))) }));
+            const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+          }}
+        />
+      )}
 
       {isOpen && (
         <div className="drawer-content">
