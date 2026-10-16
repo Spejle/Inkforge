@@ -1347,7 +1347,7 @@ export function drawLighting(ctx, width, height, op) {
       g.closePath();
       g.clip();
       g.globalCompositeOperation = 'destination-out';
-      g.globalAlpha = 1 / 3;
+      g.globalAlpha = 0.55; // three overlapping cuts: 0.55 each leaves ~9% darkness at the centre; 1/3 would leave 30%
       g.fillStyle = grad;
       const pad = jitR + 4;
       g.fillRect(jx - l.r - pad, jy - l.r - pad, (l.r + pad) * 2, (l.r + pad) * 2);
