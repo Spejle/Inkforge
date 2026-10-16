@@ -2,6 +2,20 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.11.0] - 2026-10-16
+
+### Added
+- **Multiselect.** Drag a rubber band over empty canvas with the Select tool (it picks stamps whose anchor is inside), or Shift+click to add or remove one. The group moves together and Delete removes all of it. The Objects tab does the same with Shift/Ctrl+click.
+- **Objects tab** (right panel): every stamp, label and river grouped by layer, with a filter box. Click selects; drag rows onto a layer heading to move them between layers (a custom layer works as a group).
+- **Editable spines.** Select a river, road or wall and its points show as handles: drag to reshape, double-click a point to delete it, double-click the line to add one. Dense freehand lines are thinned to a spine (4 px tolerance) the first time you grab one.
+- **Light and weather presets** in the Atmosphere tool: Day, Dusk, Night, Cloudy, Rain, Snow, Torchlit, Fog. A colour wash plus optional rain or snow (seeded, so exports match the screen), with an intensity slider.
+- **Dynamic lighting.** The new Darkness slider darkens the map; campfires and braziers cut light through it (6 grid squares at scale 1, scaling with the stamp) and walls cast shadows. The .dd2vtt export now writes each light's real range and leaves darkness out of the image, so Foundry does its own.
+- **River generation.** Path tool, River, "Generate on click": click on land and a river meanders from there to the nearest coast. Every click gives a different course.
+
+### Changed
+- Ctrl + wheel now rotates in 1 degree steps; Ctrl + Shift + wheel gives the old 5 degree notch.
+- Rivers are cut off where they leave the land mask instead of running out over the sea (maps with no land at all, such as dungeons, are unaffected). Rivers are drawn under roads and walls.
+
 ## [1.10.1] - 2026-10-16
 
 ### Fixed
