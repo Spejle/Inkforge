@@ -1396,3 +1396,13 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 .obj-row.on { background: rgba(56, 189, 248, .22); }
 .obj-kind { opacity: .6; display: inline-block; width: 1.2em; }
 .obj-more { font-size: 11px; opacity: .6; padding: 4px 6px; }
+
+/* Tool options now live in the right-hand panel, under the Tool tab */
+.stamp-drawer .tool-options-ribbon {
+  position: static; width: auto; max-height: none; flex: 0 0 auto; height: auto; padding: 0 2px 8px;
+  background: transparent; border: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0;
+  overflow: visible; z-index: auto;
+}
+.tool-pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.tool-pane.compact { flex: 0 0 auto; max-height: 38%; }
+.stamp-drawer .tool-options-ribbon .coastline-fx-popover { position: static; max-width: none; }

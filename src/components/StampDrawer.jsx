@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { TOOLS } from './ToolBar';
 import LayersPanel from './LayersPanel';
 import ObjectsPanel from './ObjectsPanel';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
@@ -31,6 +32,8 @@ export default function StampDrawer({
   onMoveSelectionTo,
   hasSelection,
   objects,
+  activeTool,
+  toolOptions,
   gridConfig,
   setGridConfig,
   atmosphereConfig,
@@ -38,7 +41,13 @@ export default function StampDrawer({
   coastlineConfig,
   setCoastlineConfig
 }) {
-  const [activeTab, setActiveTab] = useState('stamps'); // 'stamps' | 'fx'
+  const [activeTab, setActiveTab] = useState('tool'); // 'tool' (options of the active tool; the stamp library for the stamp tool) | 'fx' | 'objects'
+  const tool = TOOLS.find((t) => t.id === activeTool);
+  // Choosing a tool brings its options forward, opening the panel if it was collapsed
+  useEffect(() => {
+    setActiveTab('tool');
+    if (activeTool !== 'hand') setIsOpen(true);
+  }, [activeTool, setIsOpen]);
   const [selectedCat, setSelectedCat] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
@@ -79,10 +88,10 @@ export default function StampDrawer({
           {/* Top Sidebar Navigation Tabs */}
           <div className="drawer-nav-tabs">
             <button
-              className={`drawer-tab-btn ${activeTab === 'stamps' ? 'active' : ''}`}
-              onClick={() => setActiveTab('stamps')}
+              className={`drawer-tab-btn ${activeTab === 'tool' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tool')}
             >
-              <Sparkles size={15} /> Stamps ({pool.length})
+              <Sparkles size={15} /> {activeTool === 'stamp' ? `Stamps (${pool.length})` : tool?.name || 'Tool'}
             </button>
             <button
               className={`drawer-tab-btn ${activeTab === 'fx' ? 'active' : ''}`}
@@ -98,7 +107,9 @@ export default function StampDrawer({
             </button>
           </div>
 
-          {activeTab === 'stamps' && (
+          {activeTab === 'tool' && <div className={`tool-pane ${activeTool === 'stamp' ? 'compact' : ''}`}>{toolOptions}</div>}
+
+          {activeTab === 'tool' && activeTool === 'stamp' && (
             <>
               <div className="drawer-header">
                 <div className="flex-row items-center gap-2">

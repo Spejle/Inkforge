@@ -914,7 +914,76 @@ export default function App() {
       <div className="studio-workspace">
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} keymap={keymap} />
 
-        <ToolOptions
+
+        <div className="center-stage">
+
+
+          <CanvasArea
+            onWheelAdjust={adjustByWheel}
+            strokePreview={strokePreview}
+            brushRing={brushRing}
+            mapWidth={mapWidth}
+            mapHeight={mapHeight}
+            mapType={mapType}
+            landmasses={landmasses}
+            brushStrokes={brushStrokes}
+            stamps={stamps}
+            paths={paths}
+            texts={texts}
+            grid={grid}
+            atmosphere={atmosphere}
+            coastline={coastline}
+            activeTool={activeTool}
+            maskMode={maskMode}
+            maskShape={maskShape}
+            maskRoughness={maskRoughness}
+            brushSize={brushSize}
+            activeBiome={activeBiome}
+            brushOpacity={brushOpacity}
+            brushTarget={brushTarget}
+            brushSoftness={brushSoftness}
+            brushBlendMode={brushBlendMode}
+            activeStampId={activeStampId}
+            stampScale={stampScale}
+            stampRotation={stampRotation}
+            stampJitter={stampJitter}
+            stampSpray={stampSpray}
+            pathType={pathType}
+            pathWidth={pathWidth}
+            pathDashed={pathDashed}
+            riverGen={riverGen}
+            setRiverGen={setRiverGen}
+            pathColor={pathColor}
+            onAddBrushStroke={handleAddBrushStroke}
+            onCommitStroke={handleCommitStroke}
+            onAddStamp={handleAddStamp}
+            onUpdateStamp={handleUpdateStamp}
+            onAddPath={handleAddPath}
+            onEraseAt={handleEraseAt}
+            onCommitAction={handleCommitAction}
+            selectedStampId={selectedStampId}
+            setSelectedStampId={setSelectedStampId}
+            groupIds={groupIds}
+            setGroupIds={setGroupIds}
+            selectedTextId={selectedTextId}
+            setSelectedTextId={setSelectedTextId}
+            selectedPathId={selectedPathId}
+            setSelectedPathId={setSelectedPathId}
+            zoom={zoom}
+            setZoom={setZoom}
+            panOffset={panOffset}
+            setPanOffset={setPanOffset}
+            layerVisibility={layerVisibility}
+            layerStyle={layerStyle}
+            customStamps={customStamps}
+            statusNote={autosaveStatus}
+          />
+        </div>
+
+        <StampDrawer
+          activeTool={activeTool}
+          toolOptions={
+<ToolOptions
           strokePreview={strokePreview}
           setStrokePreview={setStrokePreview}
           brushRing={brushRing}
@@ -990,73 +1059,7 @@ export default function App() {
             onBringToFront={handleBringToFront}
             onSendToBack={handleSendToBack}
           />
-
-        <div className="center-stage">
-
-
-          <CanvasArea
-            onWheelAdjust={adjustByWheel}
-            strokePreview={strokePreview}
-            brushRing={brushRing}
-            mapWidth={mapWidth}
-            mapHeight={mapHeight}
-            mapType={mapType}
-            landmasses={landmasses}
-            brushStrokes={brushStrokes}
-            stamps={stamps}
-            paths={paths}
-            texts={texts}
-            grid={grid}
-            atmosphere={atmosphere}
-            coastline={coastline}
-            activeTool={activeTool}
-            maskMode={maskMode}
-            maskShape={maskShape}
-            maskRoughness={maskRoughness}
-            brushSize={brushSize}
-            activeBiome={activeBiome}
-            brushOpacity={brushOpacity}
-            brushTarget={brushTarget}
-            brushSoftness={brushSoftness}
-            brushBlendMode={brushBlendMode}
-            activeStampId={activeStampId}
-            stampScale={stampScale}
-            stampRotation={stampRotation}
-            stampJitter={stampJitter}
-            stampSpray={stampSpray}
-            pathType={pathType}
-            pathWidth={pathWidth}
-            pathDashed={pathDashed}
-            riverGen={riverGen}
-            setRiverGen={setRiverGen}
-            pathColor={pathColor}
-            onAddBrushStroke={handleAddBrushStroke}
-            onCommitStroke={handleCommitStroke}
-            onAddStamp={handleAddStamp}
-            onUpdateStamp={handleUpdateStamp}
-            onAddPath={handleAddPath}
-            onEraseAt={handleEraseAt}
-            onCommitAction={handleCommitAction}
-            selectedStampId={selectedStampId}
-            setSelectedStampId={setSelectedStampId}
-            groupIds={groupIds}
-            setGroupIds={setGroupIds}
-            selectedTextId={selectedTextId}
-            setSelectedTextId={setSelectedTextId}
-            selectedPathId={selectedPathId}
-            setSelectedPathId={setSelectedPathId}
-            zoom={zoom}
-            setZoom={setZoom}
-            panOffset={panOffset}
-            setPanOffset={setPanOffset}
-            layerVisibility={layerVisibility}
-            layerStyle={layerStyle}
-            customStamps={customStamps}
-            statusNote={autosaveStatus}
-          />
-        </div>
-
-        <StampDrawer
+          }
           allowedCategories={tpl.stampCategories}
           templateName={tpl.name}
           isOpen={isStampDrawerOpen}
