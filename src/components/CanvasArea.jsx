@@ -6,6 +6,12 @@ import { makeStepper } from '../utils/adjust';
 import { pickQuality } from '../utils/quality';
 
 const HANDLE_R = 14;
+const VERTEX_R = 9; // grab radius of a spine point, in screen px
+
+/** The points a selected river, road or wall shows as editable handles: dense freehand lines are thinned first. */
+function spineOf(path) {
+  return path.points.length > 40 ? simplifyPath(path.points, 4) : path.points;
+}
 
 function distToSegment(px, py, ax, ay, bx, by) {
   const dx = bx - ax;
@@ -168,6 +174,12 @@ export default function CanvasArea({
     const y = (clientY - rect.top) * (mapHeight / rect.height);
     return { x, y };
   }, [mapWidth, mapHeight]);
+
+  const selectedPath = selectedPathId ? paths.find((p) => p.id === selectedPathId) : null;
+  const vertexAt = (path, x, y) => {
+    const r = VERTEX_R / zoom;
+    return spineOf(path).findIndex(([px, py]) => Math.hypot(px - x, py - y) <= r);
+  };
 
   // Pixi view: created lazily (the engine is its own chunk) and rebuilt when the map size changes
   useEffect(() => {
@@ -369,6 +381,16 @@ export default function CanvasArea({
 
     // 1. SELECT TOOL: Hit test stamps, texts, and paths
     if (activeTool === 'select') {
+      if (selectedPath && pickable(selectedPath, 'paths')) {
+        const vi = vertexAt(selectedPath, x, y);
+        if (vi >= 0) {
+          // the first grab of a dense freehand line replaces it with its thinned spine
+          const pts = spineOf(selectedPath).map((q) => [...q]);
+          if (pts.length !== selectedPath.points.length) onAddPath({ ...selectedPath, points: pts });
+          draggedObjectRef.current = { type: 'vertex', id: selectedPath.id, idx: vi };
+          return;
+        }
+      }
       const sel = stamps.find((t) => t.id === selectedStampId && pickable(t, 'stamps'));
       const handle = sel && handleAt(sel, x, y);
       if (handle) {
@@ -566,7 +588,20 @@ export default function CanvasArea({
       if (activeTool === 'select' && containerRef.current) {
         const sel = stamps.find((t) => t.id === selectedStampId);
         const hit = sel && handleAt(sel, x, y);
-        containerRef.current.style.cursor = hit === 'rotate' ? 'alias' : hit === 'scale' ? 'nwse-resize' : '';
+        const onVertex = selectedPath && vertexAt(selectedPath, x, y) >= 0;
+        containerRef.current.style.cursor = onVertex ? 'move' : hit === 'rotate' ? 'alias' : hit === 'scale' ? 'nwse-resize' : '';
+      }
+      return;
+    }
+
+    if (activeTool === 'select' && draggedObjectRef.current?.type === 'vertex') {
+      const d = draggedObjectRef.current;
+      const path = paths.find((q) => q.id === d.id);
+      if (path) {
+        let nx = Math.round(x);
+        let ny = Math.round(y);
+        if (grid && grid.snap) ({ x: nx, y: ny } = snapToGrid(nx, ny, grid));
+        onAddPath({ ...path, points: path.points.map((q, i) => (i === d.idx ? [nx, ny] : q)) });
       }
       return;
     }
@@ -771,6 +806,28 @@ export default function CanvasArea({
       onPointerDown={handleMouseDown}
       onPointerMove={handleMouseMove}
       onPointerUp={handleMouseUp}
+      onDoubleClick={(e) => {
+        // Double-click a spine point to delete it, or a spot on the line to add one there
+        if (activeTool !== 'select' || !selectedPath || !pickable(selectedPath, 'paths')) return;
+        const { x, y } = clientToCanvas(e.clientX, e.clientY);
+        const spine = spineOf(selectedPath).map((q) => [...q]);
+        const vi = vertexAt(selectedPath, x, y);
+        if (vi >= 0) {
+          if (spine.length > 2) spine.splice(vi, 1);
+        } else {
+          const tol = Math.max(10 / zoom, (selectedPath.width || 12) / 2);
+          let best = -1;
+          let bestD = tol;
+          for (let i = 1; i < spine.length; i++) {
+            const d = distToSegment(x, y, spine[i - 1][0], spine[i - 1][1], spine[i][0], spine[i][1]);
+            if (d <= bestD) { bestD = d; best = i; }
+          }
+          if (best < 0) return;
+          spine.splice(best, 0, [Math.round(x), Math.round(y)]);
+        }
+        onAddPath({ ...selectedPath, points: spine });
+        onCommitAction?.();
+      }}
       onPointerLeave={() => {
         setMousePos((p) => ({ ...p, inside: false }));
       }}
@@ -788,6 +845,13 @@ export default function CanvasArea({
           <div ref={hostRef} style={{ width: mapWidth, height: mapHeight }} />
         )}
 
+        {activeTool === 'select' && selectedPath && (
+          <svg className="spine-overlay" width={mapWidth} height={mapHeight}>
+            {spineOf(selectedPath).map(([px, py], i) => (
+              <circle key={i} cx={px} cy={py} r={VERTEX_R / zoom * 0.7} strokeWidth={1.5 / zoom} className="spine-point" />
+            ))}
+          </svg>
+        )}
         {marquee && (
           <div
             className="marquee-box"

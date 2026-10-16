@@ -1385,3 +1385,6 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 .marquee-box, .group-box { position: absolute; pointer-events: none; box-sizing: border-box; }
 .marquee-box { border: 1px dashed #38bdf8; background: rgba(56, 189, 248, 0.12); }
 .group-box { border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.14); border-radius: 3px; }
+
+.spine-overlay { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.spine-point { fill: #fff; stroke: #f59e0b; }
