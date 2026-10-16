@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LIGHT_PRESETS } from './LayersPanel';
+import { usePluginVersion, pluginLightPresets } from '../plugins/registry';
 import {
   Trash2,
   Copy,
@@ -105,6 +106,7 @@ export default function ToolOptions({
   onBringToFront,
   onSendToBack
 }) {
+  usePluginVersion(); // plugin light presets
   const [isCoastlineOpen, setIsCoastlineOpen] = useState(false);
   const activeStampDef = getStampById(activeStampId);
 
@@ -802,7 +804,7 @@ export default function ToolOptions({
       {/* 8. ATMOSPHERE TOOL OPTIONS */}
       {activeTool === 'atmosphere' && (
         <div className="options-segment">
-          {Object.entries(LIGHT_PRESETS).map(([name, preset]) => (
+          {Object.entries({ ...LIGHT_PRESETS, ...pluginLightPresets() }).map(([name, preset]) => (
             <button key={name} className="chip" onClick={() => setAtmosphereConfig((prev) => ({ ...prev, ...preset }))}>{name}</button>
           ))}
           <label className="option-label" title="Darkens the map; campfires and braziers cut light through it, walls cast shadows">

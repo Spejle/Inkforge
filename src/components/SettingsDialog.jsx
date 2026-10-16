@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, RotateCcw, Plus, Palette, Keyboard } from 'lucide-react';
+import { X, RotateCcw, Plus, Palette, Keyboard, Puzzle } from 'lucide-react';
 import { THEMES } from '../utils/theme';
+import PluginsSettings from './PluginsSettings';
 import { ACTIONS, comboOf, bind, unbind, defaultKeymap } from '../utils/keymap';
 
 const WHEEL = [
@@ -57,6 +58,7 @@ export default function SettingsDialog({ onClose, theme, setTheme, keymap, setKe
         <div className="settings-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'appearance'} className={tab === 'appearance' ? 'active' : ''} onClick={() => setTab('appearance')}><Palette size={14} /> Appearance</button>
           <button role="tab" aria-selected={tab === 'keys'} className={tab === 'keys' ? 'active' : ''} onClick={() => setTab('keys')}><Keyboard size={14} /> Keyboard &amp; mouse</button>
+          <button role="tab" aria-selected={tab === 'plugins'} className={tab === 'plugins' ? 'active' : ''} onClick={() => setTab('plugins')}><Puzzle size={14} /> Plugins</button>
         </div>
 
         <div className="dialog-body">
@@ -71,6 +73,8 @@ export default function SettingsDialog({ onClose, theme, setTheme, keymap, setKe
               ))}
             </div>
           )}
+
+          {tab === 'plugins' && <PluginsSettings />}
 
           {tab === 'keys' && (
             <>
