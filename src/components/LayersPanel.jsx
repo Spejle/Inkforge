@@ -1,4 +1,5 @@
 import React from 'react';
+import { BlendPicker } from './PreviewPicker';
 import { Eye, EyeOff, Lock, Unlock, Plus, Trash2, ChevronUp, ChevronDown, PenLine } from 'lucide-react';
 
 export const LAYER_DEFS = [
@@ -127,9 +128,7 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
             <label className="fx-slider-label"><span>Opacity</span><span className="val-badge">{Math.round(sel.opacity * 100)}%</span></label>
             <input type="range" min="0" max="1" step="0.05" value={sel.opacity} onChange={(e) => set(open, { opacity: parseFloat(e.target.value) })} />
             <label className="fx-slider-label mt-2"><span>Blend</span></label>
-            <select className="select-input" style={{ width: '100%' }} value={sel.blend} onChange={(e) => set(open, { blend: e.target.value })}>
-              {BLENDS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-            </select>
+            <BlendPicker value={sel.blend} onChange={(v) => set(open, { blend: v })} />
           </div>
         )}
         <label className="fx-slider-label mt-3"><span>Map style</span></label>

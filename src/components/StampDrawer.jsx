@@ -3,6 +3,7 @@ import { TOOLS } from './ToolBar';
 import { PANEL_MIN, PANEL_MAX } from '../utils/layout';
 import LayersPanel from './LayersPanel';
 import ObjectsPanel from './ObjectsPanel';
+import { GridTypePicker } from './PreviewPicker';
 import { usePluginVersion } from '../plugins/registry';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
 import {
@@ -409,17 +410,7 @@ export default function StampDrawer({
                       Visible Grid Overlay
                     </label>
 
-                    <select
-                      className="select-input mt-2"
-                      style={{ width: '100%' }}
-                      value={gridConfig.type}
-                      onChange={(e) => setGridConfig((p) => ({ ...p, type: e.target.value }))}
-                    >
-                      <option value="square">Square Grid (5ft DnD / Pathfinder)</option>
-                      <option value="hex_flat">Flat-Topped Hex</option>
-                      <option value="hex_pointy">Pointy-Topped Hex</option>
-                      <option value="isometric">Isometric Diamond Grid</option>
-                    </select>
+                    <GridTypePicker value={gridConfig.type} onChange={(v) => setGridConfig((p) => ({ ...p, type: v }))} />
 
                     <label className="checkbox-label font-medium mt-3">
                       <input

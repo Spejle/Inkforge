@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LIGHT_PRESETS } from './LayersPanel';
+import { FontPicker, BiomePicker, BlendPicker, GridTypePicker, BrushPreview } from './PreviewPicker';
 import { usePluginVersion, pluginLightPresets } from '../plugins/registry';
 import {
   Trash2,
@@ -186,17 +187,7 @@ export default function ToolOptions({
                 onChange={(e) => onUpdateSelectedText?.({ text: e.target.value })}
               />
 
-              <select
-                className="select-input"
-                value={selectedText.font || 'Cinzel'}
-                onChange={(e) => onUpdateSelectedText?.({ font: e.target.value })}
-              >
-                <option value="Cinzel">Cinzel (Regal)</option>
-                <option value="MedievalSharp">MedievalSharp</option>
-                <option value="Pirata One">Pirata One (Gothic)</option>
-                <option value="Uncial Antiqua">Uncial Antiqua</option>
-                <option value="Inter">Inter (Sans)</option>
-              </select>
+              <FontPicker value={selectedText.font || 'Cinzel'} onChange={(v) => onUpdateSelectedText?.({ font: v })} />
 
               <label className="option-label">
                 Size: <span className="val-badge">{selectedText.size || 28}px</span>
@@ -400,25 +391,8 @@ export default function ToolOptions({
 
       {activeTool === 'brush' && (
         <div className="options-segment">
-          <span className="segment-label">Biome:</span>
-          <select
-            className="select-input"
-            value={activeBiome}
-            onChange={(e) => setActiveBiome(e.target.value)}
-          >
-            {biomes.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-            {allBiomes && (
-              <optgroup label="Other map types">
-                {BIOMES.filter((b) => !biomes.includes(b)).map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          <BiomePicker biomes={biomes} value={activeBiome} onChange={setActiveBiome} />
+          <BrushPreview biomeId={activeBiome} size={brushSize} softness={brushSoftness} opacity={brushOpacity} blend={brushBlendMode ?? 'source-over'} width={236} height={48} />
 
           <span className="segment-divider" />
 
@@ -482,17 +456,7 @@ export default function ToolOptions({
             />
           </label>
 
-          <select
-            className="select-input"
-            value={brushBlendMode ?? 'source-over'}
-            onChange={(e) => setBrushBlendMode?.(e.target.value)}
-            title="Blend Mode for rich biome tinting"
-          >
-            <option value="source-over">Normal</option>
-            <option value="multiply">Multiply (Shadows / Dirt)</option>
-            <option value="overlay">Overlay (Vibrant Pop)</option>
-            <option value="soft-light">Soft Light (Subtle Tint)</option>
-          </select>
+          <BlendPicker value={brushBlendMode ?? 'source-over'} onChange={(v) => setBrushBlendMode?.(v)} />
         </div>
       )}
 
@@ -680,17 +644,7 @@ export default function ToolOptions({
             onChange={(e) => setNewTextContent(e.target.value)}
           />
 
-          <select
-            className="select-input"
-            value={textFont}
-            onChange={(e) => setTextFont(e.target.value)}
-          >
-            <option value="Cinzel">Cinzel (Regal)</option>
-            <option value="MedievalSharp">MedievalSharp</option>
-            <option value="Pirata One">Pirata One (Gothic)</option>
-            <option value="Uncial Antiqua">Uncial Antiqua</option>
-            <option value="Inter">Inter (Sans)</option>
-          </select>
+          <FontPicker value={textFont} onChange={setTextFont} />
 
           <label className="option-label">
             Size: <span className="val-badge">{textSize}px</span>
@@ -749,16 +703,7 @@ export default function ToolOptions({
             Show Grid
           </label>
 
-          <select
-            className="select-input"
-            value={gridConfig.type}
-            onChange={(e) => setGridConfig((prev) => ({ ...prev, type: e.target.value }))}
-          >
-            <option value="square">Square Grid</option>
-            <option value="hex_flat">Flat Hex</option>
-            <option value="hex_pointy">Pointy Hex</option>
-            <option value="isometric">Isometric Diamond</option>
-          </select>
+          <GridTypePicker value={gridConfig.type} onChange={(v) => setGridConfig((prev) => ({ ...prev, type: v }))} />
 
           <label className="option-label">
             Size: <span className="val-badge">{gridConfig.size}px</span>
