@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import LayersPanel from './LayersPanel';
+import ObjectsPanel from './ObjectsPanel';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
 import {
   Upload,
@@ -29,6 +30,7 @@ export default function StampDrawer({
   onDeleteLayer,
   onMoveSelectionTo,
   hasSelection,
+  objects,
   gridConfig,
   setGridConfig,
   atmosphereConfig,
@@ -87,6 +89,12 @@ export default function StampDrawer({
               onClick={() => setActiveTab('fx')}
             >
               <Layers size={15} /> Layers & FX
+            </button>
+            <button
+              className={`drawer-tab-btn ${activeTab === 'objects' ? 'active' : ''}`}
+              onClick={() => setActiveTab('objects')}
+            >
+              Objects
             </button>
           </div>
 
@@ -212,6 +220,8 @@ export default function StampDrawer({
               </div>
             </>
           )}
+
+          {activeTab === 'objects' && objects && <div className="layers-fx-panel"><ObjectsPanel layers={layers} {...objects} /></div>}
 
           {activeTab === 'fx' && (
             <div className="layers-fx-panel">

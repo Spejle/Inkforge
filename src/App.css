@@ -1388,3 +1388,11 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 
 .spine-overlay { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .spine-point { fill: #fff; stroke: #f59e0b; }
+
+.obj-group { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .75; padding: 6px 4px 3px; border-top: 1px solid rgba(255,255,255,.08); margin-top: 4px; }
+.obj-group.over { background: rgba(245, 158, 11, .25); }
+.obj-row { font-size: 12px; padding: 3px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obj-row:hover { background: rgba(255,255,255,.07); }
+.obj-row.on { background: rgba(56, 189, 248, .22); }
+.obj-kind { opacity: .6; display: inline-block; width: 1.2em; }
+.obj-more { font-size: 11px; opacity: .6; padding: 4px 6px; }

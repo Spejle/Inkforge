@@ -493,6 +493,30 @@ export default function App() {
     }
   };
 
+  const handleMoveObjectsTo = (ids, key) => {
+    const tag = (o) => (ids.includes(o.id) ? { ...o, layer: key || undefined } : o);
+    const next = { stamps: stamps.map(tag), texts: texts.map(tag), paths: paths.map(tag) };
+    setStamps(next.stamps);
+    setTexts(next.texts);
+    setPaths(next.paths);
+    recordHistory(next);
+  };
+
+  // Objects tab: click selects one thing; Shift/Ctrl adds stamps to the multiselection
+  const handleSelectObject = (id, kind, add) => {
+    if (kind === 'stamp' && add && selectedStampId) {
+      const base = groupIds.includes(selectedStampId) ? groupIds : [selectedStampId];
+      const next = base.includes(id) ? base.filter((i) => i !== id) : [...base, id];
+      setGroupIds(next.length > 1 ? next : []);
+      setSelectedStampId(next.includes(id) ? id : next[next.length - 1] || null);
+      return;
+    }
+    setGroupIds([]);
+    setSelectedStampId(kind === 'stamp' ? id : null);
+    setSelectedTextId(kind === 'text' ? id : null);
+    setSelectedPathId(kind === 'path' ? id : null);
+  };
+
   // Eraser: drop every brush/mask stroke and path that has a point within r of (x, y)
   const handleEraseAt = (x, y, r) => {
     const near = (pts, size = 0) => pts.some((pt) => {
@@ -1043,6 +1067,7 @@ export default function App() {
           onDeleteLayer={handleDeleteLayer}
           onMoveSelectionTo={handleMoveSelectionTo}
           hasSelection={!!(selectedStampId || selectedTextId || selectedPathId)}
+          objects={{ stamps, texts, paths, selectedStampId, groupIds, selectedTextId, selectedPathId, onSelect: handleSelectObject, onMove: handleMoveObjectsTo }}
           gridConfig={grid}
           setGridConfig={setGrid}
           atmosphereConfig={atmosphere}
