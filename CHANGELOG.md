@@ -2,10 +2,17 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
-## [1.12.0] - Unreleased
+## [1.12.0] - 2026-10-16
 
 ### Added
+- **Tool options moved into the right-hand panel.** The first tab follows the active tool: Biome options for the Biome brush, the stamp library (with its scale, jitter and spray options on top) for the Stamps tool, and so on. The old floating card over the canvas is gone. Choosing a tool brings its tab forward and opens a collapsed panel.
+- **Customisable layout** (Settings > Layout): the tool rail and the panel can each sit on the left or right, the panel's inner edge drags to resize it (240 to 560 px), and the status bar can be hidden. Saved in the browser; Reset layout restores the defaults.
+- **Visual pickers instead of dropdowns.** Biomes show their real texture, blend modes show two overlapping discs composited with that mode, grid types show their grid, and fonts show a sample in the font. The Biome tool also shows a live preview stroke with the current softness, opacity and blend.
+- **Live land preview.** While you drag a Landmass Sculptor or Biome brush stroke, the land layer (coastline, sand, ripples, biome fill) is rendered for real at reduced scale and upscaled; the full-quality pass still runs once on release. Toggle: Preview > Live preview (on by default). Measured in headless software rendering: about 60 ms extra per move on a 1920x1080 map and 340 ms on the 4000x2800 stress map, so very large maps are choppy.
 - **Plugin packs (groundwork).** Settings > Plugins imports a `.json` pack of vector or image stamps, light presets and biomes. Packs are data only (no code runs, in line with the CSP), strictly validated, namespaced as `<pack>:<id>`, and remembered in IndexedDB. Stamps appear under "Plugins: <name>", light presets beside the built-in ones. See `docs/PLUGINS.md` and `docs/plugins/examplePack.json`.
+
+### Changed
+- The old cheap outline while stroking is now the **Stroke outline** toggle and is off by default (a new saved setting, so earlier choices do not carry over). It only shows when Live preview is off.
 
 ## [1.11.1] - 2026-10-16
 
