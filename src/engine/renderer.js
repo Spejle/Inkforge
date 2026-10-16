@@ -99,7 +99,7 @@ export function buildPlan({
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
     const list = paths.filter(onBase);
-    layer('paths', raster([paths, selectedPathId, customSig], (c) => renderPaths(c, list, selectedPathId), list.length === 0));
+    layer('paths', raster([paths, selectedPathId, customSig, landmasses, brushStrokes], (c) => renderPaths(c, list, selectedPathId, { width, height, landmasses, brushStrokes }), list.length === 0));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
@@ -112,7 +112,7 @@ export function buildPlan({
     if (layerVisibility[key] === false) continue;
     const pl = paths.filter(onLayer(key)), tl = texts.filter(onLayer(key));
     layer(key,
-      raster([paths, selectedPathId], (c) => renderPaths(c, pl, selectedPathId), pl.length === 0),
+      raster([paths, selectedPathId, landmasses, brushStrokes], (c) => renderPaths(c, pl, selectedPathId, { width, height, landmasses, brushStrokes }), pl.length === 0),
       stampPart(stamps.filter(onLayer(key)), selectedStampId, []),
       raster([texts, selectedTextId], (c) => renderTexts(c, tl, selectedTextId), tl.length === 0));
   }
@@ -442,34 +442,8 @@ function drawMaskHalo(ctx, maskCanvas, width, height, cl, strength) {
   ctx.restore();
 }
 
-/**
- * Render landmasses with true dual-layer sculpting, coastlines, and beach fringes.
- * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
- * Inkarnate clipping and non-destructive water carving.
- */
-function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline) {
-  if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
-
-  const cl = {
-    ripplesEnabled: true,
-    rippleCount: 4,
-    rippleSpacing: 11,
-    rippleColor: '#bae6fd',
-    rippleOpacity: 0.35,
-    sandEnabled: true,
-    sandWidth: 14,
-    sandColor: '#d4be8d',
-    outlineColor: '#3d2b1f',
-    outlineWidth: 2.5,
-    shadowEnabled: true,
-    shadowBlur: 10,
-    ...(coastline || {})
-  };
-
-  // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
-  const ls = layerScale(ctx, width, height);
-  const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
-
+/** Paints the land mask (white = land) from the preset polygons and the add-land / carve-water strokes. */
+function drawLandMask(mctx, landmasses, brushStrokes) {
   // Draw preset polygon landmasses onto mask
   mctx.fillStyle = '#ffffff';
   for (const land of landmasses) {
@@ -530,6 +504,37 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     }
     mctx.restore();
   }
+}
+
+/**
+ * Render landmasses with true dual-layer sculpting, coastlines, and beach fringes.
+ * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
+ * Inkarnate clipping and non-destructive water carving.
+ */
+function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline) {
+  if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
+
+  const cl = {
+    ripplesEnabled: true,
+    rippleCount: 4,
+    rippleSpacing: 11,
+    rippleColor: '#bae6fd',
+    rippleOpacity: 0.35,
+    sandEnabled: true,
+    sandWidth: 14,
+    sandColor: '#d4be8d',
+    outlineColor: '#3d2b1f',
+    outlineWidth: 2.5,
+    shadowEnabled: true,
+    shadowBlur: 10,
+    ...(coastline || {})
+  };
+
+  // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
+  const ls = layerScale(ctx, width, height);
+  const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
+
+  drawLandMask(mctx, landmasses, brushStrokes);
 
   // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
   // The rings below follow the land shapes as they were drawn, so once water has been carved out of land they would
@@ -792,9 +797,35 @@ export function drawSmoothPolyline(ctx, points) {
 }
 
 /** Render rivers, roads, and walls */
-function renderPaths(ctx, paths, selectedPathId) {
-  if (!paths || paths.length === 0) return;
+// Rivers stop at the coast: they are drawn on their own canvas and cut to the land mask. Maps with no land at all
+// (dungeons, battle maps) have nothing to clip against, so their rivers are left whole.
+function hasLand(landmasses, brushStrokes) {
+  return (landmasses || []).some((l) => l.points && l.points.length >= 3)
+    || (brushStrokes || []).some((st) => st.type === 'mask' && st.mode !== 'water' && st.points && st.points.length);
+}
 
+function renderPaths(ctx, paths, selectedPathId, world) {
+  if (!paths || paths.length === 0) return;
+  if (world && hasLand(world.landmasses, world.brushStrokes) && paths.some((p) => p.type === 'river')) {
+    const ls = layerScale(ctx, world.width, world.height);
+    const { c: rc, g: rg } = makeLayer(world.width, world.height, ls);
+    drawPaths(rg, paths.filter((p) => p.type === 'river'), selectedPathId);
+    const { c: mc, g: mg } = makeLayer(world.width, world.height, ls);
+    drawLandMask(mg, world.landmasses, world.brushStrokes);
+    rg.save();
+    rg.setTransform(1, 0, 0, 1, 0, 0);
+    rg.globalCompositeOperation = 'destination-in';
+    rg.drawImage(mc, 0, 0);
+    rg.restore();
+    // river first, then roads and walls on top: same order as before only when rivers were listed first, so keep list order for the rest
+    ctx.drawImage(rc, 0, 0, world.width, world.height);
+    drawPaths(ctx, paths.filter((p) => p.type !== 'river'), selectedPathId);
+    return;
+  }
+  drawPaths(ctx, paths, selectedPathId);
+}
+
+function drawPaths(ctx, paths, selectedPathId) {
   for (const path of paths) {
     if (!path.points || path.points.length < 2) continue;
 
