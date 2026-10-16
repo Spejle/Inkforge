@@ -156,6 +156,7 @@ export default function App() {
 
   // Selection states
   const [selectedStampId, setSelectedStampId] = useState(null);
+  const [groupIds, setGroupIds] = useState([]); // multiselect: all selected stamps, the primary one included
   const [selectedTextId, setSelectedTextId] = useState(null);
   const [selectedPathId, setSelectedPathId] = useState(null);
 
@@ -253,10 +254,12 @@ export default function App() {
   const handleDeleteSelected = useCallback(() => {
     const { stamps: st, texts: tx, paths: pa } = docRef.current;
     if (selectedStampId) {
-      const updated = st.filter((s) => s.id !== selectedStampId);
+      const gone = groupIds.includes(selectedStampId) ? groupIds : [selectedStampId];
+      const updated = st.filter((s) => !gone.includes(s.id));
       setStamps(updated);
       recordHistory({ stamps: updated });
       setSelectedStampId(null);
+      setGroupIds([]);
     } else if (selectedTextId) {
       const updated = tx.filter((t) => t.id !== selectedTextId);
       setTexts(updated);
@@ -268,7 +271,7 @@ export default function App() {
       recordHistory({ paths: updated });
       setSelectedPathId(null);
     }
-  }, [selectedStampId, selectedTextId, selectedPathId, recordHistory]);
+  }, [selectedStampId, groupIds, selectedTextId, selectedPathId, recordHistory]);
 
   const handleDuplicateSelected = () => {
     if (selectedStampId) {
@@ -1007,6 +1010,8 @@ export default function App() {
             onCommitAction={handleCommitAction}
             selectedStampId={selectedStampId}
             setSelectedStampId={setSelectedStampId}
+            groupIds={groupIds}
+            setGroupIds={setGroupIds}
             selectedTextId={selectedTextId}
             setSelectedTextId={setSelectedTextId}
             selectedPathId={selectedPathId}

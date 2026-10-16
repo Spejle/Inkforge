@@ -81,6 +81,8 @@ export default function CanvasArea({
   onCommitAction,
   selectedStampId,
   setSelectedStampId,
+  groupIds = [],
+  setGroupIds,
   selectedTextId,
   setSelectedTextId,
   selectedPathId,
@@ -254,12 +256,13 @@ export default function CanvasArea({
     imageTick
   ]);
 
-  // Mouse wheel. Plain: cursor-anchored zoom. Shift: size. Ctrl: rotation (Ctrl+Shift: 1 degree steps). Native listener:
+  // Mouse wheel. Plain: cursor-anchored zoom. Shift: size. Ctrl: rotation, 1 degree steps (Ctrl+Shift: 5). Native listener:
   // React's onWheel is passive, so preventDefault (which also stops the browser zooming the page on Ctrl+wheel) would be ignored.
   const viewRef = useRef({ zoom, setZoom, setPanOffset, onWheelAdjust });
   useEffect(() => {
     viewRef.current = { zoom, setZoom, setPanOffset, onWheelAdjust };
   });
+  const [marquee, setMarquee] = useState(null); // {x0,y0,x1,y1} in canvas px while rubber-banding stamps
   const [hud, setHud] = useState('');
   const hudTimer = useRef(0);
   useEffect(() => () => clearTimeout(hudTimer.current), []);
@@ -279,7 +282,7 @@ export default function CanvasArea({
         const steps = stepper.current(delta);
         if (!steps || !onWheelAdjust) return;
         const rotate = e.ctrlKey || e.metaKey;
-        const label = onWheelAdjust(rotate ? 'rotate' : 'size', steps, rotate && e.shiftKey);
+        const label = onWheelAdjust(rotate ? 'rotate' : 'size', steps, rotate && !e.shiftKey);
         if (label) {
           setHud(label);
           clearTimeout(hudTimer.current);
@@ -408,14 +411,33 @@ export default function CanvasArea({
       });
 
       if (clickedStamp) {
-        setSelectedStampId(clickedStamp.id);
+        let group = groupIds.includes(selectedStampId) ? groupIds : [];
+        if (e.shiftKey) {
+          // Shift+click toggles a stamp in or out of the multiselection
+          const base = group.length ? group : selectedStampId ? [selectedStampId] : [];
+          group = base.includes(clickedStamp.id) ? base.filter((i) => i !== clickedStamp.id) : [...base, clickedStamp.id];
+          setGroupIds?.(group);
+          setSelectedStampId(group.includes(clickedStamp.id) ? clickedStamp.id : group[group.length - 1] || null);
+          setSelectedTextId(null);
+          if (setSelectedPathId) setSelectedPathId(null);
+          isInteractingRef.current = false;
+          return;
+        }
+        if (!group.includes(clickedStamp.id)) {
+          group = [];
+          setGroupIds?.([]);
+          setSelectedStampId(clickedStamp.id);
+        }
         setSelectedTextId(null);
         if (setSelectedPathId) setSelectedPathId(null);
         draggedObjectRef.current = {
           type: 'stamp',
           id: clickedStamp.id,
           offsetX: x - clickedStamp.x,
-          offsetY: y - clickedStamp.y
+          offsetY: y - clickedStamp.y,
+          // a multiselection moves as one: remember where everyone started
+          cursor0: { x, y },
+          starts: group.length ? stamps.filter((t) => group.includes(t.id)).map((t) => ({ id: t.id, x: t.x, y: t.y })) : null
         };
         return;
       }
@@ -459,10 +481,12 @@ export default function CanvasArea({
         }
       }
 
-      // Clicked empty canvas -> clear selections
+      // Clicked empty canvas -> clear selections and start a rubber band
       setSelectedStampId(null);
+      setGroupIds?.([]);
       setSelectedTextId(null);
       if (setSelectedPathId) setSelectedPathId(null);
+      draggedObjectRef.current = { type: 'marquee', x0: x, y0: y };
     }
 
     // 2. MASK TOOL (Landmass & Coastline Sculptor)
@@ -547,6 +571,13 @@ export default function CanvasArea({
       return;
     }
 
+    if (activeTool === 'select' && draggedObjectRef.current?.type === 'marquee') {
+      const d = draggedObjectRef.current;
+      d.box = { x0: d.x0, y0: d.y0, x1: x, y1: y };
+      setMarquee(d.box);
+      return;
+    }
+
     if (activeTool === 'select' && draggedObjectRef.current && ['scale', 'rotate'].includes(draggedObjectRef.current.type)) {
       const d = draggedObjectRef.current;
       if (d.type === 'scale') {
@@ -582,7 +613,13 @@ export default function CanvasArea({
 
     // Handle Moving selected object
     if (activeTool === 'select' && draggedObjectRef.current) {
-      const { type, id, offsetX, offsetY } = draggedObjectRef.current;
+      const { type, id, offsetX, offsetY, starts, cursor0 } = draggedObjectRef.current;
+      if (starts) {
+        const dx = Math.round(x - cursor0.x);
+        const dy = Math.round(y - cursor0.y);
+        starts.forEach((t) => onUpdateStamp(t.id, { x: t.x + dx, y: t.y + dy }));
+        return;
+      }
       let targetX = Math.round(x - offsetX);
       let targetY = Math.round(y - offsetY);
 
@@ -673,6 +710,20 @@ export default function CanvasArea({
 
   // Mouse Up handler
   const handleMouseUp = () => {
+    if (draggedObjectRef.current?.type === 'marquee') {
+      const m = draggedObjectRef.current.box; // a ref: the window listener's closure is stale
+      if (m) {
+        const [xa, xb] = [Math.min(m.x0, m.x1), Math.max(m.x0, m.x1)];
+        const [ya, yb] = [Math.min(m.y0, m.y1), Math.max(m.y0, m.y1)];
+        const hit = stamps.filter((t) => pickable(t, 'stamps') && t.x >= xa && t.x <= xb && t.y >= ya && t.y <= yb).map((t) => t.id);
+        setGroupIds?.(hit.length > 1 ? hit : []);
+        setSelectedStampId(hit[hit.length - 1] ?? null);
+      }
+      setMarquee(null);
+      isInteractingRef.current = false;
+      draggedObjectRef.current = null;
+      return;
+    }
     if (activePathRef.current && activePathRef.current.points.length > 3) {
       const raw = pathStabRef.current?.raw; // the rope lags the cursor, so finish exactly where the pen lifted
       const all = raw ? [...activePathRef.current.points, [Math.round(raw[0]), Math.round(raw[1])]] : activePathRef.current.points;
@@ -736,6 +787,24 @@ export default function CanvasArea({
         ) : (
           <div ref={hostRef} style={{ width: mapWidth, height: mapHeight }} />
         )}
+
+        {marquee && (
+          <div
+            className="marquee-box"
+            style={{ left: Math.min(marquee.x0, marquee.x1), top: Math.min(marquee.y0, marquee.y1), width: Math.abs(marquee.x1 - marquee.x0), height: Math.abs(marquee.y1 - marquee.y0) }}
+          />
+        )}
+        {groupIds.includes(selectedStampId) &&
+          stamps.filter((t) => groupIds.includes(t.id)).map((t) => {
+            const f = stampFrame(t);
+            return (
+              <div
+                key={t.id}
+                className="group-box"
+                style={{ left: f.center.x - f.w / 2 - 4, top: f.center.y - f.h / 2 - 4, width: f.w + 8, height: f.h + 8, transform: `rotate(${t.rotation || 0}rad)` }}
+              />
+            );
+          })}
 
         {/* Brush Radius Preview Ring */}
         {brushRing && mousePos.inside && (activeTool === 'mask' || activeTool === 'brush') && (

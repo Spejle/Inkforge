@@ -1381,3 +1381,7 @@ select option { background: var(--bg-raise); color: var(--text-main); }
 .key-chip-x:hover { color: var(--accent-ruby); }
 .settings-note { color: var(--primary-gold); font-size: 12px; margin: 0; }
 .wheel-hud { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 4px 14px; border-radius: 6px; font-size: 12px; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-strong); box-shadow: var(--shadow-md); }
+
+.marquee-box, .group-box { position: absolute; pointer-events: none; box-sizing: border-box; }
+.marquee-box { border: 1px dashed #38bdf8; background: rgba(56, 189, 248, 0.12); }
+.group-box { border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.14); border-radius: 3px; }

@@ -6,8 +6,8 @@ import { ACTIONS, comboOf, bind, unbind, defaultKeymap } from '../utils/keymap';
 const WHEEL = [
   ['Wheel', 'Zoom the canvas'],
   ['Shift + Wheel', 'Size: the brush, the stamp / label / river you are about to place, or the selected stamp, label or river'],
-  ['Ctrl + Wheel', 'Rotate the selected stamp or label, or the stamp you are about to place (5° a notch)'],
-  ['Ctrl + Shift + Wheel', 'The same rotation in 1° steps'],
+  ['Ctrl + Wheel', 'Rotate the selected stamp or label, or the stamp you are about to place (1° a notch)'],
+  ['Ctrl + Shift + Wheel', 'The same rotation in 5° steps'],
   ['Space + drag', 'Pan (or use the Pan tool)']
 ];
 
