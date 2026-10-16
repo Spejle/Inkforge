@@ -4055,3 +4055,12 @@ export function getStampById(id) {
   if (!stampIndex) stampIndex = new Map(STAMPS.map((s) => [s.id, s]));
   return stampIndex.get(id);
 }
+
+/** Plugin packs: swaps the plugin stamps and their categories in place (see src/plugins/registry.js). */
+export function syncPluginStamps(stamps, categories) {
+  for (let i = STAMPS.length - 1; i >= 0; i--) if (STAMPS[i].plugin) STAMPS.splice(i, 1);
+  for (let i = STAMP_CATEGORIES.length - 1; i >= 0; i--) if (STAMP_CATEGORIES[i].type === 'plugin') STAMP_CATEGORIES.splice(i, 1);
+  STAMPS.push(...stamps);
+  STAMP_CATEGORIES.push(...categories);
+  stampIndex = null;
+}

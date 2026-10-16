@@ -1,0 +1,44 @@
+{
+  "format": "inkforge-plugin",
+  "version": 1,
+  "id": "example-pack",
+  "name": "Example Pack",
+  "author": "InkForge",
+  "description": "Three vector stamps, one light preset and one biome. Data only, no code.",
+  "license": "CC0-1.0",
+  "inkforgeVersion": ">=1.11.0",
+  "contributes": {
+    "stamps": [
+      {
+        "id": "crystal", "name": "Crystal", "rotate": "fixed", "defaultScale": 1, "aspect": 1,
+        "vector": [
+          { "type": "polygon", "points": [[50, 8], [72, 40], [60, 90], [40, 90], [28, 40]], "fill": "$fill", "stroke": "$color", "lineWidth": 3 },
+          { "type": "polygon", "points": [[50, 8], [60, 90], [40, 90]], "fill": "rgba(120, 90, 200, 0.35)" },
+          { "type": "path", "d": "M28 40 L72 40", "stroke": "$color", "lineWidth": 2 }
+        ]
+      },
+      {
+        "id": "standing-stone", "name": "Standing Stone", "rotate": "fixed", "defaultScale": 0.9, "aspect": 0.7,
+        "vector": [
+          { "type": "rect", "x": 32, "y": 12, "w": 36, "h": 78, "rx": 12, "fill": "$fill", "stroke": "$color", "lineWidth": 3 },
+          { "type": "path", "d": "M42 30 Q50 40 44 55", "stroke": "$color", "lineWidth": 2 }
+        ]
+      },
+      {
+        "id": "campfire", "name": "Campfire", "rotate": "free", "defaultScale": 0.8, "aspect": 1,
+        "group": "camp", "groupName": "Camp",
+        "vector": [
+          { "type": "circle", "cx": 50, "cy": 62, "r": 26, "fill": "#8a8076", "stroke": "$color", "lineWidth": 2 },
+          { "type": "path", "d": "M50 18 C66 40 70 52 50 72 C32 52 36 40 50 18 Z", "fill": "#e8863a", "stroke": "$color", "lineWidth": 2 },
+          { "type": "circle", "cx": 50, "cy": 58, "r": 8, "fill": "#f6d36b" }
+        ]
+      }
+    ],
+    "lightPresets": [
+      { "name": "Moonlit", "atmosphere": { "vignette": 0.6, "parchmentGrain": 0.2, "sepia": 0, "brightness": 0.85, "tint": [90, 110, 190], "tintAmount": 0.45 } }
+    ],
+    "biomes": [
+      { "id": "moss", "name": "Deep Moss", "color": "#4f6b3a", "secondaryColor": "#3d5530", "roughness": 0.5, "description": "Dark mossy ground" }
+    ]
+  }
+}

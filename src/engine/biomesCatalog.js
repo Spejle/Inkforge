@@ -197,6 +197,12 @@ export const BIOMES = [
   }
 ];
 
+/** Plugin packs: swaps the plugin biomes in place (see src/plugins/registry.js). */
+export function syncPluginBiomes(list) {
+  for (let i = BIOMES.length - 1; i >= 0; i--) if (BIOMES[i].category === 'plugin') BIOMES.splice(i, 1);
+  BIOMES.push(...list);
+}
+
 export function getBiomeById(id) {
   return BIOMES.find((b) => b.id === id) || BIOMES[0];
 }

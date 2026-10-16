@@ -3,6 +3,7 @@ import { TOOLS } from './ToolBar';
 import { PANEL_MIN, PANEL_MAX } from '../utils/layout';
 import LayersPanel from './LayersPanel';
 import ObjectsPanel from './ObjectsPanel';
+import { usePluginVersion } from '../plugins/registry';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
 import {
   Upload,
@@ -44,6 +45,7 @@ export default function StampDrawer({
   coastlineConfig,
   setCoastlineConfig
 }) {
+  usePluginVersion(); // repaint when plugin packs change (they edit STAMPS in place)
   const [activeTab, setActiveTab] = useState('tool'); // 'tool' (options of the active tool; the stamp library for the stamp tool) | 'fx' | 'objects'
   const tool = TOOLS.find((t) => t.id === activeTool);
   // Choosing a tool brings its options forward, opening the panel if it was collapsed
@@ -56,8 +58,8 @@ export default function StampDrawer({
   const [showAll, setShowAll] = useState(false);
   // The map core hides stamps that don't belong (a dungeon has no ships); "Show all" lifts that
   const filtering = !!allowedCategories && !showAll;
-  const pool = filtering ? STAMPS.filter((st) => allowedCategories.includes(st.category)) : STAMPS;
-  const cats = filtering ? STAMP_CATEGORIES.filter((c) => allowedCategories.includes(c.id)) : STAMP_CATEGORIES;
+  const pool = filtering ? STAMPS.filter((st) => st.plugin || allowedCategories.includes(st.category)) : STAMPS;
+  const cats = filtering ? STAMP_CATEGORIES.filter((c) => c.type === 'plugin' || allowedCategories.includes(c.id)) : STAMP_CATEGORIES;
 
   const filteredStamps = (selectedCat === 'mine' ? [] : pool).filter((stamp) => {
     const matchesCat = selectedCat === 'all' || stamp.category === selectedCat;

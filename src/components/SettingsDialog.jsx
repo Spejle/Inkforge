@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, RotateCcw, Plus, Palette, Keyboard, PanelRight } from 'lucide-react';
+import { X, RotateCcw, Plus, Palette, Keyboard, PanelRight, Puzzle } from 'lucide-react';
 import { DEFAULT_LAYOUT, PANEL_MIN, PANEL_MAX } from '../utils/layout';
 import { THEMES } from '../utils/theme';
+import PluginsSettings from './PluginsSettings';
 import { ACTIONS, comboOf, bind, unbind, defaultKeymap } from '../utils/keymap';
 
 const WHEEL = [
@@ -59,6 +60,7 @@ export default function SettingsDialog({ layout, setLayout, onClose, theme, setT
           <button role="tab" aria-selected={tab === 'appearance'} className={tab === 'appearance' ? 'active' : ''} onClick={() => setTab('appearance')}><Palette size={14} /> Appearance</button>
           <button role="tab" aria-selected={tab === 'layout'} className={tab === 'layout' ? 'active' : ''} onClick={() => setTab('layout')}><PanelRight size={14} /> Layout</button>
           <button role="tab" aria-selected={tab === 'keys'} className={tab === 'keys' ? 'active' : ''} onClick={() => setTab('keys')}><Keyboard size={14} /> Keyboard &amp; mouse</button>
+          <button role="tab" aria-selected={tab === 'plugins'} className={tab === 'plugins' ? 'active' : ''} onClick={() => setTab('plugins')}><Puzzle size={14} /> Plugins</button>
         </div>
 
         <div className="dialog-body">
@@ -108,6 +110,8 @@ export default function SettingsDialog({ layout, setLayout, onClose, theme, setT
               <button className="chip" style={{ marginTop: 12 }} onClick={() => setLayout({ ...DEFAULT_LAYOUT })}><RotateCcw size={12} /> Reset layout</button>
             </div>
           )}
+
+          {tab === 'plugins' && <PluginsSettings />}
 
           {tab === 'keys' && (
             <>

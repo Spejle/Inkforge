@@ -2,6 +2,11 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.12.0] - Unreleased
+
+### Added
+- **Plugin packs (groundwork).** Settings > Plugins imports a `.json` pack of vector or image stamps, light presets and biomes. Packs are data only (no code runs, in line with the CSP), strictly validated, namespaced as `<pack>:<id>`, and remembered in IndexedDB. Stamps appear under "Plugins: <name>", light presets beside the built-in ones. See `docs/PLUGINS.md` and `docs/plugins/examplePack.json`.
+
 ## [1.11.1] - 2026-10-16
 
 ### Changed
