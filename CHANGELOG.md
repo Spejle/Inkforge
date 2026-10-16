@@ -5,9 +5,11 @@ All notable changes to **InkForge** will be documented in this file.
 ## [1.11.1] - 2026-10-16
 
 ### Changed
-- **Soft dynamic lighting shadows (penumbra).** Lights now cast soft-edged shadows by averaging cuts from 3 jittered positions around the light emitter with destination-out, giving objects natural penumbra that widens with distance.
-- **Improved occluder footprints.** Trees now block light using an octagonal footprint representing the trunk and inner crown rather than a rectangular bounding box, letting light penetrate the outer canopy. Pillars block light with a 12-sided circular polygon, while walls, doors, tables, and chests retain rectangular box occluders.
-- **Smooth light and shadow falloff.** The radial lighting gradient now uses a multi-stop ease to fade smoothly to zero at the light radius, preventing hard cuts at the boundary of light reach.
+- **Believable cast shadows and soft widening penumbra.** Lights now model an area emitter sampled across 8 multi-ring jittered positions, casting soft-edged shadows whose penumbra widens naturally with distance from the occluder while remaining crisp at the object's base.
+- **Ambient bounce illumination in shadows.** Shadows cast by objects within the light radius are no longer pitch black; an ambient bounce pass maintains visibility of underlying terrain and props (~50% darkness rather than unlit night) bounded by structural dungeon walls.
+- **Illuminated occluders with shrunken footprints.** Trees (octagonal trunk/inner crown, k=0.38) and props/furniture (shrunken box footprint, k=0.48) let direct light reach the light-facing side of sprites so objects stand in front of the shadow cast from their base rather than sitting in a black cutout box. Full-scale footprints are preserved for dungeon walls and pillars.
+- **Harmonized warm glow and concentric radial falloff.** Warm torchlight glow and darkness cuts share identical concentric radial falloff curves fading smoothly to zero at the light radius, eliminating edge blobs and petal artifacts.
+
 
 ## [1.11.0] - 2026-10-16
 

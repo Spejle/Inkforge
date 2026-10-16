@@ -56,7 +56,18 @@ test('furniture, chests and walls keep box footprints', () => {
   assert.deepEqual(wall[0], wall[4]);
 });
 
+test('prop footprints are shrunken so the light-facing side reads as lit', () => {
+  const table = blockerOutline({ stampId: 'prop_table_tavern', x: 50, y: 50, scale: 1 });
+  const wall = blockerOutline({ stampId: 'dungeon_wall_block', x: 50, y: 50, scale: 1 });
+
+  const tableHalfH = Math.max(...table.map(([, y]) => Math.abs(y - 50)));
+  const wallHalfH = Math.max(...wall.map(([, y]) => Math.abs(y - 50)));
+  assert.ok(tableHalfH < 25, 'table half-height is shrunken below 25px');
+  assert.equal(wallHalfH, 40, 'wall maintains full-size 40px half-height');
+});
+
 test('non-blocking stamps return null', () => {
   const stairs = blockerOutline({ stampId: 'dungeon_stairs_down', x: 0, y: 0 });
   assert.equal(stairs, null, 'stairs do not block light');
 });
+

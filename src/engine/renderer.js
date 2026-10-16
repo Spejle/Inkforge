@@ -1214,13 +1214,14 @@ export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
 
 // Stamps that stop light, by group: dungeon walls, pillars and doors, furniture, mountains and trees.
 const BLOCKER_GROUP = /^(dungeon_(walls|pillars|doors)|prop_(tables|chests|storage|altars|shelves)|geo_mountains|tree_)/;
-/** The footprint of a light-blocking stamp as a closed polyline (trees only block with their trunk and inner crown). */
+/** The footprint of a light-blocking stamp as a closed polyline (trees and props block with a shrunken footprint so objects stand in front of their shadow). */
 export function blockerOutline(s) {
   const def = getStampById(s.stampId);
   if (!def || !BLOCKER_GROUP.test(def.group || '')) return null;
   const isTree = /^tree_/.test(def.group);
   const isPillar = def.group === 'dungeon_pillars';
-  const k = isTree ? 0.45 : 1;
+  const isProp = /^prop_/.test(def.group);
+  const k = isTree ? 0.38 : isProp ? 0.48 : 1;
   const h = 80 * (s.scale || 1) * k;
   const w = h * stampAspect(s);
   const cy = s.anchor === 'base' ? -h / 2 : 0;
@@ -1317,29 +1318,74 @@ export function drawLighting(ctx, width, height, op) {
   const { c, g } = makeLayer(width, height, ls);
   g.fillStyle = `rgba(8, 12, 34, ${op.darkness})`;
   g.fillRect(0, 0, width, height);
-  const glow = [];
-  const allOccluders = [...(op.walls || []), ...(op.blocks || [])];
 
-  for (const l of op.lights || []) {
-    const jitR = Math.max(3, Math.min(8, l.r * 0.025));
-    // 3 jittered light positions around the light center to cast soft penumbra
-    const angles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
-    const jitters = angles.map((ang) => [
-      l.x + jitR * Math.cos(ang),
-      l.y + jitR * Math.sin(ang)
-    ]);
+  const walls = op.walls || [];
+  const blocks = op.blocks || [];
+  const allOccluders = [...walls, ...blocks];
+  const lights = op.lights || [];
 
-    for (const [jx, jy] of jitters) {
+  const directGlow = [];
+  const ambGlow = [];
+
+  for (const l of lights) {
+    // 1. Ambient bounce illumination within the light radius:
+    // Stopped by solid room walls (op.walls), but diffuse bounce fills around small objects (op.blocks).
+    // This ensures cast shadows are translucent and darker than lit ground, but never pitch black.
+    const wallPoly = walls.length > 0 ? visibilityPolygon(l.x, l.y, l.r, walls) : null;
+    g.save();
+    if (wallPoly && wallPoly.length >= 3) {
+      g.beginPath();
+      wallPoly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+      g.clip();
+    }
+    g.globalCompositeOperation = 'destination-out';
+    const ambCutGrad = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+    ambCutGrad.addColorStop(0, 'rgba(0, 0, 0, 0.44)');
+    ambCutGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.36)');
+    ambCutGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.22)');
+    ambCutGrad.addColorStop(0.88, 'rgba(0, 0, 0, 0.08)');
+    ambCutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = ambCutGrad;
+    g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+    g.restore();
+
+    ambGlow.push({ l, wallPoly });
+
+    // 2. Direct light with soft penumbra widening with distance:
+    // Sample the light emitter across its diameter (flame area light)
+    const emitterR = Math.max(8, Math.min(22, l.r * 0.045));
+    // Center sample (weight 1.5) + inner ring of 3 (weight 1.0) + outer ring of 4 (weight 1.0)
+    const jitterSpecs = [
+      { dx: 0, dy: 0, w: 1.5 },
+      // Inner ring: radius 0.5 * emitterR
+      { dx: emitterR * 0.5 * Math.cos(0), dy: emitterR * 0.5 * Math.sin(0), w: 1.0 },
+      { dx: emitterR * 0.5 * Math.cos((2 * Math.PI) / 3), dy: emitterR * 0.5 * Math.sin((2 * Math.PI) / 3), w: 1.0 },
+      { dx: emitterR * 0.5 * Math.cos((4 * Math.PI) / 3), dy: emitterR * 0.5 * Math.sin((4 * Math.PI) / 3), w: 1.0 },
+      // Outer ring: radius 1.0 * emitterR (rotated by 45 degrees)
+      { dx: emitterR * Math.cos(Math.PI / 4), dy: emitterR * Math.sin(Math.PI / 4), w: 1.0 },
+      { dx: emitterR * Math.cos((3 * Math.PI) / 4), dy: emitterR * Math.sin((3 * Math.PI) / 4), w: 1.0 },
+      { dx: emitterR * Math.cos((5 * Math.PI) / 4), dy: emitterR * Math.sin((5 * Math.PI) / 4), w: 1.0 },
+      { dx: emitterR * Math.cos((7 * Math.PI) / 4), dy: emitterR * Math.sin((7 * Math.PI) / 4), w: 1.0 }
+    ];
+    const totalW = jitterSpecs.reduce((sum, s) => sum + s.w, 0);
+
+    // Unified concentric radial gradient centered at (l.x, l.y) for both cut and warm glow
+    const directCutGrad = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+    directCutGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    directCutGrad.addColorStop(0.2, 'rgba(0, 0, 0, 0.92)');
+    directCutGrad.addColorStop(0.45, 'rgba(0, 0, 0, 0.65)');
+    directCutGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.32)');
+    directCutGrad.addColorStop(0.88, 'rgba(0, 0, 0, 0.10)');
+    directCutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    for (const spec of jitterSpecs) {
+      const jx = l.x + spec.dx;
+      const jy = l.y + spec.dy;
       const poly = visibilityPolygon(jx, jy, l.r, allOccluders);
       if (poly.length < 3) continue;
 
-      // Radial gradient fading smoothly out to l.r so there is no hard cut at the radius
-      const grad = g.createRadialGradient(jx, jy, l.r * 0.05, jx, jy, l.r);
-      grad.addColorStop(0, 'rgba(0,0,0,1)');
-      grad.addColorStop(0.5, 'rgba(0,0,0,0.75)');
-      grad.addColorStop(0.8, 'rgba(0,0,0,0.3)');
-      grad.addColorStop(0.95, 'rgba(0,0,0,0.06)');
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      const normW = spec.w / totalW;
 
       g.save();
       g.beginPath();
@@ -1347,38 +1393,63 @@ export function drawLighting(ctx, width, height, op) {
       g.closePath();
       g.clip();
       g.globalCompositeOperation = 'destination-out';
-      g.globalAlpha = 0.55; // three overlapping cuts: 0.55 each leaves ~9% darkness at the centre; 1/3 would leave 30%
-      g.fillStyle = grad;
-      const pad = jitR + 4;
-      g.fillRect(jx - l.r - pad, jy - l.r - pad, (l.r + pad) * 2, (l.r + pad) * 2);
+      g.globalAlpha = normW * 0.76;
+      g.fillStyle = directCutGrad;
+      g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
       g.restore();
 
-      glow.push({ l, poly, jx, jy, pad });
+      directGlow.push({ l, poly, normW });
     }
   }
 
+  // Draw darkness layer onto destination
   ctx.drawImage(c, 0, 0, width, height);
 
-  // a warm tint where the light falls
-  if (glow.length > 0) {
+  // Warm firelight tint in harmony with the lighting cuts
+  if (lights.length > 0) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 1 / 3;
-    for (const { l, poly, jx, jy, pad } of glow) {
-      const grad = ctx.createRadialGradient(jx, jy, 0, jx, jy, l.r);
-      grad.addColorStop(0, 'rgba(255, 170, 70, 0.30)');
-      grad.addColorStop(0.5, 'rgba(255, 170, 70, 0.18)');
-      grad.addColorStop(0.8, 'rgba(255, 170, 70, 0.06)');
-      grad.addColorStop(1, 'rgba(255, 170, 70, 0)');
+
+    // A. Ambient bounce warmth inside the lit space
+    for (const { l, wallPoly } of ambGlow) {
+      ctx.save();
+      if (wallPoly && wallPoly.length >= 3) {
+        ctx.beginPath();
+        wallPoly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        ctx.closePath();
+        ctx.clip();
+      }
+      const ambWarmGrad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+      ambWarmGrad.addColorStop(0, 'rgba(255, 175, 75, 0.14)');
+      ambWarmGrad.addColorStop(0.35, 'rgba(255, 160, 60, 0.09)');
+      ambWarmGrad.addColorStop(0.7, 'rgba(255, 140, 50, 0.04)');
+      ambWarmGrad.addColorStop(1, 'rgba(240, 120, 30, 0)');
+      ctx.fillStyle = ambWarmGrad;
+      ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+      ctx.restore();
+    }
+
+    // B. Direct warm torchlight glow matching direct light cut
+    for (const { l, poly, normW } of directGlow) {
+      const warmGrad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+      warmGrad.addColorStop(0, 'rgba(255, 215, 140, 0.45)');
+      warmGrad.addColorStop(0.2, 'rgba(255, 190, 100, 0.38)');
+      warmGrad.addColorStop(0.45, 'rgba(255, 160, 70, 0.24)');
+      warmGrad.addColorStop(0.7, 'rgba(245, 130, 45, 0.10)');
+      warmGrad.addColorStop(0.88, 'rgba(235, 100, 30, 0.03)');
+      warmGrad.addColorStop(1, 'rgba(220, 80, 20, 0)');
+
       ctx.save();
       ctx.beginPath();
       poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
       ctx.closePath();
       ctx.clip();
-      ctx.fillStyle = grad;
-      ctx.fillRect(jx - l.r - pad, jy - l.r - pad, (l.r + pad) * 2, (l.r + pad) * 2);
+      ctx.globalAlpha = normW;
+      ctx.fillStyle = warmGrad;
+      ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
       ctx.restore();
     }
+
     ctx.restore();
   }
 }
