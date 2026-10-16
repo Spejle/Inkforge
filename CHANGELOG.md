@@ -7,7 +7,7 @@ All notable changes to **InkForge** will be documented in this file.
 ### Changed
 - **Believable cast shadows and soft widening penumbra.** Lights now model an area emitter sampled across 8 multi-ring jittered positions, casting soft-edged shadows whose penumbra widens naturally with distance from the occluder while remaining crisp at the object's base.
 - **Ambient bounce illumination in shadows.** Shadows cast by objects within the light radius are no longer pitch black; an ambient bounce pass maintains visibility of underlying terrain and props (~50% darkness rather than unlit night) bounded by structural dungeon walls.
-- **Illuminated occluders with shrunken footprints.** Trees (octagonal trunk/inner crown, k=0.38) and props/furniture (shrunken box footprint, k=0.48) let direct light reach the light-facing side of sprites so objects stand in front of the shadow cast from their base rather than sitting in a black cutout box. Full-scale footprints are preserved for dungeon walls and pillars.
+- **Shadows follow the object's real shape.** A blocking stamp's drawn sprite is traced once (top and bottom opaque pixel of each column, cached) and that outline casts the shadow, so a pine throws a pine-shaped shadow and a crate a crate-shaped one; scale, rotation and flips apply. Dungeon walls, doors, furniture, mountains and trees all use it.
 - **Harmonized warm glow and concentric radial falloff.** Warm torchlight glow and darkness cuts share identical concentric radial falloff curves fading smoothly to zero at the light radius, eliminating edge blobs and petal artifacts.
 
 

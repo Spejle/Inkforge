@@ -3,6 +3,7 @@ import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
 import { safeImageSrc } from '../utils/importGuard.js';
 import { coastDistance, flowRiver } from './riverGen.js';
+import { simplifyPath } from '../utils/pathSmooth.js';
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -1214,47 +1215,53 @@ export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
 
 // Stamps that stop light, by group: dungeon walls, pillars and doors, furniture, mountains and trees.
 const BLOCKER_GROUP = /^(dungeon_(walls|pillars|doors)|prop_(tables|chests|storage|altars|shelves)|geo_mountains|tree_)/;
-/** The footprint of a light-blocking stamp as a closed polyline (trees and props block with a shrunken footprint so objects stand in front of their shadow). */
+// What a light-blocking stamp really looks like from above: its drawn sprite, traced once at low resolution (the top and
+// bottom opaque pixel of every column, so a tree casts a tree-shaped shadow and a crate a crate-shaped one). Cached in
+// unit coordinates (0..1 across the sprite) so any scale, rotation or flip reuses it.
+const outlineCache = new Map();
+const BOX = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
+function spriteOutline(def, s, aspect) {
+  if (typeof document === 'undefined') return BOX;
+  const key = [s.stampId, s.color, s.fill, s.seed, aspect.toFixed(2)].join('|');
+  let o = outlineCache.get(key);
+  if (o) return o;
+  const H = 48, W = Math.max(8, Math.round(H * aspect));
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  def.render(g, H, s.color, s.fill, s.seed);
+  const px = g.getImageData(0, 0, W, H).data;
+  const top = [], bot = [];
+  for (let x = 0; x < W; x++) {
+    let t = -1, b = -1;
+    for (let y = 0; y < H; y++) if (px[(y * W + x) * 4 + 3] > 110) { if (t < 0) t = y; b = y; }
+    if (t >= 0) { top.push([(x + 0.5) / W, t / H]); bot.push([(x + 0.5) / W, (b + 1) / H]); }
+  }
+  if (top.length < 2) o = BOX;
+  else {
+    const ring = [...simplifyPath(bot, 0.02), ...simplifyPath(top, 0.02).reverse()];
+    ring.push(ring[0]);
+    o = ring.length >= 4 ? ring : BOX;
+  }
+  outlineCache.set(key, o);
+  if (outlineCache.size > 400) outlineCache.delete(outlineCache.keys().next().value);
+  return o;
+}
+
+/** The footprint of a light-blocking stamp as a closed polyline in map px: the traced shape of its sprite. */
 export function blockerOutline(s) {
   const def = getStampById(s.stampId);
   if (!def || !BLOCKER_GROUP.test(def.group || '')) return null;
-  const isTree = /^tree_/.test(def.group);
-  const isPillar = def.group === 'dungeon_pillars';
-  const isProp = /^prop_/.test(def.group);
-  const k = isTree ? 0.38 : isProp ? 0.48 : 1;
-  const h = 80 * (s.scale || 1) * k;
-  const w = h * stampAspect(s);
-  const cy = s.anchor === 'base' ? -h / 2 : 0;
+  const aspect = stampAspect(s);
+  const H = 80 * (s.scale || 1), W = H * aspect;
   const cos = Math.cos(s.rotation || 0), sin = Math.sin(s.rotation || 0);
-
-  let coords;
-  if (isTree) {
-    // Octagon (trunk + inner crown)
-    coords = [];
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      coords.push([Math.cos(a), Math.sin(a)]);
-    }
-    coords.push(coords[0]);
-  } else if (isPillar) {
-    // Circle approximation (12-gon)
-    coords = [];
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI) / 6;
-      coords.push([Math.cos(a), Math.sin(a)]);
-    }
-    coords.push(coords[0]);
-  } else {
-    // Bounding box for walls, doors, tables, chests, etc.
-    coords = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
-  }
-
-  const pts = coords.map(([a, b]) => {
-    const u = (a * w) / 2, v = cy + (b * h) / 2;
+  return spriteOutline(def, s, aspect).map(([a, b]) => {
+    // the same frame renderStamps draws in: flip, then sprite corner at the origin (or its base at the origin)
+    const u = (a - 0.5) * W * (s.flipX ? -1 : 1);
+    const v = (b * H - (s.anchor === 'base' ? H : H / 2)) * (s.flipY ? -1 : 1);
     return [s.x + u * cos - v * sin, s.y + u * sin + v * cos];
   });
-  pts[pts.length - 1] = pts[0];
-  return pts;
 }
 
 // Darkness needs the lights and walls, which live outside the atmosphere settings. The result is memoised so the Pixi
