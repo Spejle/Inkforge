@@ -1,0 +1,123 @@
+/* ==========================================================================
+   INKFORGE - VISUAL PREVIEW PICKERS & BRUSH PREVIEWS
+   ========================================================================== */
+
+.preview-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  user-select: none;
+}
+
+.preview-picker-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-picker-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(var(--preview-picker-cols, 3), minmax(0, 1fr));
+}
+
+.preview-picker-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: var(--bg-raise);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  position: relative;
+  outline: none;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.preview-picker-btn:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.preview-picker-btn:focus-visible {
+  outline: 2px solid var(--primary-gold);
+  outline-offset: 1px;
+}
+
+.preview-picker-btn.selected,
+.preview-picker-btn[aria-checked="true"] {
+  border-color: var(--primary-gold);
+  background: var(--bg-panel-hover);
+  box-shadow: 0 0 0 1px var(--primary-gold) inset, 0 0 10px var(--primary-gold-glow);
+}
+
+.preview-picker-btn.selected .preview-picker-caption {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.preview-picker-thumb-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.preview-picker-canvas {
+  display: block;
+  border-radius: 3px;
+}
+
+.preview-picker-text-sample {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 15px;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.preview-picker-caption {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-top: 3px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+}
+
+/* Standalone brush preview widget */
+.brush-preview-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-raise);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.brush-preview-canvas {
+  display: block;
+  border-radius: 4px;
+}
