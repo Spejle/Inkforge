@@ -95,10 +95,10 @@ export function buildPlan({
   // 2. LANDMASSES & TERRAIN SCULPTING (True Dual-Layer Masking + Dynamic Coastlines)
   if (layerVisibility.land) {
     // while stroking, the in-progress stroke is a new input every frame (so the cache key changes) and the pass runs at
-    // LIVE_SCALE; on release landStroke is null again, the key returns to the committed arrays and one full-quality pass runs
+    // liveScale; on release landStroke is null again, the key returns to the committed arrays and one full-quality pass runs
     const strokes = withLiveStroke(brushStrokes, landStroke);
     layer('land', raster([landmasses, strokes, coastline, mapType, width, height],
-      (c) => renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, landStroke ? LIVE_SCALE : 1)));
+      (c) => renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, landStroke ? liveScale(width, height) : 1)));
     if (liveStroke) items.push({ kind: 'live', style: st('land'), stroke: liveStroke });
   }
 
@@ -139,7 +139,8 @@ export function buildPlan({
   return { width, height, items };
 }
 
-export const LIVE_SCALE = 0.5;
+// half resolution, less on big maps so a live frame stays near 1.5 megapixels of mask
+export const liveScale = (w, h) => Math.min(0.5, Math.sqrt(1.5e6 / (w * h)));
 /** Committed strokes plus the one being painted; the committed array itself when nothing is being painted. */
 export function withLiveStroke(brushStrokes, stroke) {
   return stroke ? [...brushStrokes, stroke] : brushStrokes;
@@ -525,6 +526,14 @@ export function drawLandMask(mctx, landmasses, brushStrokes) {
  */
 function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline, quality = 1) {
   if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
+  if (quality < 1) {
+    // live preview: the whole pipeline runs on a small buffer and is upscaled once, so the many full-size
+    // blits (shadow, sand, outline) are not paid at the destination's resolution
+    const { c, g } = makeLayer(width, height, layerScale(ctx, width, height) * quality);
+    renderLandmasses(g, width, height, landmasses, brushStrokes, mapType, coastline);
+    ctx.drawImage(c, 0, 0, width, height);
+    return;
+  }
 
   const cl = {
     ripplesEnabled: true,
@@ -543,7 +552,7 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   };
 
   // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
-  const ls = layerScale(ctx, width, height) * quality;
+  const ls = layerScale(ctx, width, height);
   const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
 
   drawLandMask(mctx, landmasses, brushStrokes);

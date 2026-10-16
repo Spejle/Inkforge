@@ -2,6 +2,14 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+## [1.12.0] - 2026-10-16
+
+### Added
+- **Live land preview.** While you drag a Landmass Sculptor or Biome brush stroke, the land layer (coastline, sand, ripples, shadow, biome fill) is rendered for real with the stroke in it, instead of an outline. It runs at reduced resolution (half, less on big maps), once per frame, and the full-quality pass runs on release. Works in Canvas 2D and Pixi. Toggle: Preview > Live preview (on by default; turn it off on a slow machine).
+
+### Changed
+- The old cheap outline is now the **Stroke outline** toggle, off by default (new saved setting, so earlier choices do not carry over). It only shows when Live preview is off.
+
 ## [1.11.1] - 2026-10-16
 
 ### Changed
