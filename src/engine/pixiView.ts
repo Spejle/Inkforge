@@ -8,6 +8,7 @@ import { Application, CanvasSource, Container, Rectangle, RenderTexture, Sprite,
 import 'pixi.js/advanced-blend-modes'; // overlay and soft-light
 import {
   atmosphereOps,
+  drawWeather,
   drawLiveStroke,
   drawStampSelection,
   drawVignette,
@@ -447,7 +448,9 @@ export class PixiMapView {
           const canvas = document.createElement('canvas');
           canvas.width = plan.width;
           canvas.height = plan.height;
-          drawVignette(canvas.getContext('2d') as Ctx2D, plan.width, plan.height, op.vignette);
+          const g = canvas.getContext('2d') as Ctx2D;
+          if (op.type === 'weather') drawWeather(g, plan.width, plan.height, op.kind, op.amount);
+          else drawVignette(g, plan.width, plan.height, op.vignette);
           box.container.addChild(new Sprite(Texture.from(canvas)));
         }
       }

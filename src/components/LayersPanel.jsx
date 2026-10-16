@@ -21,6 +21,18 @@ export const DEFAULT_LAYERS = Object.fromEntries(
   LAYER_DEFS.map((l) => [l.key, { visible: true, opacity: 1, blend: 'source-over' }])
 );
 
+// Lighting / weather presets: a colour wash over the map, optional rain or snow, and the usual atmosphere sliders.
+const CLEAR = { tint: undefined, tintAmount: 0, tintBlend: 'multiply', weather: undefined, weatherAmount: 0 };
+export const LIGHT_PRESETS = {
+  Day: { ...CLEAR, vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1 },
+  Dusk: { ...CLEAR, vignette: 0.45, parchmentGrain: 0.3, sepia: 0.5, brightness: 0.92, tint: [255, 140, 70], tintAmount: 0.3 },
+  Night: { ...CLEAR, vignette: 0.7, parchmentGrain: 0.25, sepia: 0, brightness: 0.8, tint: [50, 70, 150], tintAmount: 0.6 },
+  Cloudy: { ...CLEAR, vignette: 0.35, parchmentGrain: 0.3, sepia: 0, brightness: 0.9, tint: [150, 160, 175], tintAmount: 0.35 },
+  Rain: { ...CLEAR, vignette: 0.5, parchmentGrain: 0.3, sepia: 0, brightness: 0.85, tint: [110, 130, 155], tintAmount: 0.45, weather: 'rain', weatherAmount: 0.6 },
+  Snow: { ...CLEAR, vignette: 0.3, parchmentGrain: 0.2, sepia: 0, brightness: 1.1, tint: [225, 235, 255], tintAmount: 0.3, tintBlend: 'screen', weather: 'snow', weatherAmount: 0.6 },
+  Fog: { ...CLEAR, vignette: 0.2, parchmentGrain: 0.2, sepia: 0, brightness: 1, tint: [230, 232, 235], tintAmount: 0.4, tintBlend: 'screen' }
+};
+
 export const MAP_STYLES = {
   Parchment: { vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1 },
   Ink: { vignette: 0.15, parchmentGrain: 0, sepia: 0, brightness: 0.95 },

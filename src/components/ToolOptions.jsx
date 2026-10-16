@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LIGHT_PRESETS } from './LayersPanel';
 import {
   Trash2,
   Copy,
@@ -789,6 +790,22 @@ export default function ToolOptions({
       {/* 8. ATMOSPHERE TOOL OPTIONS */}
       {activeTool === 'atmosphere' && (
         <div className="options-segment">
+          {Object.entries(LIGHT_PRESETS).map(([name, preset]) => (
+            <button key={name} className="chip" onClick={() => setAtmosphereConfig((prev) => ({ ...prev, ...preset }))}>{name}</button>
+          ))}
+          {atmosphereConfig.weather && (
+            <label className="option-label">
+              {atmosphereConfig.weather === 'snow' ? 'Snow' : 'Rain'}: <span className="val-badge">{Math.round((atmosphereConfig.weatherAmount || 0) * 100)}%</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={atmosphereConfig.weatherAmount || 0}
+                onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, weatherAmount: parseFloat(e.target.value) }))}
+              />
+            </label>
+          )}
           <label className="option-label">
             Vignette: <span className="val-badge">{Math.round(atmosphereConfig.vignette * 100)}%</span>
             <input
