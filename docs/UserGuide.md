@@ -92,7 +92,7 @@ The Select tool manipulates objects placed on the map.
   - The group moves together as a single unit when dragged.
 - **Transform Controls**:
   - Drag the corner handle to scale an object proportionally.
-  - Drag the top rotation handle to spin an object (snaps to 15° steps; hold `Shift` for fine 1° adjustments).
+  - Drag the top rotation handle to spin an object (hold `Shift` to snap to 15° steps).
   - Use the Options Ribbon sliders for precise numeric Scale (30% to 300%) and Rotation (-180° to +180°), or click **0°** to reset orientation.
   - **Flip X / Flip Y**: Mirror stamps across their horizontal or vertical axis.
   - **Front / Back**: Reorder stamps within their active layer.
@@ -168,7 +168,7 @@ Draws vector splines for watercourses, trade roads, and dungeon walls.
 ### 6. Text & Banners (`T`)
 Places curved fantasy typography for kingdom titles, sea names, and site labels.
 - **Content**: Text string entry field.
-- **Font Picker**: Select from fantasy cartography typefaces (Cinzel, Alegreya Sans, MedievalSharp, Pirata One, Uncial Antiqua, Inter).
+- **Font Picker**: Select from fantasy cartography typefaces (Cinzel, MedievalSharp, Pirata One, Uncial Antiqua, Inter).
 - **Size**: Font size from 16px to 80px (scalable up to 96px once placed).
 - **Arc Curvature**: Curves labels along a circular arc from -50% to +50% to trace mountain ranges, bays, or kingdom borders.
 - **Color & Stroke**: Dedicated pickers for interior text fill and outer contrast halo stroke.
@@ -367,3 +367,14 @@ Open the **Export** menu in the top header to access export options:
 - **Hardware Acceleration**: InkForge automatically utilizes WebGL via PixiJS when available. If running on software OpenGL (such as SwiftShader or llvmpipe) or if WebGL is unavailable, it falls back seamlessly to the Canvas 2D engine. You can force a specific renderer via URL parameters: `?renderer=2d` or `?renderer=pixi`.
 - **Memory Safeguards**: Live canvases are capped at 36 million pixels and individual raster layers at 12 million pixels to prevent browser tab crashes on ultra-large maps.
 - **Plugin Asset Packs**: Extend your stamp, biome, and lighting presets using declarative JSON plugin packs without writing code. See [Plugin Packs Documentation](PLUGINS.md).
+
+
+## The tool panel, previews and layout
+
+**The panel follows the tool.** The first tab of the right-hand panel shows the options of the active tool: biome picker and brush preview for the Biome brush, mask shape and size for the Landmass Sculptor, the stamp library (with scale, jitter and spray on top) for the Stamps tool, and so on. Choosing a tool brings that tab forward and reopens a collapsed panel. *Layers & FX* and *Objects* stay one click away.
+
+**Pickers, not dropdowns.** Biomes show their real texture, blend modes show two overlapping discs composited with that mode, grid types show their grid and fonts show a sample in the font. Use the arrow keys to move between choices.
+
+**Live preview while painting.** While you drag a Landmass Sculptor or Biome stroke, the real coast, sand and biome fill are drawn at reduced scale and the full-quality pass runs when you release. In the panel, *Preview > Live preview* turns it off if your machine is slow on very large maps; *Stroke outline* (off by default) shows only the shape of the stroke while Live preview is off.
+
+**Layout** (Settings > Layout). Put the tool rail and the panel on the left or right, drag the panel's inner edge to resize it (240 to 560 px), hide the status bar, or press *Reset layout*. The choice is saved in the browser.
