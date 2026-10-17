@@ -34,6 +34,27 @@ const drawShadow = (ctx, cx = 0.5, cy = 0.9, rx = 0.34, ry = 0.065) => {
   ctx.restore();
 };
 
+// Sleeve from shoulder to a fist at (x1, y1), so held items connect to the body
+const drawArm = (ctx, x0, y0, x1, y1, sleeve, fist, color) => {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.09;
+  ctx.stroke();
+  ctx.strokeStyle = sleeve;
+  ctx.lineWidth = 0.05;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x1, y1, 0.035, 0, Math.PI * 2);
+  ctx.fillStyle = fist;
+  ctx.fill();
+  stroke(ctx, color, 0.02);
+  ctx.restore();
+};
+
 // Seeded PRNG for deterministic rendering variations if needed
 export const prng = (seed = 42) => {
   let s = seed >>> 0;
@@ -115,6 +136,7 @@ export const STAMPS_VIEWS_TOKENS = [
       stroke(ctx, color, 0.02);
       ctx.fillStyle = '#475569';
       ctx.fillRect(0.165, 0.62, 0.03, 0.07);
+      drawArm(ctx, 0.22, 0.54, 0.18, 0.65, '#94a3b8', '#cbd5e1', color);
 
       // Heater shield on knight's left (viewer's right)
       ctx.beginPath();
@@ -233,9 +255,10 @@ export const STAMPS_VIEWS_TOKENS = [
 
       // Plume arching back
       ctx.beginPath();
-      ctx.moveTo(0.46, 0.19);
-      ctx.bezierCurveTo(0.38, 0.11, 0.26, 0.11, 0.20, 0.15);
-      ctx.bezierCurveTo(0.28, 0.21, 0.38, 0.21, 0.44, 0.21);
+      ctx.moveTo(0.48, 0.23);
+      ctx.bezierCurveTo(0.40, 0.11, 0.28, 0.12, 0.22, 0.17);
+      ctx.bezierCurveTo(0.30, 0.20, 0.38, 0.22, 0.40, 0.25);
+      ctx.closePath();
       ctx.fillStyle = fill;
       ctx.fill();
       stroke(ctx, color, 0.02);
@@ -380,9 +403,12 @@ export const STAMPS_VIEWS_TOKENS = [
       ctx.fillStyle = '#38bdf8';
       ctx.fill();
 
+      drawArm(ctx, 0.68, 0.54, 0.82, 0.60, dark(fill, 0.2), '#fed7aa', color);
+      drawArm(ctx, 0.32, 0.54, 0.22, 0.64, dark(fill, 0.2), '#fed7aa', color);
+
       // Left hand casting spark
       ctx.beginPath();
-      ctx.arc(0.22, 0.62, 0.03, 0, Math.PI * 2);
+      ctx.arc(0.18, 0.58, 0.03, 0, Math.PI * 2);
       ctx.fillStyle = '#38bdf8';
       ctx.fill();
 
@@ -454,8 +480,8 @@ export const STAMPS_VIEWS_TOKENS = [
       // Forward sleeve holding staff
       ctx.beginPath();
       ctx.moveTo(0.46, 0.54);
-      ctx.lineTo(0.68, 0.58);
-      ctx.lineTo(0.66, 0.68);
+      ctx.lineTo(0.74, 0.58);
+      ctx.lineTo(0.74, 0.68);
       ctx.lineTo(0.44, 0.64);
       ctx.closePath();
       ctx.fillStyle = dark(fill, 0.2);
@@ -596,6 +622,8 @@ export const STAMPS_VIEWS_TOKENS = [
       ctx.fillRect(-0.02, 0.03, 0.04, 0.06);
       ctx.restore();
 
+      drawArm(ctx, 0.32, 0.55, 0.24, 0.635, fill, '#fed7aa', color);
+
       // Right dagger (pointing up/out)
       ctx.save();
       ctx.translate(0.78, 0.58);
@@ -613,6 +641,7 @@ export const STAMPS_VIEWS_TOKENS = [
       ctx.fillStyle = '#334155';
       ctx.fillRect(-0.02, 0.03, 0.04, 0.06);
       ctx.restore();
+      drawArm(ctx, 0.68, 0.55, 0.76, 0.635, fill, '#fed7aa', color);
 
       ctx.restore();
     }
