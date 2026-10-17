@@ -75,6 +75,15 @@ node server.js   # zero-dependency static server for dist/ on :5173
 
 *All shortcuts and themes can be customized in Settings (gear icon in the header).*
 
+## Generative AI disclosure
+
+InkForge was built with generative AI, in both code and assets.
+
+- **Code and documentation:** most of the source, the tests and the documentation were written by AI coding assistants (Claude from Anthropic and Gemini from Google), working under the maintainer's direction.
+- **Assets:** the stamp library (trees, buildings, tokens, props), the sample maps and the biome textures are not hand-drawn. They are procedural vector code that was written by the same assistants, and the maintainer chose which results to keep. No image-generation model was used to produce the stamp art.
+- **Oversight:** the maintainer sets the requirements, runs and tests the result, and decides what ships. The project is released as-is, so bugs are possible, and the AI-written parts are not individually audited line by line.
+- **Contributions:** if you submit AI-assisted work, say so in your pull request and name the tool.
+
 ## License & Map Ownership
 
 InkForge is Free and Open Source Software licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0-or-later)](LICENSE).
