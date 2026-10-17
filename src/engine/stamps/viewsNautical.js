@@ -426,19 +426,22 @@ export const STAMPS_VIEWS_NAUTICAL = [
         [w * 0.9, h * 0.5, w * 0.08, h * 0.14]
       ]);
 
-      // Sinuous body coils
-      ctx.strokeStyle = fill;
-      ctx.lineWidth = h * 0.14;
+      // Sinuous body coils, inked like the base (dark outline, fill body)
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
       ctx.moveTo(w * 0.16, h * 0.5);
       ctx.bezierCurveTo(w * 0.3, h * 0.2, w * 0.45, h * 0.2, w * 0.55, h * 0.5);
       ctx.bezierCurveTo(w * 0.65, h * 0.8, w * 0.8, h * 0.8, w * 0.9, h * 0.48);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.14 + h * 0.045;
+      ctx.stroke();
+      ctx.strokeStyle = fill;
+      ctx.lineWidth = h * 0.14 - h * 0.01;
       ctx.stroke();
 
       // Dorsal ridge
-      ctx.fillStyle = '#14b8a6';
+      ctx.fillStyle = color;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       // Ridge scales sit on the body curve itself
@@ -508,10 +511,11 @@ export const STAMPS_VIEWS_NAUTICAL = [
       ];
       for (const c of coils) {
         ctx.beginPath();
+        // Solid humps like the base coils, not hollow rings
         ctx.ellipse(w * c.cx, h * c.cy, w * c.rx, h * c.ry, -0.2, Math.PI, 0);
-        ctx.lineWidth = h * 0.09;
-        ctx.strokeStyle = fill;
-        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
         ctx.lineWidth = 2.5;
         ctx.strokeStyle = color;
         ctx.stroke();

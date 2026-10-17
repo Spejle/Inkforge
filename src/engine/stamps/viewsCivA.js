@@ -292,62 +292,50 @@ export const STAMPS_VIEWS_CIVA = [
       const h = size;
       const lw = h * 0.035;
 
-      groundShadow(ctx, w * 0.5, h * 0.92, w * 0.44, h * 0.07, 0.3);
+      groundShadow(ctx, w * 0.52, h * 0.9, w * 0.38, h * 0.06, 0.3);
 
-      // Plinth batter (sloped base)
+      // Same plain keep as the base, turned so a narrow shaded flank shows
+      const x0 = w * 0.2, x1 = w * 0.62, x2 = w * 0.8, top = h * 0.35, bot = h * 0.9, sk = h * 0.06;
       ctx.fillStyle = fill;
+      ctx.fillRect(x0, top, x1 - x0, bot - top);
       ctx.beginPath();
-      ctx.moveTo(w * 0.18, h * 0.9);
-      ctx.lineTo(w * 0.22, h * 0.78);
-      ctx.lineTo(w * 0.78, h * 0.78);
-      ctx.lineTo(w * 0.82, h * 0.9);
+      ctx.moveTo(x1, top); ctx.lineTo(x2, top - sk); ctx.lineTo(x2, bot - sk); ctx.lineTo(x1, bot);
       ctx.closePath();
       ctx.fill();
-
-      // Main keep body
-      ctx.fillRect(w * 0.22, h * 0.35, w * 0.56, h * 0.43);
-
-      // Left corner tower
-      ctx.fillRect(w * 0.18, h * 0.3, w * 0.18, h * 0.55);
-      // Right corner tower
-      ctx.fillRect(w * 0.64, h * 0.3, w * 0.18, h * 0.55);
-
-      // Shaded right sides
       ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-      ctx.fillRect(w * 0.5, h * 0.35, w * 0.14, h * 0.43);
-      ctx.fillRect(w * 0.73, h * 0.3, w * 0.09, h * 0.55);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.78);
-      ctx.lineTo(w * 0.78, h * 0.78);
-      ctx.lineTo(w * 0.82, h * 0.9);
-      ctx.lineTo(w * 0.5, h * 0.9);
-      ctx.closePath();
       ctx.fill();
 
-      // Crenellations
-      crenellations(ctx, w * 0.18, h * 0.24, w * 0.18, h * 0.06, 2, fill, color, lw);
-      crenellations(ctx, w * 0.64, h * 0.24, w * 0.18, h * 0.06, 2, fill, color, lw);
-      crenellations(ctx, w * 0.36, h * 0.29, w * 0.28, h * 0.06, 3, fill, color, lw);
+      // Merlons on both faces (front 4, flank 2), seated on the wall top
+      const mh = h * 0.08, n = 4, cw = (x1 - x0) / (n * 2 - 1);
+      ctx.lineWidth = h * 0.02;
+      ctx.strokeStyle = color;
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0 + i * cw * 2, top - mh, cw, mh);
+        ctx.strokeRect(x0 + i * cw * 2, top - mh, cw, mh);
+      }
+      for (const t of [0.2, 0.7]) {
+        const fx = x1 + (x2 - x1) * t, fw = (x2 - x1) * 0.3, fy = top - sk * t;
+        ctx.beginPath();
+        ctx.moveTo(fx, fy); ctx.lineTo(fx + fw, fy - sk * 0.3);
+        ctx.lineTo(fx + fw, fy - sk * 0.3 - mh); ctx.lineTo(fx, fy - mh);
+        ctx.closePath();
+        ctx.fillStyle = fill; ctx.fill();
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.35)'; ctx.fill();
+        ctx.stroke();
+      }
 
       // Arrow slits
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(w * 0.26, h * 0.48, w * 0.025, h * 0.12);
-      ctx.fillRect(w * 0.72, h * 0.48, w * 0.025, h * 0.12);
-      ctx.fillRect(w * 0.43, h * 0.48, w * 0.025, h * 0.12);
-      ctx.fillRect(w * 0.55, h * 0.48, w * 0.025, h * 0.12);
+      ctx.fillRect(w * 0.31, h * 0.47, w * 0.03, h * 0.12);
+      ctx.fillRect(w * 0.48, h * 0.47, w * 0.03, h * 0.12);
+      ctx.fillRect(w * 0.7, h * 0.45, w * 0.025, h * 0.12);
 
       // Outlines
-      ctx.strokeStyle = color;
       ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.18, h * 0.3, w * 0.18, h * 0.55);
-      ctx.strokeRect(w * 0.64, h * 0.3, w * 0.18, h * 0.55);
-      ctx.strokeRect(w * 0.22, h * 0.35, w * 0.56, h * 0.43);
+      ctx.strokeRect(x0, top, x1 - x0, bot - top);
       ctx.beginPath();
-      ctx.moveTo(w * 0.18, h * 0.9);
-      ctx.lineTo(w * 0.22, h * 0.78);
-      ctx.moveTo(w * 0.78, h * 0.78);
-      ctx.lineTo(w * 0.82, h * 0.9);
-      ctx.lineTo(w * 0.18, h * 0.9);
+      ctx.moveTo(x1, top); ctx.lineTo(x2, top - sk); ctx.lineTo(x2, bot - sk); ctx.lineTo(x1, bot);
       ctx.stroke();
 
       ctx.restore();
@@ -372,55 +360,40 @@ export const STAMPS_VIEWS_CIVA = [
       const h = size;
       const lw = h * 0.035;
 
-      groundShadow(ctx, w * 0.54, h * 0.54, w * 0.42, h * 0.42, 0.32);
+      groundShadow(ctx, w * 0.53, h * 0.53, w * 0.4, h * 0.4, 0.32);
 
-      // Main central keep block
+      // Same plain square keep as the base, seen from above: walls, merlon ring, roof terrace
+      const a = w * 0.16, s = w * 0.68, m = s * 0.12;
       ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.22, h * 0.22, w * 0.56, h * 0.56);
-
-      // 4 square corner towers projecting outward
-      const tw = w * 0.22;
-      const th = h * 0.22;
-      const towers = [
-        [w * 0.12, h * 0.12],
-        [w * 0.66, h * 0.12],
-        [w * 0.12, h * 0.66],
-        [w * 0.66, h * 0.66]
-      ];
-      for (const [tx, ty] of towers) {
-        ctx.fillStyle = fill;
-        ctx.fillRect(tx, ty, tw, th);
-      }
-
-      // Recessed keep terrace
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(w * 0.32, h * 0.32, w * 0.36, h * 0.36);
-
-      // Shaded south/east parapets
+      ctx.fillRect(a, a, s, s);
       ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-      ctx.fillRect(w * 0.22, h * 0.68, w * 0.56, h * 0.1);
-      ctx.fillRect(w * 0.68, h * 0.22, w * 0.1, h * 0.56);
-      for (const [tx, ty] of towers) {
-        ctx.fillRect(tx + tw * 0.5, ty, tw * 0.5, th);
-        ctx.fillRect(tx, ty + th * 0.5, tw, th * 0.5);
+      ctx.fillRect(a + s * 0.5, a, s * 0.5, s);
+
+      // Roof terrace inside the wall walk
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(a + m, a + m, s - 2 * m, s - 2 * m);
+
+      // Crenel gaps cut into the wall walk, 5 merlons per side like the base
+      ctx.fillStyle = '#0f172a';
+      const n = 5, step = s / (n * 2 - 1);
+      for (let i = 1; i < n * 2 - 1; i += 2) {
+        ctx.fillRect(a + i * step, a, step, m * 0.45);
+        ctx.fillRect(a + i * step, a + s - m * 0.45, step, m * 0.45);
+        ctx.fillRect(a, a + i * step, m * 0.45, step);
+        ctx.fillRect(a + s - m * 0.45, a + i * step, m * 0.45, step);
       }
 
-      // Central stair penthouse / trapdoor
+      // Trapdoor
       ctx.fillStyle = '#475569';
       ctx.fillRect(w * 0.44, h * 0.44, w * 0.12, h * 0.12);
 
       // Outlines
       ctx.strokeStyle = color;
       ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.22, h * 0.22, w * 0.56, h * 0.56);
-      ctx.strokeRect(w * 0.32, h * 0.32, w * 0.36, h * 0.36);
+      ctx.strokeRect(a, a, s, s);
+      ctx.lineWidth = h * 0.02;
+      ctx.strokeRect(a + m, a + m, s - 2 * m, s - 2 * m);
       ctx.strokeRect(w * 0.44, h * 0.44, w * 0.12, h * 0.12);
-      for (const [tx, ty] of towers) {
-        ctx.strokeRect(tx, ty, tw, th);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(tx + tw * 0.42, ty + 1, tw * 0.16, 2);
-        ctx.fillRect(tx + 1, ty + th * 0.42, 2, th * 0.16);
-      }
 
       ctx.restore();
     }
