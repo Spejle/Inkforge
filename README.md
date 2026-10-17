@@ -87,4 +87,4 @@ InkForge is Free and Open Source Software licensed under the [GNU Affero General
 InkForge has zero venture backing, zero cloud servers, and zero paywalled features. If InkForge saves you campaign prep time, consider supporting independent development:
 
 - **[GitHub Sponsors](https://github.com/sponsors/spejle)** (Recurring sponsorship & stamp roadmap voting)
-- **[Ko-fi / Buy Me a Coffee](https://ko-fi.com/)** (Tip the blacksmith)
+- **[Ko-fi / Buy Me a Coffee][(https://ko-fi.com/](https://ko-fi.com/spejle))** (Tip the blacksmith)
