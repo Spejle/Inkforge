@@ -42,6 +42,49 @@ function groundShadow(ctx, x, y, rx, ry, alpha = 0.25) {
   ctx.restore();
 }
 
+// One hill/dune: filled mound whose drawn crest really peaks at (ax, ay), shade clipped inside it,
+// crest inked. Fractions of w/h. Painter order = call order, so later mounds occlude earlier ones.
+function moundLayer(ctx, w, h, color, fill, shade, [l, r, base, ax, ay], ripples = false) {
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(w * l, h * base);
+    ctx.quadraticCurveTo(w * (2 * ax - (l + r) / 2), h * (2 * ay - base), w * r, h * base);
+  };
+  ctx.save();
+  path();
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.clip();
+  // lee face: wedge from the apex to the right foot
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.moveTo(w * ax, h * ay);
+  ctx.lineTo(w * r, h * base);
+  ctx.lineTo(w * (ax + (r - ax) * 0.15), h * base);
+  ctx.closePath();
+  ctx.fill();
+  if (ripples) {
+    ctx.strokeStyle = 'rgba(120, 53, 15, 0.25)';
+    ctx.lineWidth = lw(h, 0.016);
+    ctx.beginPath();
+    for (const t of [0.35, 0.65]) {
+      const y = ay + (base - ay) * t, x0 = l + (ax - l) * t;
+      ctx.moveTo(w * x0, h * y);
+      ctx.quadraticCurveTo(w * (x0 + 0.06), h * (y - 0.05), w * (x0 + 0.14), h * (y - 0.04));
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.save();
+  path();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw(h, 0.035);
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
 export const STAMPS_VIEWS_LAND = [
   // =========================================================================
   // mountain_grand
@@ -419,11 +462,17 @@ export const STAMPS_VIEWS_LAND = [
       // Intermediate contour loops around peaks
       ctx.strokeStyle = color;
       ctx.lineWidth = lw(h, 0.02);
-      for (const [px, py, rx, ry] of [[p1[0], p1[1], w * 0.11, h * 0.15], [p2[0], p2[1], w * 0.14, h * 0.18], [p3[0], p3[1], w * 0.10, h * 0.14]]) {
+      // loops follow the ridge (wide, flat) and stay inside the range outline
+      ctx.save();
+      ctx.beginPath();
+      perim.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.clip();
+      for (const [px, py, rx, ry] of [[p1[0], p1[1], w * 0.10, h * 0.10], [p2[0], p2[1], w * 0.12, h * 0.12], [p3[0], p3[1], w * 0.09, h * 0.10]]) {
         ctx.beginPath();
-        ctx.ellipse(px, py, rx, ry, 0, 0, TAU);
+        ctx.ellipse(px, py + ry * 0.25, rx, ry, 0, 0, TAU);
         ctx.stroke();
       }
+      ctx.restore();
 
       // Shaded slope hachures on southern flanks
       ctx.lineWidth = lw(h, 0.016);
@@ -916,82 +965,13 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.0,
     aspect: 1.3,
     render: (ctx, size, color = '#2c221e', fill = '#dbe5c5') => {
-      ctx.save();
       const w = size * 1.3;
       const h = size;
-
-      // Rear hill mound
-      ctx.beginPath();
-      ctx.moveTo(w * 0.42, h * 0.75);
-      ctx.quadraticCurveTo(w * 0.68, h * 0.28, w * 0.95, h * 0.75);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Rear hill shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.68, h * 0.28);
-      ctx.quadraticCurveTo(w * 0.78, h * 0.50, w * 0.95, h * 0.75);
-      ctx.strokeStyle = 'rgba(50, 40, 35, 0.22)';
-      ctx.lineWidth = h * 0.08;
-      ctx.stroke();
-
-      // Middle left hill mound
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.82);
-      ctx.quadraticCurveTo(w * 0.32, h * 0.35, w * 0.65, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Middle hill shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.32, h * 0.35);
-      ctx.quadraticCurveTo(w * 0.44, h * 0.58, w * 0.65, h * 0.82);
-      ctx.strokeStyle = 'rgba(50, 40, 35, 0.22)';
-      ctx.lineWidth = h * 0.08;
-      ctx.stroke();
-
-      // Foreground diagonal rolling mound
-      ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.85);
-      ctx.quadraticCurveTo(w * 0.62, h * 0.48, w * 0.95, h * 0.85);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Foreground shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.62, h * 0.48);
-      ctx.quadraticCurveTo(w * 0.74, h * 0.68, w * 0.95, h * 0.85);
-      ctx.strokeStyle = 'rgba(50, 40, 35, 0.25)';
-      ctx.lineWidth = h * 0.07;
-      ctx.stroke();
-
-      // Inking crests
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.035);
-      ctx.lineCap = 'round';
-
-      // Rear crest
-      ctx.beginPath();
-      ctx.moveTo(w * 0.50, h * 0.50);
-      ctx.quadraticCurveTo(w * 0.68, h * 0.28, w * 0.95, h * 0.75);
-      ctx.stroke();
-
-      // Middle crest
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.82);
-      ctx.quadraticCurveTo(w * 0.32, h * 0.35, w * 0.65, h * 0.82);
-      ctx.stroke();
-
-      // Foreground crest
-      ctx.beginPath();
-      ctx.moveTo(w * 0.35, h * 0.72);
-      ctx.quadraticCurveTo(w * 0.62, h * 0.48, w * 0.95, h * 0.85);
-      ctx.stroke();
-
-      ctx.restore();
+      groundShadow(ctx, w * 0.5, h * 0.86, w * 0.46, h * 0.05);
+      // back to front: [left, right, base, apex x, apex y]
+      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.22)', [0.42, 0.95, 0.75, 0.68, 0.40]);
+      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.22)', [0.05, 0.65, 0.82, 0.32, 0.45]);
+      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.25)', [0.28, 0.95, 0.86, 0.62, 0.55]);
     }
   },
 
@@ -1010,70 +990,11 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.1,
     aspect: 1.3,
     render: (ctx, size, color = '#78350f', fill = '#fde68a') => {
-      ctx.save();
       const w = size * 1.3;
       const h = size;
-
-      // Rear crescent barchan dune
-      ctx.beginPath();
-      ctx.moveTo(w * 0.10, h * 0.68);
-      ctx.quadraticCurveTo(w * 0.48, h * 0.28, w * 0.86, h * 0.68);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Rear leeward shadow face
-      ctx.beginPath();
-      ctx.moveTo(w * 0.48, h * 0.28);
-      ctx.quadraticCurveTo(w * 0.65, h * 0.48, w * 0.86, h * 0.68);
-      ctx.lineTo(w * 0.50, h * 0.68);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(180, 83, 9, 0.28)';
-      ctx.fill();
-
-      // Foreground crescent barchan dune
-      ctx.beginPath();
-      ctx.moveTo(w * 0.25, h * 0.82);
-      ctx.quadraticCurveTo(w * 0.64, h * 0.42, w * 0.96, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Foreground leeward shadow face
-      ctx.beginPath();
-      ctx.moveTo(w * 0.64, h * 0.42);
-      ctx.quadraticCurveTo(w * 0.80, h * 0.62, w * 0.96, h * 0.82);
-      ctx.lineTo(w * 0.66, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(180, 83, 9, 0.32)';
-      ctx.fill();
-
-      // Windward slope ripple texture
-      ctx.strokeStyle = 'rgba(120, 53, 15, 0.25)';
-      ctx.lineWidth = lw(h, 0.016);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.55); ctx.quadraticCurveTo(w * 0.32, h * 0.46, w * 0.42, h * 0.45);
-      ctx.moveTo(w * 0.38, h * 0.70); ctx.quadraticCurveTo(w * 0.48, h * 0.60, w * 0.58, h * 0.58);
-      ctx.stroke();
-
-      // Inking razor crest lines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.035);
-      ctx.lineCap = 'round';
-
-      // Rear dune crest
-      ctx.beginPath();
-      ctx.moveTo(w * 0.10, h * 0.68);
-      ctx.quadraticCurveTo(w * 0.48, h * 0.28, w * 0.86, h * 0.68);
-      ctx.stroke();
-
-      // Foreground dune crest
-      ctx.beginPath();
-      ctx.moveTo(w * 0.25, h * 0.82);
-      ctx.quadraticCurveTo(w * 0.64, h * 0.42, w * 0.96, h * 0.82);
-      ctx.stroke();
-
-      ctx.restore();
+      groundShadow(ctx, w * 0.52, h * 0.84, w * 0.44, h * 0.05);
+      moundLayer(ctx, w, h, color, fill, 'rgba(180, 83, 9, 0.28)', [0.10, 0.86, 0.70, 0.48, 0.42], true);
+      moundLayer(ctx, w, h, color, fill, 'rgba(180, 83, 9, 0.32)', [0.25, 0.96, 0.84, 0.64, 0.54], true);
     }
   },
 
@@ -1116,26 +1037,26 @@ export const STAMPS_VIEWS_LAND = [
       ctx.stroke();
 
       // Log body
-      ctx.beginPath();
-      ctx.moveTo(x0, top);
-      ctx.lineTo(x1 - s * 0.04, top + s * 0.02);
+      const body = new Path2D();
+      body.moveTo(x0, top);
+      body.lineTo(x1 - s * 0.04, top + s * 0.02);
       // Splintered right broken end
-      ctx.lineTo(x1, top + hgt * 0.4);
-      ctx.lineTo(x1 - s * 0.03, top + hgt * 0.7);
-      ctx.lineTo(x1 + s * 0.01, top + hgt);
-      ctx.lineTo(x0, top + hgt);
-      ctx.closePath();
+      body.lineTo(x1, top + hgt * 0.4);
+      body.lineTo(x1 - s * 0.03, top + hgt * 0.7);
+      body.lineTo(x1 + s * 0.01, top + hgt);
+      body.lineTo(x0, top + hgt);
+      body.closePath();
 
       const g = ctx.createLinearGradient(0, top, 0, top + hgt);
       g.addColorStop(0, sh(fill, 0.28));
       g.addColorStop(0.5, fill);
       g.addColorStop(1, sh(fill, -0.5));
       ctx.fillStyle = g;
-      ctx.fill();
+      ctx.fill(body);
 
       // Bark longitudinal grooves
       ctx.save();
-      ctx.clip();
+      ctx.clip(body);
       ctx.strokeStyle = sh(fill, -0.55);
       ctx.lineWidth = lw(s, 0.018);
       const rnd = seeded(107);
@@ -1161,7 +1082,7 @@ export const STAMPS_VIEWS_LAND = [
       // Inked body outline
       ctx.strokeStyle = color;
       ctx.lineWidth = lw(s, 0.038);
-      ctx.stroke();
+      ctx.stroke(body);
 
       // Flat severed left end face
       ctx.beginPath();
@@ -1221,28 +1142,28 @@ export const STAMPS_VIEWS_LAND = [
       ctx.stroke();
 
       // Main horizontal cylinder
-      ctx.beginPath();
-      ctx.moveTo(x0, cy - r);
-      ctx.lineTo(x1 - s * 0.03, cy - r * 0.9);
+      const body = new Path2D();
+      body.moveTo(x0, cy - r);
+      body.lineTo(x1 - s * 0.03, cy - r * 0.9);
       // Splintered jagged right end
-      ctx.lineTo(x1, cy - r * 0.3);
-      ctx.lineTo(x1 - s * 0.02, cy + r * 0.2);
-      ctx.lineTo(x1 + s * 0.01, cy + r * 0.8);
-      ctx.lineTo(x1 - s * 0.04, cy + r);
-      ctx.lineTo(x0, cy + r);
-      ctx.quadraticCurveTo(x0 - s * 0.04, cy, x0, cy - r);
-      ctx.closePath();
+      body.lineTo(x1, cy - r * 0.3);
+      body.lineTo(x1 - s * 0.02, cy + r * 0.2);
+      body.lineTo(x1 + s * 0.01, cy + r * 0.8);
+      body.lineTo(x1 - s * 0.04, cy + r);
+      body.lineTo(x0, cy + r);
+      body.quadraticCurveTo(x0 - s * 0.04, cy, x0, cy - r);
+      body.closePath();
 
       const g = ctx.createLinearGradient(0, cy - r, 0, cy + r);
       g.addColorStop(0, sh(fill, 0.25));
       g.addColorStop(0.45, fill);
       g.addColorStop(1, sh(fill, -0.45));
       ctx.fillStyle = g;
-      ctx.fill();
+      ctx.fill(body);
 
       // Longitudinal bark grooves
       ctx.save();
-      ctx.clip();
+      ctx.clip(body);
       ctx.strokeStyle = sh(fill, -0.55);
       ctx.lineWidth = lw(s, 0.018);
       const rnd = seeded(203);
@@ -1269,7 +1190,7 @@ export const STAMPS_VIEWS_LAND = [
       // Inked outline
       ctx.strokeStyle = color;
       ctx.lineWidth = lw(s, 0.038);
-      ctx.stroke();
+      ctx.stroke(body);
 
       // Left rounded cut cap curve
       ctx.beginPath();
@@ -1305,22 +1226,22 @@ export const STAMPS_VIEWS_LAND = [
       groundShadow(ctx, cx, s * 0.86, s * 0.40, s * 0.09, 0.26);
 
       // Body with prominent buttress roots spreading into turf
-      ctx.beginPath();
-      ctx.moveTo(cx - rx, topY);
-      ctx.lineTo(cx - rx * 0.95, s * 0.60);
-      ctx.quadraticCurveTo(cx - rx * 1.25, s * 0.72, cx - rx * 1.85, s * 0.85);
-      ctx.quadraticCurveTo(cx - rx * 0.7, s * 0.83, cx - rx * 0.2, s * 0.87);
-      ctx.quadraticCurveTo(cx + rx * 0.7, s * 0.87, cx + rx * 1.85, s * 0.85);
-      ctx.quadraticCurveTo(cx + rx * 1.25, s * 0.72, cx + rx * 0.95, s * 0.60);
-      ctx.lineTo(cx + rx, topY);
-      ctx.closePath();
+      const body = new Path2D();
+      body.moveTo(cx - rx, topY);
+      body.lineTo(cx - rx * 0.95, s * 0.60);
+      body.quadraticCurveTo(cx - rx * 1.25, s * 0.72, cx - rx * 1.85, s * 0.85);
+      body.quadraticCurveTo(cx - rx * 0.7, s * 0.83, cx - rx * 0.2, s * 0.87);
+      body.quadraticCurveTo(cx + rx * 0.7, s * 0.87, cx + rx * 1.85, s * 0.85);
+      body.quadraticCurveTo(cx + rx * 1.25, s * 0.72, cx + rx * 0.95, s * 0.60);
+      body.lineTo(cx + rx, topY);
+      body.closePath();
 
       const g = ctx.createLinearGradient(cx - rx * 1.5, 0, cx + rx * 1.5, 0);
       g.addColorStop(0, sh(fill, 0.25));
       g.addColorStop(0.45, fill);
       g.addColorStop(1, sh(fill, -0.55));
       ctx.fillStyle = g;
-      ctx.fill();
+      ctx.fill(body);
 
       // Vertical bark grooves down trunk into roots
       ctx.strokeStyle = sh(fill, -0.55);
@@ -1342,7 +1263,7 @@ export const STAMPS_VIEWS_LAND = [
       ctx.strokeStyle = color;
       ctx.lineWidth = lw(s, 0.04);
       ctx.lineJoin = 'round';
-      ctx.stroke();
+      ctx.stroke(body);
 
       // Flat severed top cut edge
       ctx.beginPath();
