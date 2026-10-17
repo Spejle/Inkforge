@@ -2,6 +2,7 @@
 // Renders vector-sharp cartography and battlemap assets with consistent aspect ratios and lighting
 
 import { EXTRA_STAMPS } from './stamps/index.js';
+import { TREE } from './stamps/treesA.js';
 import { inkPoly, inkShadow, inkStroke, inkHatch, inkPeak, inkVolcano, inkMound, inkRock, inkSlab } from './stamps/inkHelpers.js';
 
 // Letterbox a settlement-house stamp (cas_*) into another stamp's box.
@@ -300,51 +301,7 @@ export const STAMPS = [
     group: 'tree_conifer', groupName: 'Conifers',
     defaultScale: 0.9,
     aspect: 0.8,
-    render: (ctx, size, color = '#2c221e', fill = '#4a6741') => {
-      ctx.save();
-      const s = size;
-      const trunkColor = '#5c4033';
-
-      // Trunk
-      ctx.fillStyle = trunkColor;
-      ctx.fillRect(s * 0.36, s * 0.65, s * 0.08, s * 0.25);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.03;
-      ctx.strokeRect(s * 0.36, s * 0.65, s * 0.08, s * 0.25);
-
-      // Layered pine boughs
-      const boughs = [
-        { top: 0.15, bot: 0.38, w: 0.45 },
-        { top: 0.3, bot: 0.52, w: 0.6 },
-        { top: 0.44, bot: 0.7, w: 0.75 }
-      ];
-
-      for (const b of boughs) {
-        ctx.beginPath();
-        ctx.moveTo(s * 0.4, s * b.top);
-        ctx.lineTo(s * (0.4 - b.w / 2), s * b.bot);
-        ctx.lineTo(s * 0.4, s * (b.bot - 0.06));
-        ctx.lineTo(s * (0.4 + b.w / 2), s * b.bot);
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        // Shaded right half
-        ctx.beginPath();
-        ctx.moveTo(s * 0.4, s * b.top);
-        ctx.lineTo(s * 0.4, s * (b.bot - 0.06));
-        ctx.lineTo(s * (0.4 + b.w / 2), s * b.bot);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(20, 40, 20, 0.3)';
-        ctx.fill();
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = s * 0.03;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#2c221e', fill = '#4a7a4a', seed) => TREE.fit(ctx, size, 0.8, () => TREE.conifer(ctx, size, color, fill, { seed: 201, tiers: 4, hw: 0.28, top: 0.04, bot: 0.76, teeth: 3 }, seed)),
   },
   {
     id: 'tree_oak',
@@ -354,57 +311,7 @@ export const STAMPS = [
     group: 'tree_broadleaf', groupName: 'Broadleaf Trees',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
-      ctx.save();
-      const s = size;
-
-      // Trunk with roots
-      ctx.fillStyle = '#654321';
-      ctx.beginPath();
-      ctx.moveTo(s * 0.42, s * 0.55);
-      ctx.lineTo(s * 0.4, s * 0.88);
-      ctx.lineTo(s * 0.32, s * 0.95);
-      ctx.lineTo(s * 0.68, s * 0.95);
-      ctx.lineTo(s * 0.6, s * 0.88);
-      ctx.lineTo(s * 0.58, s * 0.55);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.03;
-      ctx.stroke();
-
-      // Canopy foliage clouds
-      const foliageBlobs = [
-        { x: 0.5, y: 0.35, r: 0.28 },
-        { x: 0.32, y: 0.45, r: 0.2 },
-        { x: 0.68, y: 0.45, r: 0.2 },
-        { x: 0.45, y: 0.22, r: 0.18 }
-      ];
-
-      for (const f of foliageBlobs) {
-        ctx.beginPath();
-        ctx.arc(s * f.x, s * f.y, s * f.r, 0, Math.PI * 2);
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        // Shading bottom-right
-        ctx.save();
-        ctx.clip();
-        ctx.beginPath();
-        ctx.arc(s * (f.x + 0.08), s * (f.y + 0.08), s * f.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(25, 45, 20, 0.35)';
-        ctx.fill();
-        ctx.restore();
-
-        ctx.beginPath();
-        ctx.arc(s * f.x, s * f.y, s * f.r, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = s * 0.03;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#2c221e', fill = '#557a46', seed) => TREE.broadleaf(ctx, size, color, fill, 'oak', 202, seed),
   },
   {
     id: 'tree_autumn',
@@ -414,36 +321,7 @@ export const STAMPS = [
     group: 'tree_broadleaf', groupName: 'Broadleaf Trees',
     defaultScale: 1.0,
     aspect: 1,
-    render: (ctx, size, color = '#3f2212', fill = '#d97706') => {
-      ctx.save();
-      const s = size;
-
-      // Trunk
-      ctx.fillStyle = '#5c3d2e';
-      ctx.fillRect(s * 0.44, s * 0.55, s * 0.12, s * 0.38);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.03;
-      ctx.strokeRect(s * 0.44, s * 0.55, s * 0.12, s * 0.38);
-
-      // Amber and red canopy lobes
-      const lobes = [
-        { x: 0.5, y: 0.32, r: 0.26, col: '#ea580c' },
-        { x: 0.34, y: 0.42, r: 0.19, col: '#d97706' },
-        { x: 0.66, y: 0.42, r: 0.19, col: '#b91c1c' }
-      ];
-
-      for (const l of lobes) {
-        ctx.beginPath();
-        ctx.arc(s * l.x, s * l.y, s * l.r, 0, Math.PI * 2);
-        ctx.fillStyle = l.col;
-        ctx.fill();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = s * 0.03;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#3f2212', fill = '#d97706', seed) => TREE.autumn(ctx, size, color, 203, seed, [fill, '#c8402a', '#e0a030']),
   },
   {
     id: 'tree_dead',
@@ -453,31 +331,7 @@ export const STAMPS = [
     group: 'tree_dead_grp', groupName: 'Dead & Gnarled',
     defaultScale: 0.9,
     aspect: 0.9,
-    render: (ctx, size, color = '#1c1917', fill = '#44403c') => {
-      ctx.save();
-      const s = size;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = s * 0.045;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Twisted trunk and bare branches
-      ctx.beginPath();
-      ctx.moveTo(s * 0.45, s * 0.92);
-      ctx.quadraticCurveTo(s * 0.42, s * 0.6, s * 0.48, s * 0.4);
-      // Main fork left
-      ctx.lineTo(s * 0.25, s * 0.22);
-      ctx.moveTo(s * 0.32, s * 0.28);
-      ctx.lineTo(s * 0.2, s * 0.38);
-      // Main fork right
-      ctx.moveTo(s * 0.48, s * 0.4);
-      ctx.lineTo(s * 0.72, s * 0.2);
-      ctx.moveTo(s * 0.62, s * 0.27);
-      ctx.lineTo(s * 0.78, s * 0.36);
-      ctx.stroke();
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#1c1917', fill, seed) => TREE.fit(ctx, size, 0.9, () => TREE.bare(ctx, size, color, 204, seed, { gnarl: true, depth: 3 })),
   },
   {
     id: 'tree_forest_cluster',
@@ -487,44 +341,10 @@ export const STAMPS = [
     group: 'tree_grove', groupName: 'Groves & Clumps',
     defaultScale: 1.2,
     aspect: 1.4,
-    render: (ctx, size, color = '#2c221e', fill = '#557a46') => {
-      ctx.save();
-      const w = size * 1.4;
-      const h = size;
-
-      // Cluster of 6 overlapping tree canopy mounds
-      const trees = [
-        { x: 0.25, y: 0.65, r: 0.22, f: '#486b3a' },
-        { x: 0.75, y: 0.65, r: 0.22, f: '#486b3a' },
-        { x: 0.35, y: 0.42, r: 0.25, f: fill },
-        { x: 0.65, y: 0.42, r: 0.25, f: fill },
-        { x: 0.5, y: 0.3, r: 0.28, f: '#5c864b' }
-      ];
-
-      for (const t of trees) {
-        ctx.beginPath();
-        ctx.arc(w * t.x, h * t.y, h * t.r, 0, Math.PI * 2);
-        ctx.fillStyle = t.f;
-        ctx.fill();
-
-        // Shadow bottom-right
-        ctx.save();
-        ctx.clip();
-        ctx.beginPath();
-        ctx.arc(w * (t.x + 0.05), h * (t.y + 0.05), h * t.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(20, 40, 15, 0.35)';
-        ctx.fill();
-        ctx.restore();
-
-        ctx.beginPath();
-        ctx.arc(w * t.x, h * t.y, h * t.r, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = h * 0.035;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#2c221e', fill = '#557a46', seed) => TREE.grove(ctx, size, [
+      [0.2, 0.8, 0.62, (c, s, sd) => TREE.broadleaf(c, s, color, fill, 'oak', 211, sd)], [0.8, 0.8, 0.62, (c, s, sd) => TREE.broadleaf(c, s, color, fill, 'round', 212, sd)],
+      [0.42, 0.86, 0.68, (c, s, sd) => TREE.broadleaf(c, s, color, fill, 'round', 213, sd)], [0.62, 0.9, 0.7, (c, s, sd) => TREE.broadleaf(c, s, color, fill, 'oak', 214, sd)],
+      [0.28, 0.95, 0.6, (c, s, sd) => TREE.broadleaf(c, s, color, fill, 'oak', 215, sd)]], [0.5, 0.9, 0.42, 0.07], seed, 1.4),
   },
 
   // =========================================================================
@@ -1406,101 +1226,7 @@ export const STAMPS = [
     group: 'tree_dead_grp', groupName: 'Dead & Gnarled',
     defaultScale: 1.0,
     aspect: 0.9,
-    render: (ctx, size, color = '#1c1917', fill = '#57534e') => {
-      ctx.save();
-      const w = size * 0.9;
-      const h = size;
-
-      // Base roots spreading on ground
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.9);
-      ctx.quadraticCurveTo(w * 0.35, h * 0.82, w * 0.42, h * 0.75);
-      ctx.lineTo(w * 0.38, h * 0.52);
-      // Left major limb
-      ctx.lineTo(w * 0.18, h * 0.38);
-      ctx.lineTo(w * 0.12, h * 0.22);
-      ctx.lineTo(w * 0.18, h * 0.24);
-      ctx.lineTo(w * 0.26, h * 0.36);
-      ctx.lineTo(w * 0.35, h * 0.2);
-      ctx.lineTo(w * 0.39, h * 0.22);
-      ctx.lineTo(w * 0.34, h * 0.42);
-      // Trunk center fork
-      ctx.lineTo(w * 0.46, h * 0.32);
-      ctx.lineTo(w * 0.48, h * 0.14);
-      ctx.lineTo(w * 0.52, h * 0.15);
-      ctx.lineTo(w * 0.51, h * 0.32);
-      // Right major limb
-      ctx.lineTo(w * 0.62, h * 0.25);
-      ctx.lineTo(w * 0.78, h * 0.18);
-      ctx.lineTo(w * 0.86, h * 0.22);
-      ctx.lineTo(w * 0.76, h * 0.27);
-      ctx.lineTo(w * 0.84, h * 0.38);
-      ctx.lineTo(w * 0.78, h * 0.4);
-      ctx.lineTo(w * 0.68, h * 0.36);
-      ctx.lineTo(w * 0.58, h * 0.52);
-      ctx.lineTo(w * 0.56, h * 0.75);
-      // Right roots
-      ctx.quadraticCurveTo(w * 0.64, h * 0.82, w * 0.78, h * 0.9);
-      ctx.lineTo(w * 0.62, h * 0.88);
-      ctx.lineTo(w * 0.5, h * 0.84);
-      ctx.lineTo(w * 0.36, h * 0.88);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Shading on trunk right side
-      ctx.fillStyle = 'rgba(20, 15, 10, 0.3)';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.52);
-      ctx.lineTo(w * 0.58, h * 0.52);
-      ctx.lineTo(w * 0.56, h * 0.75);
-      ctx.quadraticCurveTo(w * 0.64, h * 0.82, w * 0.78, h * 0.9);
-      ctx.lineTo(w * 0.62, h * 0.88);
-      ctx.lineTo(w * 0.5, h * 0.84);
-      ctx.closePath();
-      ctx.fill();
-
-      // Inked outline & bark contour lines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.9);
-      ctx.quadraticCurveTo(w * 0.35, h * 0.82, w * 0.42, h * 0.75);
-      ctx.lineTo(w * 0.38, h * 0.52);
-      ctx.lineTo(w * 0.18, h * 0.38);
-      ctx.lineTo(w * 0.12, h * 0.22);
-      ctx.moveTo(w * 0.18, h * 0.24);
-      ctx.lineTo(w * 0.26, h * 0.36);
-      ctx.moveTo(w * 0.24, h * 0.33);
-      ctx.lineTo(w * 0.35, h * 0.2);
-      ctx.moveTo(w * 0.34, h * 0.42);
-      ctx.lineTo(w * 0.46, h * 0.32);
-      ctx.lineTo(w * 0.48, h * 0.14);
-      ctx.moveTo(w * 0.51, h * 0.32);
-      ctx.lineTo(w * 0.62, h * 0.25);
-      ctx.lineTo(w * 0.78, h * 0.18);
-      ctx.lineTo(w * 0.86, h * 0.22);
-      ctx.moveTo(w * 0.74, h * 0.23);
-      ctx.lineTo(w * 0.84, h * 0.38);
-      ctx.moveTo(w * 0.68, h * 0.36);
-      ctx.lineTo(w * 0.58, h * 0.52);
-      ctx.lineTo(w * 0.56, h * 0.75);
-      ctx.quadraticCurveTo(w * 0.64, h * 0.82, w * 0.78, h * 0.9);
-      ctx.stroke();
-
-      // Trunk wood grain fissures
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(w * 0.46, h * 0.78);
-      ctx.lineTo(w * 0.45, h * 0.56);
-      ctx.moveTo(w * 0.5, h * 0.74);
-      ctx.lineTo(w * 0.51, h * 0.6);
-      ctx.stroke();
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#1c1917', fill, seed) => TREE.fit(ctx, size, 0.9, () => TREE.bare(ctx, size, color, 225, seed, { depth: 3, barren: true })),
   },
   {
     id: 'tree_palm',
@@ -1510,92 +1236,7 @@ export const STAMPS = [
     group: 'tree_tropical', groupName: 'Palms',
     defaultScale: 1.0,
     aspect: 1.0,
-    render: (ctx, size, color = '#2c221e', fill = '#15803d') => {
-      ctx.save();
-      const s = size;
-
-      // Curved slender trunk leaning right
-      ctx.beginPath();
-      ctx.moveTo(s * 0.38, s * 0.92);
-      ctx.quadraticCurveTo(s * 0.44, s * 0.65, s * 0.6, s * 0.34);
-      ctx.lineTo(s * 0.67, s * 0.34);
-      ctx.quadraticCurveTo(s * 0.53, s * 0.65, s * 0.48, s * 0.92);
-      ctx.closePath();
-      ctx.fillStyle = '#78350f';
-      ctx.fill();
-
-      // Trunk segments
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.0;
-      const segCount = 6;
-      for (let i = 1; i <= segCount; i++) {
-        const t = i / (segCount + 1);
-        const tx1 = 0.38 * (1 - t) + 0.6 * t;
-        const ty1 = 0.92 * (1 - t) + 0.34 * t;
-        const tx2 = 0.48 * (1 - t) + 0.67 * t;
-        const ty2 = 0.92 * (1 - t) + 0.34 * t;
-        ctx.beginPath();
-        ctx.moveTo(s * tx1, s * ty1);
-        ctx.lineTo(s * tx2, s * ty2);
-        ctx.stroke();
-      }
-
-      // Trunk outline
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(s * 0.38, s * 0.92);
-      ctx.quadraticCurveTo(s * 0.44, s * 0.65, s * 0.6, s * 0.34);
-      ctx.moveTo(s * 0.67, s * 0.34);
-      ctx.quadraticCurveTo(s * 0.53, s * 0.65, s * 0.48, s * 0.92);
-      ctx.stroke();
-
-      // Palm fronds fanning from apex
-      const cx = s * 0.64;
-      const cy = s * 0.34;
-      const fronds = [
-        { endX: s * 0.18, endY: s * 0.42, cpX: s * 0.32, cpY: s * 0.16 },
-        { endX: s * 0.32, endY: s * 0.16, cpX: s * 0.48, cpY: s * 0.1 },
-        { endX: s * 0.65, endY: s * 0.08, cpX: s * 0.64, cpY: s * 0.12 },
-        { endX: s * 0.92, endY: s * 0.22, cpX: s * 0.82, cpY: s * 0.12 },
-        { endX: s * 0.94, endY: s * 0.45, cpX: s * 0.86, cpY: s * 0.32 },
-        { endX: s * 0.48, endY: s * 0.44, cpX: s * 0.54, cpY: s * 0.36 }
-      ];
-
-      for (const f of fronds) {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.quadraticCurveTo(f.cpX, f.cpY, f.endX, f.endY);
-        ctx.quadraticCurveTo(f.cpX + (f.endY - cy) * 0.2, f.cpY + (cx - f.endX) * 0.15, cx, cy);
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.quadraticCurveTo(f.cpX, f.cpY, f.endX, f.endY);
-        ctx.stroke();
-      }
-
-      // Coconuts cluster
-      ctx.fillStyle = '#451a03';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.0;
-      const coconuts = [
-        { x: cx - s * 0.03, y: cy + s * 0.02 },
-        { x: cx + s * 0.03, y: cy + s * 0.02 },
-        { x: cx, y: cy + s * 0.05 }
-      ];
-      for (const c of coconuts) {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, s * 0.035, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#2c221e', fill = '#4f9e48', seed) => TREE.palm(ctx, size, color, fill, 229, seed, 0.1),
   },
   {
     id: 'cactus_saguaro',
@@ -1910,73 +1551,7 @@ export const STAMPS = [
     group: 'tree_conifer', groupName: 'Conifers',
     defaultScale: 1.0,
     aspect: 0.9,
-    render: (ctx, size, color = '#1c1917', fill = '#14532d') => {
-      ctx.save();
-      const w = size * 0.9;
-      const h = size;
-
-      // Wooden trunk
-      ctx.fillStyle = '#451a03';
-      ctx.fillRect(w * 0.44, h * 0.78, w * 0.12, h * 0.14);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(w * 0.44, h * 0.78, w * 0.12, h * 0.14);
-
-      // 3 Pine tiers
-      const tiers = [
-        { topY: 0.52, botY: 0.8, leftX: 0.15, rightX: 0.85 },
-        { topY: 0.32, botY: 0.6, leftX: 0.24, rightX: 0.76 },
-        { topY: 0.14, botY: 0.4, leftX: 0.32, rightX: 0.68 }
-      ];
-
-      for (const t of tiers) {
-        ctx.beginPath();
-        ctx.moveTo(w * 0.5, h * t.topY);
-        ctx.lineTo(w * t.rightX, h * t.botY);
-        ctx.lineTo(w * 0.5, h * (t.botY - 0.05));
-        ctx.lineTo(w * t.leftX, h * t.botY);
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(5, 30, 15, 0.3)';
-        ctx.beginPath();
-        ctx.moveTo(w * 0.5, h * t.topY);
-        ctx.lineTo(w * t.rightX, h * t.botY);
-        ctx.lineTo(w * 0.5, h * (t.botY - 0.05));
-        ctx.closePath();
-        ctx.fill();
-
-        // Snow cap
-        ctx.fillStyle = '#f8fafc';
-        ctx.beginPath();
-        ctx.moveTo(w * 0.5, h * t.topY);
-        ctx.lineTo(w * (t.rightX - 0.04), h * (t.topY + (t.botY - t.topY) * 0.45));
-        ctx.quadraticCurveTo(w * 0.65, h * (t.topY + 0.1), w * 0.5, h * (t.topY + 0.08));
-        ctx.quadraticCurveTo(w * 0.35, h * (t.topY + 0.1), w * (t.leftX + 0.04), h * (t.topY + (t.botY - t.topY) * 0.45));
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.5, h * t.topY);
-        ctx.lineTo(w * t.rightX, h * t.botY);
-        ctx.lineTo(w * 0.5, h * (t.botY - 0.05));
-        ctx.lineTo(w * t.leftX, h * t.botY);
-        ctx.closePath();
-        ctx.stroke();
-
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(w * (t.leftX + 0.04), h * (t.topY + (t.botY - t.topY) * 0.45));
-        ctx.quadraticCurveTo(w * 0.35, h * (t.topY + 0.1), w * 0.5, h * (t.topY + 0.08));
-        ctx.quadraticCurveTo(w * 0.65, h * (t.topY + 0.1), w * (t.rightX - 0.04), h * (t.topY + (t.botY - t.topY) * 0.45));
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    render: (ctx, size, color = '#1c1917', fill = '#2f6a48', seed) => TREE.fit(ctx, size, 0.9, () => TREE.conifer(ctx, size, color, fill, { seed: 231, tiers: 4, hw: 0.3, top: 0.05, bot: 0.8, teeth: 3, snow: true }, seed)),
   },
   // =========================================================================
   // ADDITIONAL WORLD CIVILIZATION STAMPS
