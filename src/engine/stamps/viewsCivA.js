@@ -1,3 +1,4 @@
+import { fitBox } from './settlementsA.js';
 // Additional viewing directions for civilization stamps (CivA workstream).
 // Light comes from the upper left; soft ground shadow falls to the lower right.
 // Deterministic: no Math.random. Crisp dark outline, balanced ctx.save()/ctx.restore().
@@ -71,6 +72,9 @@ function crenellations(ctx, x, y, w, h, count, fillCol, outlineCol, lw) {
     ctx.strokeRect(cx, y, cw, h);
   }
 }
+
+// measured ink bounds of the stamps that overflow their box (see fitBox)
+const FIT_VA = { windmill_front: [0.077, 0.823, -0.092, 0.98], tower_wizard_side: [0.055, 0.642, -0.052, 0.98], civ_lighthouse_side: [-0.003, 0.938, 0.005, 1] };
 
 export const STAMPS_VIEWS_CIVA = [
   // 1. castle_citadel (Side)
@@ -1304,4 +1308,4 @@ export const STAMPS_VIEWS_CIVA = [
       ctx.restore();
     }
   }
-];
+].map((st) => fitBox(st, FIT_VA[st.id]));
