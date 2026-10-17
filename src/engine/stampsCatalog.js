@@ -1357,24 +1357,24 @@ export const STAMPS = [
 
       // Shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.fillRect(w * 0.14, h * 0.28, w * 0.75, h * 0.55);
+      ctx.fillRect(w * 0.165, h * 0.28, w * 0.75, h * 0.55);
 
       // Wood table planks
       ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.1, h * 0.22, w * 0.75, h * 0.55);
+      ctx.fillRect(w * 0.125, h * 0.22, w * 0.75, h * 0.55);
 
       // Plank grooves
       ctx.strokeStyle = color;
       ctx.lineWidth = h * 0.025;
       ctx.beginPath();
-      ctx.moveTo(w * 0.1, h * 0.4);
-      ctx.lineTo(w * 0.85, h * 0.4);
-      ctx.moveTo(w * 0.1, h * 0.58);
-      ctx.lineTo(w * 0.85, h * 0.58);
+      ctx.moveTo(w * 0.125, h * 0.4);
+      ctx.lineTo(w * 0.875, h * 0.4);
+      ctx.moveTo(w * 0.125, h * 0.58);
+      ctx.lineTo(w * 0.875, h * 0.58);
       ctx.stroke();
 
       ctx.lineWidth = h * 0.04;
-      ctx.strokeRect(w * 0.1, h * 0.22, w * 0.75, h * 0.55);
+      ctx.strokeRect(w * 0.125, h * 0.22, w * 0.75, h * 0.55);
 
       ctx.restore();
     }

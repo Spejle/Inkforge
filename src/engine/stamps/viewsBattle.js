@@ -377,7 +377,7 @@ export const STAMPS_VIEWS_BATTLE = [
       ctx.fillRect(w * 0.38, h * 0.48, w * 0.28, h * 0.05);
       ctx.fillRect(w * 0.38, h * 0.7, w * 0.28, h * 0.05);
 
-      poly(ctx, [[w * 0.4, h * 0.1], [w * 0.52, h * 0.09], [w * 0.5, h * 0.2], [w * 0.42, h * 0.21]], '#64748b', color, h * 0.025);
+      poly(ctx, [[w * 0.4, h * 0.17], [w * 0.51, h * 0.16], [w * 0.49, h * 0.28], [w * 0.42, h * 0.29]], '#64748b', color, h * 0.025);
 
       ctx.restore();
     }
