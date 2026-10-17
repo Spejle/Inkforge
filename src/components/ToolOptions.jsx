@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { LIGHT_PRESETS } from './LayersPanel';
 import { FontPicker, BiomePicker, BlendPicker, GridTypePicker, BrushPreview } from './PreviewPicker';
 import { usePluginVersion, pluginLightPresets } from '../plugins/registry';
+import { useFeature } from '../plugins/features';
 import {
+  PaintBucket,
   Trash2,
   Copy,
   ArrowUpToLine,
@@ -110,6 +112,7 @@ export default function ToolOptions({
   onSendToBack
 }) {
   usePluginVersion(); // plugin light presets
+  const fillOn = useFeature('maskFill'), riverGenOn = useFeature('riverGen'), lightingOn = useFeature('lighting'), weatherOn = useFeature('weather');
   const [isCoastlineOpen, setIsCoastlineOpen] = useState(false);
   const activeStampDef = getStampById(activeStampId);
 
@@ -314,6 +317,15 @@ export default function ToolOptions({
             >
               <Square size={13} /> Block
             </button>
+            {fillOn && (
+              <button
+                className={`btn-toggle ${maskShape === 'fill' ? 'active' : ''}`}
+                onClick={() => setMaskShape?.('fill')}
+                title="Bucket fill: click enclosed water to fill it with land (Carve Water: click land to flood it)"
+              >
+                <PaintBucket size={13} /> Fill
+              </button>
+            )}
           </div>
 
           {maskShape === 'rough' && (
@@ -600,7 +612,7 @@ export default function ToolOptions({
             </button>
           </div>
 
-          {pathType === 'river' && (
+          {pathType === 'river' && riverGenOn && (
             <button
               className={`btn-toggle ${riverGen ? 'active' : ''}`}
               title="Click on land: a river is generated from that spot to the nearest coast. Each click gives a different course."
@@ -761,7 +773,7 @@ export default function ToolOptions({
           {Object.entries({ ...LIGHT_PRESETS, ...pluginLightPresets() }).map(([name, preset]) => (
             <button key={name} className="chip" onClick={() => setAtmosphereConfig((prev) => ({ ...prev, ...preset }))}>{name}</button>
           ))}
-          <label className="option-label" title="Darkens the map; campfires and braziers cut light through it, walls cast shadows">
+          {lightingOn && <label className="option-label" title="Darkens the map; campfires and braziers cut light through it, walls cast shadows">
             Darkness: <span className="val-badge">{Math.round((atmosphereConfig.darkness || 0) * 100)}%</span>
             <input
               type="range"
@@ -771,8 +783,8 @@ export default function ToolOptions({
               value={atmosphereConfig.darkness || 0}
               onChange={(e) => setAtmosphereConfig((prev) => ({ ...prev, darkness: parseFloat(e.target.value) }))}
             />
-          </label>
-          {atmosphereConfig.weather && (
+          </label>}
+          {atmosphereConfig.weather && weatherOn && (
             <label className="option-label">
               {atmosphereConfig.weather === 'snow' ? 'Snow' : 'Rain'}: <span className="val-badge">{Math.round((atmosphereConfig.weatherAmount || 0) * 100)}%</span>
               <input

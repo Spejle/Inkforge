@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { visibilityPolygon, blockerOutline } from '../src/engine/renderer.js';
+import { visibilityPolygon, blockerOutline } from '../src/plugins/builtin/lighting/index.js';
 
 test('a wall stops the light, open sides stay lit', () => {
   const open = visibilityPolygon(0, 0, 100, []);

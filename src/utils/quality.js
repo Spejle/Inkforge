@@ -19,3 +19,6 @@ export function pickQuality(want, current, width, height) {
   if (next < current && target < current / 2) return Math.max(1, next);
   return Math.min(current, cap);
 }
+
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 8;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { coastDistance, flowRiver } from '../src/engine/riverGen.js';
+import { coastDistance, flowRiver } from '../src/plugins/builtin/riverGen/flow.js';
 
 test('a river from the middle of an island reaches the sea; water gives none', () => {
   const w = 80, h = 80, land = new Uint8Array(w * h);

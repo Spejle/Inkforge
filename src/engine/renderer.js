@@ -2,7 +2,10 @@
 import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
 import { safeImageSrc } from '../utils/importGuard.js';
-import { coastDistance, flowRiver } from './riverGen.js';
+import { withLighting, drawLighting } from '../plugins/builtin/lighting/index.js';
+import { drawWeather } from '../plugins/builtin/weather/index.js';
+import { isFeatureOn } from '../plugins/features.js';
+import { drawFillRuns } from '../plugins/builtin/maskFill/index.js';
 import { simplifyPath } from '../utils/pathSmooth.js';
 
 // Cache for static background & noise buffers
@@ -210,12 +213,12 @@ export function drawLiveStroke(c, s) {
 // unit, so masks and coastlines stay sharp. The scale is capped by area so a 16K export cannot allocate gigabytes; above
 // the cap the pass falls back to scaling up, as it always did.
 const MAX_LAYER_PX = 24e6;
-function layerScale(ctx, width, height) {
+export function layerScale(ctx, width, height) {
   const t = ctx.getTransform();
   const S = Math.hypot(t.a, t.b) || 1;
   return S <= 1 ? S : Math.min(S, Math.max(1, Math.sqrt(MAX_LAYER_PX / (width * height))));
 }
-function makeLayer(width, height, s) {
+export function makeLayer(width, height, s) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(width * s));
   c.height = Math.max(1, Math.round(height * s));
@@ -485,7 +488,9 @@ export function drawLandMask(mctx, landmasses, brushStrokes) {
     mctx.lineCap = 'round';
     mctx.lineJoin = 'round';
 
-    if (stroke.shape === 'rough') {
+    if (stroke.shape === 'fill') {
+      drawFillRuns(mctx, stroke);
+    } else if (stroke.shape === 'rough') {
       // Fractal jagged coastline brush (Inkarnate Edgy/Rough brush style)
       const r = (stroke.size || 40) / 2;
       const roughness = stroke.roughness || 0.6;
@@ -560,7 +565,8 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
   // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
   // The rings below follow the land shapes as they were drawn, so once water has been carved out of land they would
   // keep haloing land that is gone. With carving present the halo is measured from the finished mask instead.
-  const carved = (brushStrokes || []).some((st) => st.type === 'mask' && st.mode === 'water' && st.points && st.points.length > 0);
+  // fills (plugins/builtin/maskFill) have no brush outline to echo, so they also take the finished-mask halo
+  const carved = (brushStrokes || []).some((st) => st.type === 'mask' && (st.shape === 'fill' || (st.mode === 'water' && st.points && st.points.length > 0)));
   if (mapType === 'world' && cl.ripplesEnabled && carved) {
     const hasPolygons = landmasses.some((l) => l.points && l.points.length >= 3);
     drawMaskHalo(ctx, maskCanvas, width, height, cl, hasPolygons ? 1 : 0.7); // brush land halos are drawn 30% lighter
@@ -820,7 +826,7 @@ export function drawSmoothPolyline(ctx, points) {
 /** Render rivers, roads, and walls */
 // Rivers stop at the coast: they are drawn on their own canvas and cut to the land mask. Maps with no land at all
 // (dungeons, battle maps) have nothing to clip against, so their rivers are left whole.
-function hasLand(landmasses, brushStrokes) {
+export function hasLand(landmasses, brushStrokes) {
   return (landmasses || []).some((l) => l.points && l.points.length >= 3)
     || (brushStrokes || []).some((st) => st.type === 'mask' && st.mode !== 'water' && st.points && st.points.length);
 }
@@ -1227,259 +1233,6 @@ export function getNoiseCanvas() {
   return noiseCanvas;
 }
 
-/** Stamps that give light: campfires and braziers. Shared with the VTT export, so what you see is what Foundry gets. */
-export const isLightStamp = (s) => /campfire|brazier/.test(s.stampId || '');
-/** Light reach in map px: 6 grid squares at stamp scale 1. */
-export const lightRange = (s, grid) => 6 * (grid?.size || 60) * (s.scale || 1);
-
-// Stamps that stop light, by group: dungeon walls, pillars and doors, furniture, mountains and trees.
-const BLOCKER_GROUP = /^(dungeon_(walls|pillars|doors)|prop_(tables|chests|storage|altars|shelves)|geo_mountains|tree_)/;
-// What a light-blocking stamp really looks like from above: its drawn sprite, traced once at low resolution (the top and
-// bottom opaque pixel of every column, so a tree casts a tree-shaped shadow and a crate a crate-shaped one). Cached in
-// unit coordinates (0..1 across the sprite) so any scale, rotation or flip reuses it.
-const outlineCache = new Map();
-const BOX = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
-function spriteOutline(def, s, aspect) {
-  if (typeof document === 'undefined') return BOX;
-  const key = [s.stampId, s.color, s.fill, s.seed, aspect.toFixed(2)].join('|');
-  let o = outlineCache.get(key);
-  if (o) return o;
-  const H = 48, W = Math.max(8, Math.round(H * aspect));
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  def.render(g, H, s.color, s.fill, s.seed);
-  const px = g.getImageData(0, 0, W, H).data;
-  const top = [], bot = [];
-  for (let x = 0; x < W; x++) {
-    let t = -1, b = -1;
-    for (let y = 0; y < H; y++) if (px[(y * W + x) * 4 + 3] > 110) { if (t < 0) t = y; b = y; }
-    if (t >= 0) { top.push([(x + 0.5) / W, t / H]); bot.push([(x + 0.5) / W, (b + 1) / H]); }
-  }
-  if (top.length < 2) o = BOX;
-  else {
-    const ring = [...simplifyPath(bot, 0.02), ...simplifyPath(top, 0.02).reverse()];
-    ring.push(ring[0]);
-    o = ring.length >= 4 ? ring : BOX;
-  }
-  outlineCache.set(key, o);
-  if (outlineCache.size > 400) outlineCache.delete(outlineCache.keys().next().value);
-  return o;
-}
-
-/** The footprint of a light-blocking stamp as a closed polyline in map px: the traced shape of its sprite. */
-export function blockerOutline(s) {
-  const def = getStampById(s.stampId);
-  if (!def || !BLOCKER_GROUP.test(def.group || '')) return null;
-  const aspect = stampAspect(s);
-  const H = 80 * (s.scale || 1), W = H * aspect;
-  const cos = Math.cos(s.rotation || 0), sin = Math.sin(s.rotation || 0);
-  return spriteOutline(def, s, aspect).map(([a, b]) => {
-    // the same frame renderStamps draws in: flip, then sprite corner at the origin (or its base at the origin)
-    const u = (a - 0.5) * W * (s.flipX ? -1 : 1);
-    const v = (b * H - (s.anchor === 'base' ? H : H / 2)) * (s.flipY ? -1 : 1);
-    return [s.x + u * cos - v * sin, s.y + u * sin + v * cos];
-  });
-}
-
-// Darkness needs the lights and walls, which live outside the atmosphere settings. The result is memoised so the Pixi
-// view, which rebuilds its texture whenever the object changes, only does so when a light, a wall or a setting did.
-let lightMemo = { a: null, s: null, p: null, g: null, out: null };
-function withLighting(a, stamps, paths, grid) {
-  if (!(a.darkness > 0)) return a;
-  const m = lightMemo;
-  if (m.a === a && m.s === stamps && m.p === paths && m.g === grid) return m.out;
-  const out = {
-    ...a,
-    lights: stamps.filter(isLightStamp).map((s) => ({ x: s.x, y: s.y, r: lightRange(s, grid) })),
-    walls: paths.filter((p) => p.type === 'wall' && p.points && p.points.length > 1).map((p) => p.points),
-    blocks: stamps.filter((s) => !isLightStamp(s)).map(blockerOutline).filter(Boolean)
-  };
-  lightMemo = { a, s: stamps, p: paths, g: grid, out };
-  return out;
-}
-
-/** Visible region from (lx, ly) within r, as a polygon, given wall polylines: classic ray casting to every wall end. */
-export function visibilityPolygon(lx, ly, r, walls) {
-  const segs = [];
-  const box = [[lx - r, ly - r], [lx + r, ly - r], [lx + r, ly + r], [lx - r, ly + r], [lx - r, ly - r]];
-  const add = (pts) => {
-    for (let i = 1; i < pts.length; i++) {
-      const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
-      if (Math.max(ax, bx) < lx - r || Math.min(ax, bx) > lx + r || Math.max(ay, by) < ly - r || Math.min(ay, by) > ly + r) continue;
-      segs.push([ax, ay, bx, by]);
-    }
-  };
-  add(box);
-  walls.forEach(add);
-  const angles = [];
-  for (const [ax, ay, bx, by] of segs) {
-    for (const [px, py] of [[ax, ay], [bx, by]]) {
-      const a = Math.atan2(py - ly, px - lx);
-      angles.push(a - 0.0002, a, a + 0.0002);
-    }
-  }
-  angles.sort((x, y) => x - y);
-  const out = [];
-  for (const a of angles) {
-    const dx = Math.cos(a), dy = Math.sin(a);
-    let best = Infinity;
-    for (const [ax, ay, bx, by] of segs) {
-      const ex = bx - ax, ey = by - ay;
-      const den = dx * ey - dy * ex;
-      if (Math.abs(den) < 1e-9) continue;
-      const t = ((ax - lx) * ey - (ay - ly) * ex) / den; // distance along the ray
-      const u = ((ax - lx) * dy - (ay - ly) * dx) / den; // position along the wall
-      if (t > 0 && u >= 0 && u <= 1 && t < best) best = t;
-    }
-    if (best < Infinity) out.push([lx + dx * best, ly + dy * best]);
-  }
-  return out;
-}
-
-/** Night over the map with the lights cut through it; walls throw shadows. */
-export function drawLighting(ctx, width, height, op) {
-  const ls = layerScale(ctx, width, height);
-  const { c, g } = makeLayer(width, height, ls);
-  g.fillStyle = `rgba(8, 12, 34, ${op.darkness})`;
-  g.fillRect(0, 0, width, height);
-
-  const walls = op.walls || [];
-  const blocks = op.blocks || [];
-  const allOccluders = [...walls, ...blocks];
-  const lights = op.lights || [];
-
-  const directGlow = [];
-  const ambGlow = [];
-
-  for (const l of lights) {
-    // 1. Ambient bounce illumination within the light radius:
-    // Stopped by solid room walls (op.walls), but diffuse bounce fills around small objects (op.blocks).
-    // This ensures cast shadows are translucent and darker than lit ground, but never pitch black.
-    const wallPoly = walls.length > 0 ? visibilityPolygon(l.x, l.y, l.r, walls) : null;
-    g.save();
-    if (wallPoly && wallPoly.length >= 3) {
-      g.beginPath();
-      wallPoly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.closePath();
-      g.clip();
-    }
-    g.globalCompositeOperation = 'destination-out';
-    const ambCutGrad = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-    ambCutGrad.addColorStop(0, 'rgba(0, 0, 0, 0.44)');
-    ambCutGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.36)');
-    ambCutGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.22)');
-    ambCutGrad.addColorStop(0.88, 'rgba(0, 0, 0, 0.08)');
-    ambCutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    g.fillStyle = ambCutGrad;
-    g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
-    g.restore();
-
-    ambGlow.push({ l, wallPoly });
-
-    // 2. Direct light with soft penumbra widening with distance:
-    // Sample the light emitter across its diameter (flame area light)
-    const emitterR = Math.max(8, Math.min(22, l.r * 0.045));
-    // Center sample (weight 1.5) + inner ring of 3 (weight 1.0) + outer ring of 4 (weight 1.0)
-    const jitterSpecs = [
-      { dx: 0, dy: 0, w: 1.5 },
-      // Inner ring: radius 0.5 * emitterR
-      { dx: emitterR * 0.5 * Math.cos(0), dy: emitterR * 0.5 * Math.sin(0), w: 1.0 },
-      { dx: emitterR * 0.5 * Math.cos((2 * Math.PI) / 3), dy: emitterR * 0.5 * Math.sin((2 * Math.PI) / 3), w: 1.0 },
-      { dx: emitterR * 0.5 * Math.cos((4 * Math.PI) / 3), dy: emitterR * 0.5 * Math.sin((4 * Math.PI) / 3), w: 1.0 },
-      // Outer ring: radius 1.0 * emitterR (rotated by 45 degrees)
-      { dx: emitterR * Math.cos(Math.PI / 4), dy: emitterR * Math.sin(Math.PI / 4), w: 1.0 },
-      { dx: emitterR * Math.cos((3 * Math.PI) / 4), dy: emitterR * Math.sin((3 * Math.PI) / 4), w: 1.0 },
-      { dx: emitterR * Math.cos((5 * Math.PI) / 4), dy: emitterR * Math.sin((5 * Math.PI) / 4), w: 1.0 },
-      { dx: emitterR * Math.cos((7 * Math.PI) / 4), dy: emitterR * Math.sin((7 * Math.PI) / 4), w: 1.0 }
-    ];
-    const totalW = jitterSpecs.reduce((sum, s) => sum + s.w, 0);
-
-    // Unified concentric radial gradient centered at (l.x, l.y) for both cut and warm glow
-    const directCutGrad = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-    directCutGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-    directCutGrad.addColorStop(0.2, 'rgba(0, 0, 0, 0.92)');
-    directCutGrad.addColorStop(0.45, 'rgba(0, 0, 0, 0.65)');
-    directCutGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.32)');
-    directCutGrad.addColorStop(0.88, 'rgba(0, 0, 0, 0.10)');
-    directCutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    for (const spec of jitterSpecs) {
-      const jx = l.x + spec.dx;
-      const jy = l.y + spec.dy;
-      const poly = visibilityPolygon(jx, jy, l.r, allOccluders);
-      if (poly.length < 3) continue;
-
-      const normW = spec.w / totalW;
-
-      g.save();
-      g.beginPath();
-      poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.closePath();
-      g.clip();
-      g.globalCompositeOperation = 'destination-out';
-      g.globalAlpha = normW * 0.76;
-      g.fillStyle = directCutGrad;
-      g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
-      g.restore();
-
-      directGlow.push({ l, poly, normW });
-    }
-  }
-
-  // Draw darkness layer onto destination
-  ctx.drawImage(c, 0, 0, width, height);
-
-  // Warm firelight tint in harmony with the lighting cuts
-  if (lights.length > 0) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-
-    // A. Ambient bounce warmth inside the lit space
-    for (const { l, wallPoly } of ambGlow) {
-      ctx.save();
-      if (wallPoly && wallPoly.length >= 3) {
-        ctx.beginPath();
-        wallPoly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-        ctx.closePath();
-        ctx.clip();
-      }
-      const ambWarmGrad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-      ambWarmGrad.addColorStop(0, 'rgba(255, 175, 75, 0.14)');
-      ambWarmGrad.addColorStop(0.35, 'rgba(255, 160, 60, 0.09)');
-      ambWarmGrad.addColorStop(0.7, 'rgba(255, 140, 50, 0.04)');
-      ambWarmGrad.addColorStop(1, 'rgba(240, 120, 30, 0)');
-      ctx.fillStyle = ambWarmGrad;
-      ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
-      ctx.restore();
-    }
-
-    // B. Direct warm torchlight glow matching direct light cut
-    for (const { l, poly, normW } of directGlow) {
-      const warmGrad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-      warmGrad.addColorStop(0, 'rgba(255, 215, 140, 0.45)');
-      warmGrad.addColorStop(0.2, 'rgba(255, 190, 100, 0.38)');
-      warmGrad.addColorStop(0.45, 'rgba(255, 160, 70, 0.24)');
-      warmGrad.addColorStop(0.7, 'rgba(245, 130, 45, 0.10)');
-      warmGrad.addColorStop(0.88, 'rgba(235, 100, 30, 0.03)');
-      warmGrad.addColorStop(1, 'rgba(220, 80, 20, 0)');
-
-      ctx.save();
-      ctx.beginPath();
-      poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.clip();
-      ctx.globalAlpha = normW;
-      ctx.fillStyle = warmGrad;
-      ctx.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
-      ctx.restore();
-    }
-
-    ctx.restore();
-  }
-}
-
 /** The atmosphere as drawing steps: grain tile (multiply), flat tints (multiply / screen), vignette (normal). */
 export function atmosphereOps(a) {
   const ops = [];
@@ -1490,7 +1243,7 @@ export function atmosphereOps(a) {
     else ops.push({ type: 'solid', rgb: [0, 0, 0], alpha: (1.0 - a.brightness) * 0.6, blend: 'multiply' });
   }
   if (a.tint && a.tintAmount > 0) ops.push({ type: 'solid', rgb: a.tint, alpha: a.tintAmount, blend: a.tintBlend || 'multiply' });
-  if (a.weather && a.weatherAmount > 0) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
+  if (a.weather && a.weatherAmount > 0 && isFeatureOn('weather')) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
   if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
   if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
   return ops;
@@ -1504,35 +1257,6 @@ export function drawVignette(ctx, width, height, vignette) {
   grad.addColorStop(1, `rgba(5, 3, 2, ${vignette * 0.95})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
-}
-
-/** Rain streaks or snowflakes scattered over the map; seeded, so a redraw or an export looks the same. */
-export function drawWeather(ctx, width, height, kind, amount) {
-  let seed = 1234567;
-  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const unit = Math.max(width, height) / 1000; // sizes are relative to the map, so a big map is not sparse
-  const n = Math.round(amount * (kind === 'snow' ? 900 : 1500) * (width * height) / 1e6);
-  ctx.save();
-  if (kind === 'snow') {
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    for (let i = 0; i < n; i++) {
-      ctx.beginPath();
-      ctx.arc(rnd() * width, rnd() * height, (0.8 + rnd() * 2.2) * unit * 1.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  } else {
-    ctx.strokeStyle = 'rgba(200,220,240,0.45)';
-    ctx.lineWidth = Math.max(1, unit * 1.1);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const x = rnd() * width, y = rnd() * height, len = (14 + rnd() * 20) * unit;
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - len * 0.25, y + len);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 function renderAtmosphere(ctx, width, height, atmosphere) {
@@ -1585,16 +1309,3 @@ export function snapToGrid(x, y, grid) {
   }
 }
 
-/** A generated river from (x, y) to the nearest sea in map px, or null when (x, y) is not on land. */
-export function generateRiver(width, height, landmasses, brushStrokes, x, y, seed) {
-  if (!hasLand(landmasses, brushStrokes)) return null;
-  const cell = Math.max(4, Math.round(Math.max(width, height) / 400));
-  const w = Math.ceil(width / cell), h = Math.ceil(height / cell);
-  const { c, g } = makeLayer(width, height, 1 / cell);
-  drawLandMask(g, landmasses, brushStrokes);
-  const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-  const land = new Uint8Array(c.width * c.height);
-  for (let i = 0; i < land.length; i++) land[i] = px[i * 4 + 3] > 127 ? 1 : 0;
-  const pts = flowRiver(coastDistance(land, c.width, c.height), c.width, c.height, x / cell, y / cell, seed);
-  return pts && pts.map(([a, b]) => [Math.round(a * cell), Math.round(b * cell)]);
-}

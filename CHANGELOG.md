@@ -2,6 +2,16 @@
 
 All notable changes to **InkForge** will be documented in this file.
 
+
+## 1.13.0 (unreleased)
+
+- **Export dialog**: PNG, WebP, JPG or Universal VTT; quality slider for the lossy formats; resolution 0.5× to 8× with the pixel size shown (capped at the browser's canvas limit); VTT embeds WebP or PNG and its pixels-per-grid follows the resolution. Layers ZIP and Print PDF moved into it.
+- **Zoom up to 800%**. Fixed the map sliding away from the cursor while zooming: several wheel events between renders each used the old zoom.
+- **Feature plugins**: mask fill, dynamic lighting, river generation and weather each live in `src/plugins/builtin/<id>/` and can be switched off in Settings > Plugins. Data plugin packs are now called content packs.
+- **Mask fill**: bucket fill in the Landmass Sculptor (Fill shape).
+- **Setting to hide the built-in (AI-written) stamps**; maps that use them still draw them.
+- Removed internal files from the repository (coordination notes, strategy document, stray server and scripts).
+
 ## [1.12.0] - 2026-10-16
 
 ### Added
@@ -85,7 +95,6 @@ All notable changes to **InkForge** will be documented in this file.
 ### Added
 - **Preview switches** for the Mask and Brush tools (Preview: Stroke / Cursor ring), remembered between sessions. *Stroke* is the flat shape drawn while you drag (off: the stroke appears when you let go); *Cursor ring* is the dashed brush-size circle that follows the pointer.
 - **Open-source licensing & legal terms**: Added `LICENSE` under GNU AGPLv3 (AGPL-3.0-or-later) with an explicit User Output Ownership guarantee (100% commercial ownership of user-exported maps) and trademark protection for the InkForge identity. Added donation and community sponsorship channels to `README.md`.
-- **Customer discovery & validation strategy**: Documented 20-question Mom Test interview script and 30-day go/no-go roadmap in `CUSTOMER_DISCOVERY_STRATEGY.md`.
 
 ### Changed
 - The dev server ignores `.claude/` (agent worktrees inside the project exhausted the file-watch limit and made Vite serve stale modules).
