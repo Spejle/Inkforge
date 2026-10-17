@@ -304,10 +304,10 @@ export const STAMPS = [
 
       // Smoke billow plume
       ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.18, w * 0.06, 0, Math.PI * 2);
-      ctx.arc(w * 0.44, h * 0.12, w * 0.08, 0, Math.PI * 2);
-      ctx.arc(w * 0.54, h * 0.1, w * 0.09, 0, Math.PI * 2);
-      ctx.arc(w * 0.48, h * 0.04, w * 0.07, 0, Math.PI * 2);
+      ctx.arc(w * 0.5, h * 0.24, w * 0.06, 0, Math.PI * 2);
+      ctx.arc(w * 0.44, h * 0.18, w * 0.08, 0, Math.PI * 2);
+      ctx.arc(w * 0.54, h * 0.16, w * 0.09, 0, Math.PI * 2);
+      ctx.arc(w * 0.48, h * 0.1, w * 0.07, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(100, 95, 90, 0.45)';
       ctx.fill();
 
@@ -394,42 +394,48 @@ export const STAMPS = [
       const w = size * 1.3;
       const h = size;
 
-      // Draw mounds
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.8);
-      ctx.quadraticCurveTo(w * 0.35, h * 0.3, w * 0.65, h * 0.8);
-      ctx.closePath();
+      const mound = (x0, cx, cy, x1) => {
+        ctx.beginPath();
+        ctx.moveTo(w * x0, h * 0.8);
+        ctx.quadraticCurveTo(w * cx, h * cy, w * x1, h * 0.8);
+        ctx.closePath();
+      };
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'round';
+
+      // Back mound first so the front one overlaps it cleanly
+      mound(0.4, 0.7, 0.4, 0.95);
       ctx.fillStyle = fill;
       ctx.fill();
-
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(50, 40, 35, 0.18)';
+      ctx.fillRect(w * 0.7, 0, w, h);
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(w * 0.45, 0, w, h * 0.8 + h * 0.02); // keep the hidden end from poking out under the front mound
+      ctx.clip();
       ctx.beginPath();
       ctx.moveTo(w * 0.4, h * 0.8);
       ctx.quadraticCurveTo(w * 0.7, h * 0.4, w * 0.95, h * 0.8);
-      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      // Front mound with its shadow side clipped inside it
+      mound(0.05, 0.35, 0.3, 0.65);
       ctx.fillStyle = fill;
       ctx.fill();
-
-      // Hill shadow curves
-      ctx.beginPath();
-      ctx.moveTo(w * 0.35, h * 0.3);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.55, w * 0.65, h * 0.8);
-      ctx.strokeStyle = 'rgba(50, 40, 35, 0.25)';
-      ctx.lineWidth = h * 0.08;
-      ctx.stroke();
-
-      // Inking
-      ctx.strokeStyle = color;
-      ctx.lineWidth = h * 0.035;
-      ctx.lineCap = 'round';
-
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(50, 40, 35, 0.22)';
+      ctx.fillRect(w * 0.37, 0, w, h);
+      ctx.restore();
       ctx.beginPath();
       ctx.moveTo(w * 0.05, h * 0.8);
       ctx.quadraticCurveTo(w * 0.35, h * 0.3, w * 0.65, h * 0.8);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.65);
-      ctx.quadraticCurveTo(w * 0.7, h * 0.4, w * 0.95, h * 0.8);
       ctx.stroke();
 
       ctx.restore();
@@ -448,36 +454,35 @@ export const STAMPS = [
       const w = size * 1.4;
       const h = size;
 
-      // Crescent barchan dune curve
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.75);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.35, w * 0.85, h * 0.75);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Windward shadow face
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.35);
-      ctx.quadraticCurveTo(w * 0.62, h * 0.55, w * 0.85, h * 0.75);
-      ctx.lineTo(w * 0.45, h * 0.75);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(180, 83, 9, 0.28)';
-      ctx.fill();
-
-      // Crest lines
       ctx.strokeStyle = color;
       ctx.lineWidth = h * 0.035;
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.75);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.35, w * 0.85, h * 0.75);
-      ctx.stroke();
-
-      // Second dune ridge
-      ctx.beginPath();
-      ctx.moveTo(w * 0.35, h * 0.8);
-      ctx.quadraticCurveTo(w * 0.7, h * 0.5, w * 0.95, h * 0.85);
-      ctx.stroke();
+      ctx.lineCap = 'round';
+      const dune = (x0, y0, cx, cy, x1, y1, crest) => {
+        ctx.beginPath();
+        ctx.moveTo(w * x0, h * y0);
+        ctx.quadraticCurveTo(w * cx, h * cy, w * x1, h * y1);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        // Lee-side shadow, clipped to the dune so it never leaves the sand
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(180, 83, 9, 0.28)';
+        ctx.fillRect(w * crest, 0, w, h);
+        ctx.restore();
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x0 > 0.2 ? w * (x0 + 0.05) : 0, 0, w, h); // back dune: hidden start stays under the front one
+        ctx.clip();
+        ctx.beginPath();
+        ctx.moveTo(w * x0, h * y0);
+        ctx.quadraticCurveTo(w * cx, h * cy, w * x1, h * y1);
+        ctx.stroke();
+        ctx.restore();
+      };
+      // Back ridge first, front crescent overlaps it
+      dune(0.4, 0.75, 0.72, 0.42, 0.95, 0.75, 0.68);
+      dune(0.05, 0.75, 0.45, 0.35, 0.85, 0.75, 0.45);
 
       ctx.restore();
     }
@@ -586,6 +591,8 @@ export const STAMPS = [
         ctx.fill();
         ctx.restore();
 
+        ctx.beginPath();
+        ctx.arc(s * f.x, s * f.y, s * f.r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
         ctx.lineWidth = s * 0.03;
         ctx.stroke();
@@ -704,6 +711,8 @@ export const STAMPS = [
         ctx.fill();
         ctx.restore();
 
+        ctx.beginPath();
+        ctx.arc(w * t.x, h * t.y, h * t.r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
         ctx.lineWidth = h * 0.035;
         ctx.stroke();
@@ -821,9 +830,13 @@ export const STAMPS = [
         ctx.fillRect(w * 0.25 + i * cw * 2, h * 0.27, cw, h * 0.08);
       }
 
-      // Shadow side
+      // Shadow side (wall and its merlons)
       ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
       ctx.fillRect(w * 0.5, h * 0.35, w * 0.25, h * 0.55);
+      for (let i = 0; i < creneCount; i++) {
+        const x0 = Math.max(w * 0.5, w * 0.25 + i * cw * 2), x1 = w * 0.25 + i * cw * 2 + cw;
+        if (x1 > x0) ctx.fillRect(x0, h * 0.27, x1 - x0, h * 0.08);
+      }
 
       // Arrow slits
       ctx.fillStyle = '#0f172a';
@@ -832,6 +845,11 @@ export const STAMPS = [
 
       // Inking
       ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.035;
+      ctx.lineWidth = h * 0.02;
+      for (let i = 0; i < creneCount; i++) {
+        ctx.strokeRect(w * 0.25 + i * cw * 2, h * 0.27, cw, h * 0.08);
+      }
       ctx.lineWidth = h * 0.035;
       ctx.strokeRect(w * 0.25, h * 0.35, w * 0.5, h * 0.55);
 
@@ -926,7 +944,8 @@ export const STAMPS = [
 
       // 4 Windmill lattice sails
       ctx.save();
-      ctx.translate(s * 0.45, s * 0.35);
+      ctx.translate(s * 0.45, s * 0.36);
+      ctx.rotate(Math.PI / 4);
       ctx.strokeStyle = color;
       ctx.lineWidth = s * 0.025;
       for (let i = 0; i < 4; i++) {
@@ -940,6 +959,11 @@ export const STAMPS = [
         ctx.fillRect(s * 0.02, -s * 0.3, s * 0.08, s * 0.26);
         ctx.strokeRect(s * 0.02, -s * 0.3, s * 0.08, s * 0.26);
       }
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.03, 0, Math.PI * 2);
+      ctx.fillStyle = '#78350f';
+      ctx.fill();
+      ctx.stroke();
       ctx.restore();
 
       ctx.restore();
@@ -969,7 +993,7 @@ export const STAMPS = [
       // High spire cone (Indigo)
       ctx.beginPath();
       ctx.moveTo(w * 0.3, h * 0.32);
-      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.5, h * 0.14);
       ctx.lineTo(w * 0.7, h * 0.32);
       ctx.closePath();
       ctx.fillStyle = '#4338ca';
@@ -977,7 +1001,7 @@ export const STAMPS = [
 
       // Floating arcane crystal orb
       ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.03, w * 0.08, 0, Math.PI * 2);
+      ctx.arc(w * 0.5, h * 0.07, w * 0.08, 0, Math.PI * 2);
       ctx.fillStyle = '#38bdf8';
       ctx.fill();
 
@@ -987,7 +1011,7 @@ export const STAMPS = [
       ctx.strokeRect(w * 0.36, h * 0.32, w * 0.28, h * 0.58);
       ctx.beginPath();
       ctx.moveTo(w * 0.3, h * 0.32);
-      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(w * 0.5, h * 0.14);
       ctx.lineTo(w * 0.7, h * 0.32);
       ctx.stroke();
 
@@ -1049,8 +1073,8 @@ export const STAMPS = [
       ctx.save();
       const s = size;
       const cx = s * 0.5;
-      const cy = s * 0.5;
-      const r = s * 0.42;
+      const cy = s * 0.55;
+      const r = s * 0.38;
 
       // Outer rings
       ctx.strokeStyle = color;
@@ -1145,6 +1169,15 @@ export const STAMPS = [
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      // Fore sail
+      ctx.beginPath();
+      ctx.moveTo(w * 0.62, h * 0.3);
+      ctx.quadraticCurveTo(w * 0.7, h * 0.38, w * 0.78, h * 0.3);
+      ctx.lineTo(w * 0.78, h * 0.52);
+      ctx.quadraticCurveTo(w * 0.7, h * 0.62, w * 0.62, h * 0.52);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
       ctx.restore();
     }
@@ -1170,11 +1203,11 @@ export const STAMPS = [
       // Serpent Head & Yawning Maw
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.moveTo(w * 0.15, h * 0.7);
+      ctx.moveTo(w * 0.15, h * 0.75);
       ctx.quadraticCurveTo(w * 0.18, h * 0.3, w * 0.28, h * 0.25);
       ctx.lineTo(w * 0.38, h * 0.2); // Snout
       ctx.lineTo(w * 0.32, h * 0.35); // Lower jaw
-      ctx.quadraticCurveTo(w * 0.25, h * 0.45, w * 0.22, h * 0.7);
+      ctx.quadraticCurveTo(w * 0.25, h * 0.45, w * 0.22, h * 0.75);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
@@ -1198,6 +1231,14 @@ export const STAMPS = [
         ctx.fill();
         ctx.stroke();
       }
+
+      // Shared waterline: head and coils rise from the same sea
+      ctx.beginPath();
+      ctx.moveTo(w * 0.08, h * 0.75);
+      ctx.lineTo(w * 0.92, h * 0.75);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = h * 0.025;
+      ctx.stroke();
 
       ctx.restore();
     }
