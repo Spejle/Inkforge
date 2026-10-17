@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 
 import { THEMES } from '../utils/theme';
+import { MIN_ZOOM, MAX_ZOOM } from '../utils/quality';
 import {
   Settings as SettingsIcon,
   Download,
@@ -15,8 +16,6 @@ import {
   Compass,
   FilePlus,
   LayoutGrid,
-  ChevronDown,
-  Printer
 } from 'lucide-react';
 
 export default function Header({
@@ -34,21 +33,15 @@ export default function Header({
   onRedo,
   gridEnabled,
   setGridEnabled,
-  onExportPng,
-  onExportHighRes,
-  onExportLayers,
-  onExportVtt,
+  onExport,
   onExportJson,
   onImportJson,
   onNewMap,
-  onPrint,
   theme,
   setTheme,
   onOpenSettings
 }) {
   const fileInputRef = useRef(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [includeGridInExport, setIncludeGridInExport] = useState(true);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -126,7 +119,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Zoom Out"
-            onClick={() => setZoom((z) => Math.max(0.15, z - 0.15))}
+            onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.25))}
           >
             <ZoomOut size={17} />
           </button>
@@ -134,7 +127,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Zoom In"
-            onClick={() => setZoom((z) => Math.min(3.5, z + 0.15))}
+            onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.25))}
           >
             <ZoomIn size={17} />
           </button>
@@ -192,193 +185,10 @@ export default function Header({
           <span>Save</span>
         </button>
 
-        {/* Export dropdown menu */}
-        <div className="export-menu-container" style={{ position: 'relative' }}>
-          <button
-            className="btn-primary"
-            onClick={() => setShowExportMenu((v) => !v)}
-            title="Export map image or VTT package"
-          >
-            <Download size={16} />
-            <span>Export</span>
-            <ChevronDown size={14} />
-          </button>
-
-          {showExportMenu && (
-            <div
-              className="export-dropdown-menu"
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '6px',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                padding: '8px',
-                minWidth: '220px',
-                zIndex: 1000,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px'
-              }}
-            >
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                  padding: '4px 8px',
-                  borderBottom: '1px solid var(--border-color)',
-                  marginBottom: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={includeGridInExport}
-                  onChange={(e) => setIncludeGridInExport(e.target.checked)}
-                />
-                Include Grid in Export
-              </label>
-
-              <button
-                className="dropdown-item"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-main)',
-                  padding: '8px 10px',
-                  textAlign: 'left',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportPng(includeGridInExport);
-                }}
-              >
-                Standard PNG (1080p)
-              </button>
-
-              <button
-                className="dropdown-item"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-main)',
-                  padding: '8px 10px',
-                  textAlign: 'left',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportHighRes(2, includeGridInExport);
-                }}
-              >
-                Ultra-HD 4K (2x Res)
-              </button>
-
-              <button
-                className="dropdown-item"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-main)',
-                  padding: '8px 10px',
-                  textAlign: 'left',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportHighRes(4, includeGridInExport);
-                }}
-              >
-                Print Quality 8K (4x Res)
-              </button>
-
-              <button
-                className="dropdown-item"
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportHighRes(8, includeGridInExport);
-                }}
-              >
-                Maximum 16K (8x Res, capped by browser)
-              </button>
-
-              <button
-                className="dropdown-item"
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportLayers(1, includeGridInExport);
-                }}
-              >
-                Layers as transparent PNGs (ZIP)
-              </button>
-
-              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
-
-              <button
-                className="dropdown-item"
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '8px 10px', textAlign: 'left', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onPrint();
-                }}
-              >
-                <Printer size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
-                Print at table scale (PDF)…
-              </button>
-
-              <button
-                className="dropdown-item"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--accent-cyan)',
-                  padding: '8px 10px',
-                  textAlign: 'left',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: 600
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border-color)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                onClick={() => {
-                  setShowExportMenu(false);
-                  onExportVtt();
-                }}
-                title="Universal VTT file for Foundry VTT and Roll20 with wall LoS"
-              >
-                Universal VTT (.dd2vtt)
-              </button>
-            </div>
-          )}
-        </div>
+        <button className="btn-primary" onClick={onExport} title="Export image (PNG, WebP, JPG) or Universal VTT">
+          <Download size={16} />
+          <span>Export</span>
+        </button>
       </div>
     </header>
   );

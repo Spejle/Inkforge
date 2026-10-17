@@ -121,8 +121,8 @@ function drawKrakenTentacles(ctx, tentacles, w, h, fill, color) {
     ctx.bezierCurveTo(w * t.c1x, h * t.c1y, w * t.c2x, h * t.c2y, w * t.ex, h * t.ey);
     ctx.stroke();
     ctx.fillStyle = '#fbcfe8';
-    const mx = (t.c1x + t.c2x) * 0.5;
-    const my = (t.c1y + t.c2y) * 0.5;
+    const mx = (t.sx + 3 * t.c1x + 3 * t.c2x + t.ex) / 8;
+    const my = (t.sy + 3 * t.c1y + 3 * t.c2y + t.ey) / 8;
     ctx.beginPath();
     ctx.arc(w * mx, h * my, w * 0.02, 0, Math.PI * 2);
     ctx.fill();
@@ -322,8 +322,8 @@ export const STAMPS_VIEWS_NAUTICAL = [
       // Cannons
       ctx.fillStyle = '#1c1917';
       for (const px of [0.36, 0.44, 0.52, 0.6]) {
-        ctx.fillRect(w * px, cy - h * 0.35, w * 0.03, h * 0.06);
-        ctx.fillRect(w * px, cy + h * 0.29, w * 0.03, h * 0.06);
+        ctx.fillRect(w * px, cy - h * 0.27, w * 0.03, h * 0.06);
+        ctx.fillRect(w * px, cy + h * 0.21, w * 0.03, h * 0.06);
       }
 
       // Bowsprit
@@ -421,31 +421,45 @@ export const STAMPS_VIEWS_NAUTICAL = [
       const h = size;
 
       drawWaterRipples(ctx, [
-        [w * 0.24, h * 0.5, w * 0.12, h * 0.18],
-        [w * 0.54, h * 0.46, w * 0.16, h * 0.22],
-        [w * 0.82, h * 0.52, w * 0.1, h * 0.16]
+        [w * 0.18, h * 0.5, w * 0.1, h * 0.16],
+        [w * 0.55, h * 0.5, w * 0.1, h * 0.16],
+        [w * 0.9, h * 0.5, w * 0.08, h * 0.14]
       ]);
 
-      // Sinuous body coils
-      ctx.strokeStyle = fill;
-      ctx.lineWidth = h * 0.14;
+      // Sinuous body coils, inked like the base (dark outline, fill body)
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
       ctx.moveTo(w * 0.16, h * 0.5);
       ctx.bezierCurveTo(w * 0.3, h * 0.2, w * 0.45, h * 0.2, w * 0.55, h * 0.5);
       ctx.bezierCurveTo(w * 0.65, h * 0.8, w * 0.8, h * 0.8, w * 0.9, h * 0.48);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = h * 0.14 + h * 0.045;
+      ctx.stroke();
+      ctx.strokeStyle = fill;
+      ctx.lineWidth = h * 0.14 - h * 0.01;
       ctx.stroke();
 
       // Dorsal ridge
-      ctx.fillStyle = '#14b8a6';
+      ctx.fillStyle = color;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
-      for (let t = 0.22; t <= 0.84; t += 0.08) {
-        ctx.beginPath();
-        ctx.arc(w * t, h * (0.5 + Math.sin(t * Math.PI * 3) * 0.22), h * 0.025, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+      // Ridge scales sit on the body curve itself
+      const segs = [
+        [[0.16, 0.5], [0.3, 0.2], [0.45, 0.2], [0.55, 0.5]],
+        [[0.55, 0.5], [0.65, 0.8], [0.8, 0.8], [0.9, 0.48]]
+      ];
+      for (const [a, b, c, d] of segs) {
+        for (const t of [0.3, 0.55, 0.8]) {
+          const u = 1 - t;
+          const k = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+          const px = k[0] * a[0] + k[1] * b[0] + k[2] * c[0] + k[3] * d[0];
+          const py = k[0] * a[1] + k[1] * b[1] + k[2] * c[1] + k[3] * d[1];
+          ctx.beginPath();
+          ctx.arc(w * px, h * py, h * 0.025, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
       }
 
       // Head
@@ -497,10 +511,11 @@ export const STAMPS_VIEWS_NAUTICAL = [
       ];
       for (const c of coils) {
         ctx.beginPath();
+        // Solid humps like the base coils, not hollow rings
         ctx.ellipse(w * c.cx, h * c.cy, w * c.rx, h * c.ry, -0.2, Math.PI, 0);
-        ctx.lineWidth = h * 0.09;
-        ctx.strokeStyle = fill;
-        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
         ctx.lineWidth = 2.5;
         ctx.strokeStyle = color;
         ctx.stroke();

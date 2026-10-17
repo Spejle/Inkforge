@@ -1,6 +1,13 @@
-# InkForge plugin packs
+# InkForge plugins
 
-A plugin pack is a single **JSON data file**. It adds content (stamps, light presets, biomes, map templates). It cannot add behaviour.
+InkForge has two kinds of plugin:
+
+- **Feature plugins**: first-party code bundled with the app, one folder each under `src/plugins/builtin/` (`maskFill`, `lighting`, `riverGen`, `weather`). Each can be switched off in Settings > Plugins; the app checks `isFeatureOn(id)` / `useFeature(id)` from `src/plugins/features.js`, where their names and defaults are listed. A new feature goes in its own folder, adds an entry to `FEATURES`, and gates its UI and drawing on that id.
+- **Content packs**: data files anyone can make, described below.
+
+## Content packs
+
+A content pack is a single **JSON data file**. It adds content (stamps, light presets, biomes, map templates). It cannot add behaviour.
 
 ## Security model
 

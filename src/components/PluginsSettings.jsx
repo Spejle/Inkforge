@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Upload, Trash2 } from 'lucide-react';
 import { installPack, removePack, setEnabled, listPacks, usePluginVersion } from '../plugins/registry';
+import { FEATURES, isFeatureOn, setFeature, useFeatureVersion } from '../plugins/features';
+import { useStampPrefs, setStampPref } from '../utils/stampPrefs';
 import '../plugins/plugins.css';
 
 export default function PluginsSettings() {
   usePluginVersion();
+  useFeatureVersion();
+  const stampPrefs = useStampPrefs();
   const [errors, setErrors] = useState([]);
   const [file, setFile] = useState('');
 
@@ -20,7 +24,20 @@ export default function PluginsSettings() {
   const packs = listPacks();
   return (
     <div className="plugins-settings">
-      <p className="mute">A plugin pack is a <b>.json data file</b> that adds stamps, light presets or biomes. It contains no code and cannot run anything. Only install packs from people you trust to have drawn what they say they drew.</p>
+      <h4>Features</h4>
+      <p className="mute">Built-in tools, each developed as its own plugin. Switch off what you don't use.</p>
+      {FEATURES.map((f) => (
+        <div key={f.id} className="plugin-row">
+          <div className="plugin-info"><b>{f.name}</b><div className="mute">{f.description}</div></div>
+          <label className="plugin-toggle"><input type="checkbox" checked={isFeatureOn(f.id)} onChange={(e) => setFeature(f.id, e.target.checked)} /> Enabled</label>
+        </div>
+      ))}
+      <div className="plugin-row">
+        <div className="plugin-info"><b>Built-in stamps</b><div className="mute">The procedural stamp catalog, written with generative AI. Off: only your imported images and content packs are offered. Maps that already use them still draw them.</div></div>
+        <label className="plugin-toggle"><input type="checkbox" checked={stampPrefs.builtin} onChange={(e) => setStampPref('builtin', e.target.checked)} /> Enabled</label>
+      </div>
+      <h4>Content packs</h4>
+      <p className="mute">A content pack is a <b>.json data file</b> that adds stamps, light presets or biomes. It contains no code and cannot run anything. Only install packs from people you trust to have drawn what they say they drew.</p>
       <label className="btn-ghost plugin-import">
         <Upload size={14} /> Import a pack (.json)
         <input type="file" accept=".json,application/json" data-testid="plugin-file" onChange={onFile} hidden />

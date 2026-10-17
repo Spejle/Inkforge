@@ -115,6 +115,12 @@ const spire = (c, x, y, w, h, col) => {
   poly(c, [[x, y], [x + w, y], [x + w * 1.5, y - w * 0.4], [x + w * 0.5, y - h]], dk(col, 0.3));
   poly(c, [[x - w * 0.1, y], [x + w * 0.5, y - h], [x + w, y]], lit(col, 0.1));
 };
+// pyramid roof seated on a box() top: (x,y) = front-left top corner, w/d = the box's width/depth
+const pyr = (c, x, y, w, d, h, col) => {
+  const ap = [x + (w + d) / 2, y - d * 0.25 - h];
+  poly(c, [[x + w, y], [x + w + d, y - d * 0.5], ap], dk(col, 0.3));
+  poly(c, [[x, y], [x + w, y], ap], lit(col, 0.1));
+};
 const flame = (c, x, y, s) => {
   poly(c, [[x - s * 0.5, y], [x - s * 0.3, y - s * 0.9], [x, y - s * 0.5], [x + s * 0.15, y - s * 1.5], [x + s * 0.5, y]], '#ef7a22', false);
   poly(c, [[x - s * 0.25, y], [x, y - s * 0.8], [x + s * 0.25, y]], '#ffd24a', false);
@@ -182,17 +188,17 @@ R.human = {
       box(c, x - s * 0.35, y + s * 0.02, s * 0.7, s * 0.9, s * 0.2, wt('#c4bdad'), { cren: 3 });
       c.beginPath(); c.moveTo(x - s * 0.15, y + s * 0.02); c.lineTo(x - s * 0.15, y - s * 0.4); c.arc(x, y - s * 0.4, s * 0.15, Math.PI, 0); c.lineTo(x + s * 0.15, y + s * 0.02); c.closePath(); c.fillStyle = '#2d1c14'; c.fill(); stroke(c);
       box(c, x - s * 0.3, y - h - d * 0.5, s * 0.6, s * 0.9, s * 0.3, wt('#c4bdad'), { cren: 3 });
-      spire(c, x + s * 0.05, y - h - d * 0.5 - s * 0.9, s * 0.55, s * 0.7, '#a3392f');
-      banner(c, x + s * 0.25, y - h - d * 0.5 - s * 1.55, s * 0.5, '#2a4fb0');
+      pyr(c, x - s * 0.3, y - h - d * 0.5 - s * 0.9, s * 0.6, s * 0.3, s * 0.7, '#a3392f');
+      banner(c, x + s * 0.15, y - h - d * 0.5 - s * 1.675, s * 0.5, '#2a4fb0');
       return;
     }
     const k = lvl;
     const nw = s * (1.0 + k * 0.1), nh = s * 0.7;
     gable(c, x - nw * 0.1, y, nw, nh, s * 0.8, s * 0.55, wt('#e6dcc4'), '#7a4a32', { shingle: 4, door: false, win: false });
     box(c, x - nw * 0.1 - s * 0.55, y, s * 0.5, s * 1.35, s * 0.3, wt('#cfc7b4'), { bricks: true });
-    spire(c, x - nw * 0.1 - s * 0.55, y - s * 1.35 - s * 0.15, s * 0.5, s * (0.9 + k * 0.1), '#5f6e7e');
+    pyr(c, x - nw * 0.1 - s * 0.55, y - s * 1.35, s * 0.5, s * 0.3, s * (0.9 + k * 0.1), '#5f6e7e');
     ell(c, x - nw * 0.1 - s * 0.3, y - s * 1.0, s * 0.09, s * 0.12, '#f2c35e');
-    if (k >= 3) { box(c, x + nw * 0.95, y, s * 0.45, s * 1.0, s * 0.3, wt('#cfc7b4')); spire(c, x + nw * 0.95, y - s * 1.0 - s * 0.15, s * 0.45, s * 0.8, '#5f6e7e'); }
+    if (k >= 3) { box(c, x + nw * 0.95, y, s * 0.45, s * 1.0, s * 0.3, wt('#cfc7b4')); pyr(c, x + nw * 0.95, y - s * 1.0, s * 0.45, s * 0.3, s * 0.8, '#5f6e7e'); }
   },
   extra(c, cx, cy, r, lvl) { // well / market stalls
     if (lvl < 2) return;
@@ -557,7 +563,7 @@ function wallRing(c, cx, cy, rx, ry, race, lvl, back, r, fx) {
     if (o.kind === 'stone') {
       const col = l > 0 ? lit(o.col, l * 0.3) : dk(o.col, -l * 0.35);
       poly(c, [p0, p1, [p1[0], p1[1] - hw], [p0[0], p0[1] - hw]], col);
-      poly(c, [[p0[0], p0[1] - hw], [p1[0], p1[1] - hw], [p1[0], p1[1] - hw - hw * 0.12], [p0[0], p0[1] - hw - hw * 0.12]], lit(o.col, 0.4), false);
+      poly(c, [[p0[0], p0[1] - hw], [p1[0], p1[1] - hw], [p1[0], p1[1] - hw - hw * 0.12], [p0[0], p0[1] - hw - hw * 0.12]], lit(o.col, 0.4));
       if (lvl >= 3 && i % 3 === 0) line(c, pm[0], pm[1], pm[0], pm[1] - hw, INK, LW * 0.5, 0.3);
       const mw = (p1[0] - p0[0]) * 0.28;
       if (o.cren === 'sq') { const m = [pm[0] - mw * 0.0, pm[1] - hw - hw * 0.12]; if (mw !== 0) poly(c, [[m[0] - Math.abs(mw) * 0.5, m[1]], [m[0] - Math.abs(mw) * 0.5, m[1] - hw * 0.2], [m[0] + Math.abs(mw) * 0.5, m[1] - hw * 0.2], [m[0] + Math.abs(mw) * 0.5, m[1]]], col); }
@@ -642,7 +648,7 @@ function makeRender(raceKey, li, id) {
     ctx.strokeStyle = dk(race.ground[1], 0.2); ctx.globalAlpha = 0.9; ctx.lineWidth = 0.035 + li * 0.004; ctx.stroke();
     ctx.strokeStyle = lit(mix(race.ground[0], '#c8a878', 0.55), 0.1); ctx.lineWidth = 0.027 + li * 0.004; ctx.stroke(); ctx.globalAlpha = 1;
     // placement
-    const ws = r; const objs = [], taken = [];
+    const objs = [], taken = [], outBack = [], outFront = [];
     const free = (x, y, s) => taken.every((t) => ((x - t.x) / ((s + t.s) * 0.55)) ** 2 + ((y - t.y) / ((s + t.s) * 0.28)) ** 2 >= 1);
     const roadX = (y) => { const t = (cy + gy * 0.92 - y) / (gy * 0.92 + ry * 0.2); return cx + Math.sin(t * 5) * 0.03 * (1 - t * 0.3); };
     let lm = null;
@@ -660,17 +666,22 @@ function makeRender(raceKey, li, id) {
     if (race.extra && li <= 1) { /* hamlet camp feature */ }
     // props around
     const np = race.pn != null ? race.pn : 5 + li * 4;
-    for (let tries = 0; tries < 600 && np > 0 && objs.length < NN + 1 + np; tries++) {
+    for (let tries = 0; tries < 600 && np > 0 && objs.length + outBack.length + outFront.length < NN + 1 + np; tries++) {
       const a = r() * 6.2832, d = li >= 3 ? 1.0 + r() * 0.08 : 0.55 + r() * 0.5, x = cx + Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d * 1.1;
       if (Math.abs(x - roadX(y)) < 0.05 || !free(x, y, L.s * 0.6) || x < 0.06 || x > W - 0.06) continue;
       taken.push({ x, y, s: L.s * 0.5 }); const sd = hashStr(id + 'p' + tries);
-      objs.push({ y, x, draw: () => race.prop(ctx, x, y, L.s * 0.85, rng(sd)) });
+      // props outside the wall ring must layer outside it: behind the back wall, in front of the front wall
+      const o = { y, x, draw: () => race.prop(ctx, x, y, L.s * 0.85, rng(sd)) };
+      if (d >= 1) (Math.sin(a) < 0 ? outBack : outFront).push(o); else objs.push(o);
     }
     if (race.extra) { const ex = cx + (li === 0 ? 0 : rx * 0.0), ey = cy + (li === 0 ? 0 : 0) + (li >= 1 ? ry * 0.55 : 0); if (li === 0 || raceKey === 'human' && li >= 2) objs.push({ y: ey, draw: () => race.extra(ctx, ex, ey - (li === 0 ? 0.12 : 0.07) + (li === 0 ? 0 : 0), r, li, fx) }); }
     if (race.walk) { const hs = objs.filter((o) => o.x && o !== lm).sort((a, b) => a.x - b.x); for (let i = 0; i < hs.length; i++) for (let j = i + 1; j < hs.length; j++) { const A = hs[i], B = hs[j]; if (Math.hypot(A.x - B.x, (A.y - B.y) * 2) < L.s * 1.9) race.walk(ctx, { x: A.x, y: A.y + 0.01 }, { x: B.x, y: B.y + 0.01 }); } }
+    const byY = (a, b) => a.y - b.y;
+    outBack.sort(byY).forEach((o) => o.draw());
     wallRing(ctx, cx, cy, rx, ry, race, li, true, r, fx);
-    objs.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
+    objs.sort(byY).forEach((o) => o.draw());
     wallRing(ctx, cx, cy, rx, ry, race, li, false, r, fx);
+    outFront.sort(byY).forEach((o) => o.draw());
     fx.forEach((p) => drawSmoke(ctx, p));
     ctx.restore();
   };
@@ -693,6 +704,27 @@ const GROUPNAMES = { human: 'Human', elf: 'Elven', dwarf: 'Dwarven', orc: 'Orc &
 const levelsFor = (key) => (NAMES[key][1].length === 5 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]);
 const order = (arr) => [1, 0, ...arr.filter((i) => i > 1)]; // Village first (the group tile)
 
+
+// Shrink-to-fit for stamps whose art (flags, spires, beams) pokes out of the stamp box and gets clipped.
+// bb = measured ink bounds [x0, x1, y0, y1] in units of size; the art is scaled down until it fits,
+// staying centred and standing on the box floor.
+export const fitBox = (stamp, bb) => {
+  if (!bb) return stamp;
+  const A = stamp.aspect || 1, m = 0.01, [x0, x1, y0, y1] = bb;
+  const s = Math.min(1, (A - 2 * m) / (x1 - x0), (1 - m) / (y1 - y0));
+  let tx = (A / 2) * (1 - s), ty = 1 - s;
+  tx = Math.min(Math.max(tx, m - s * x0), A - m - s * x1);
+  ty = Math.max(Math.min(ty, 1 - s * y1), m - s * y0);
+  const draw = stamp.render;
+  return { ...stamp, render: (ctx, size, ...rest) => { ctx.save(); ctx.translate(tx * size, ty * size); ctx.scale(s, s); draw(ctx, size, ...rest); ctx.restore(); } };
+};
+const FIT_A = {
+  set_human_capital: [0.062, 1.44, -0.087, 0.96],
+  set_halfling_city: [0.068, 1.335, -0.018, 0.96],
+  set_dragonborn_city: [0.087, 1.32, -0.018, 0.948],
+  set_drow_city: [0.087, 1.323, -0.13, 0.948],
+};
+
 export const STAMPS_SETTLEMENTSA = Object.keys(R).flatMap((key) =>
   order(levelsFor(key)).map((li) => {
     const id = `set_${key === 'lizard' ? 'lizardfolk' : key}_${['hamlet', 'village', 'town', 'city', 'capital'][li]}`;
@@ -705,4 +737,4 @@ export const STAMPS_SETTLEMENTSA = Object.keys(R).flatMap((key) =>
       render: makeRender(key, li, id),
     };
   })
-);
+).map((st) => fitBox(st, FIT_A[st.id]));

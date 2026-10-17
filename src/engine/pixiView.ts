@@ -8,8 +8,6 @@ import { Application, CanvasSource, Container, Rectangle, RenderTexture, Sprite,
 import 'pixi.js/advanced-blend-modes'; // overlay and soft-light
 import {
   atmosphereOps,
-  drawWeather,
-  drawLighting,
   drawLiveStroke,
   drawStampSelection,
   drawVignette,
@@ -18,6 +16,8 @@ import {
   stampImage,
   stampSprite
 } from './renderer.js';
+import { drawLighting } from '../plugins/builtin/lighting/index.js';
+import { drawWeather } from '../plugins/builtin/weather/index.js';
 import { getStampById } from './stampsCatalog.js';
 import type { AtmoOp, AtmosphereSettings, Ctx2D, LayerStyle, Part, Plan, PlanItem, RasterPart, Stamp, StampsPart } from '../types';
 

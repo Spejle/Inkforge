@@ -1,3 +1,4 @@
+import { fitBox } from './settlementsA.js';
 // Castles, fortresses, strongholds and landmarks for every major race (settlementsB workstream).
 // All stamps draw in a 100-unit-high box (width = 100 * aspect); light from upper-left,
 // lit left / dark right faces, ground shadow falls to the lower right. Deterministic: seeded PRNG only.
@@ -1512,4 +1513,34 @@ const skySpire = SKY('sky_spire', 'Floating Spire', 0.9, 1.3, (c, P, W, H, r) =>
   c.strokeStyle = 'rgba(150,200,240,0.85)'; c.lineWidth = 2; c.beginPath(); c.moveTo(66, 58); c.lineTo(66, 86); c.stroke();
 });
 
-export const STAMPS_SETTLEMENTSB = ALL;
+const FIT_B = {
+  human_castle: [0.025, 1.175, -0.033, 0.995],
+  human_citadel: [-0.022, 1.323, -0.052, 1.008],
+  elf_citadel: [-0.072, 1.195, -0.182, 0.995],
+  elf_treehold: [0, 1.005, -0.06, 0.98],
+  elf_moonspire: [-0.015, 0.82, -0.07, 0.99],
+  dwarf_forge_hold: [-0.007, 1.087, 0.095, 0.99],
+  dwarf_gate_hold: [-0.007, 1.127, 0.172, 0.99],
+  dark_necro_tower: [0.025, 0.81, -0.007, 1.012],
+  dark_citadel: [0.098, 1.11, -0.048, 1.022],
+  drow_spire: [0.052, 0.925, -0.133, 1.01],
+  tiefling_keep: [0.092, 1.028, 0.065, 1.01],
+  dragon_lair: [0.033, 1.167, -0.035, 1.02],
+  dragon_roost: [0.052, 0.848, -0.105, 0.99],
+  halfling_folly: [0.102, 0.818, -0.007, 0.978],
+  wizard_spire: [0.152, 0.8, -0.035, 0.99],
+  wizard_crystal: [0.072, 0.728, -0.025, 0.99],
+  shrine: [-0.037, 0.82, 0.287, 0.978],
+  watchtower: [0.083, 0.637, -0.018, 0.978],
+  lighthouse: [0.055, 0.765, 0.01, 0.988],
+  harbour_town: [0.003, 1.327, -0.102, 0.97],
+  sea_fortress: [0.013, 1.18, -0.005, 1.012],
+  mine_entrance: [0.052, 1.125, 0.233, 0.993],
+  crypt: [-0.007, 0.858, 0.163, 1.002],
+  sky_fortress: [0.043, 1.17, -0.263, 0.94],
+  sky_spire: [0.17, 0.762, 0.02, 1.077],
+};
+export const STAMPS_SETTLEMENTSB = ALL.map((st) => fitBox(st, FIT_B[st.id.slice(4)]));
+
+// Drawing kit reused by the alternate views (views*.js) so their castles match this art.
+export const CAS_KIT = { pal, tone, lt, dk, shadow, ink, body, merl, tower, wall, gate, slit, flag, cone, tufts, tree, taper, stars, glowAt, rng, RED, BLUE, GOLD, GLOW, ARCANE, VOID, TAU };

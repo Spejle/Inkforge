@@ -1,9 +1,12 @@
 import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { generateRiver, renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
+import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
+import { generateRiver } from '../plugins/builtin/riverGen/index.js';
+import { maskFillStroke } from '../plugins/builtin/maskFill/index.js';
+import { isFeatureOn } from '../plugins/features.js';
 import { makeStepper } from '../utils/adjust';
-import { pickQuality } from '../utils/quality';
+import { pickQuality, MIN_ZOOM, MAX_ZOOM } from '../utils/quality';
 
 const HANDLE_R = 14;
 const VERTEX_R = 9; // grab radius of a spine point, in screen px
@@ -309,8 +312,11 @@ export default function CanvasArea({
       const rect = container.getBoundingClientRect();
       const mouseX = e.clientX - rect.left - rect.width / 2;
       const mouseY = e.clientY - rect.top - rect.height / 2;
-      const nextZoom = Math.min(4.0, Math.max(0.1, zoom * (e.deltaY < 0 ? 1.12 : 0.88)));
+      const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
       const ratio = nextZoom / zoom;
+      // several wheel events can arrive before React re-renders; without this each reused the old zoom while the pan
+      // updates stacked, so the map slid away from the cursor
+      viewRef.current.zoom = nextZoom;
       setPanOffset((prev) => ({
         x: mouseX - (mouseX - prev.x) * ratio,
         y: mouseY - (mouseY - prev.y) * ratio
@@ -516,6 +522,13 @@ export default function CanvasArea({
     }
 
     // 2. MASK TOOL (Landmass & Coastline Sculptor)
+    if (activeTool === 'mask' && maskShape === 'fill' && isFeatureOn('maskFill')) {
+      isInteractingRef.current = false;
+      const stroke = maskFillStroke(mapWidth, mapHeight, landmasses, brushStrokes, x, y, maskMode);
+      if (stroke) onCommitStroke?.(stroke);
+      else { setHud(maskMode === 'land' ? 'Already land' : 'Already water'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1200); }
+      return;
+    }
     if (activeTool === 'mask') {
       const strokeId = 'mask_' + Date.now();
       const newStroke = {
@@ -558,7 +571,7 @@ export default function CanvasArea({
     }
 
     // 5. PATH TOOL (Rivers, Roads, Walls)
-    if (activeTool === 'path' && pathType === 'river' && riverGen) {
+    if (activeTool === 'path' && pathType === 'river' && riverGen && isFeatureOn('riverGen')) {
       const pts = generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000);
       isInteractingRef.current = false;
       if (!pts) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }

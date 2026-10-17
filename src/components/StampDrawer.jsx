@@ -6,6 +6,7 @@ import ObjectsPanel from './ObjectsPanel';
 import { GridTypePicker } from './PreviewPicker';
 import { usePluginVersion } from '../plugins/registry';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
+import { useStampPrefs } from '../utils/stampPrefs';
 import {
   Upload,
   Search,
@@ -59,8 +60,9 @@ export default function StampDrawer({
   const [showAll, setShowAll] = useState(false);
   // The map core hides stamps that don't belong (a dungeon has no ships); "Show all" lifts that
   const filtering = !!allowedCategories && !showAll;
-  const pool = filtering ? STAMPS.filter((st) => st.plugin || allowedCategories.includes(st.category)) : STAMPS;
-  const cats = filtering ? STAMP_CATEGORIES.filter((c) => c.type === 'plugin' || allowedCategories.includes(c.id)) : STAMP_CATEGORIES;
+  const { builtin } = useStampPrefs();
+  const pool = (filtering ? STAMPS.filter((st) => st.plugin || allowedCategories.includes(st.category)) : STAMPS).filter((st) => builtin || st.plugin);
+  const cats = (filtering ? STAMP_CATEGORIES.filter((c) => c.type === 'plugin' || allowedCategories.includes(c.id)) : STAMP_CATEGORIES).filter((c) => builtin || c.type === 'plugin');
 
   const filteredStamps = (selectedCat === 'mine' ? [] : pool).filter((stamp) => {
     const matchesCat = selectedCat === 'all' || stamp.category === selectedCat;

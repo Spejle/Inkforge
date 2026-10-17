@@ -1,105 +1,72 @@
 // Export and Import utilities for InkForge
 import { sanitizeProject } from './importGuard.js';
-import { renderMap, isLightStamp, lightRange } from '../engine/renderer.js';
+import { renderMap } from '../engine/renderer.js';
+import { isLightStamp, lightRange } from '../plugins/builtin/lighting/index.js';
 
-/** Standard 1x PNG download */
-export function exportToPng(canvas, filename = 'fantasy_map.png') {
-  if (!canvas) return;
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = canvas.toDataURL('image/png', 1.0);
-  link.click();
+export const IMAGE_FORMATS = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg' };
+
+/** Largest scale the browser can allocate for this map (~16384 px a side, ~270 Mpx; we stay under 190 Mpx). */
+export function maxExportScale(mapWidth, mapHeight) {
+  return Math.min(16384 / Math.max(mapWidth, mapHeight), Math.sqrt(190e6 / (mapWidth * mapHeight)));
 }
 
-/**
- * High-Resolution Multi-Scale PNG Exporter (1x, 2x / 4K, 4x / 8K Print Quality)
- */
-export function exportToHighResPng({
-  mapState,
-  scaleFactor = 1,
-  includeGrid = true,
-  filename = 'fantasy_map_highres.png'
-}) {
-  const {
-    mapWidth,
-    mapHeight,
-    mapType,
-    landmasses,
-    brushStrokes,
-    stamps,
-    paths,
-    texts,
-    grid,
-    atmosphere,
-    layerVisibility,
-    layerStyle
-  } = mapState;
-
-  // browsers cap canvases (~16384 px a side, ~270 Mpx); stay under a safe bound instead of failing silently
-  const maxScale = Math.min(16384 / Math.max(mapWidth, mapHeight), Math.sqrt(190e6 / (mapWidth * mapHeight)));
-  if (scaleFactor > maxScale) {
-    scaleFactor = Math.max(1, Math.floor(maxScale * 100) / 100);
-    alert(`Map is too large for that scale; exporting at ${scaleFactor}x instead.`);
-  }
-
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = Math.round(mapWidth * scaleFactor);
-  exportCanvas.height = Math.round(mapHeight * scaleFactor);
-  const ctx = exportCanvas.getContext('2d');
-
-  ctx.scale(scaleFactor, scaleFactor);
-
-  // Render complete scene
+/** Render the map onto a fresh canvas at `scale` pixels per map unit. */
+export function renderExportCanvas(mapState, { scale = 1, includeGrid = true, atmosphere = mapState.atmosphere } = {}) {
+  const { mapWidth, mapHeight } = mapState;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(mapWidth * scale);
+  canvas.height = Math.round(mapHeight * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
   renderMap({
+    ...mapState,
     ctx,
     width: mapWidth,
     height: mapHeight,
-    mapType,
-    landmasses,
-    brushStrokes,
-    stamps,
-    paths,
-    texts,
-    grid: { ...grid, enabled: includeGrid && grid.enabled },
+    grid: { ...mapState.grid, enabled: includeGrid && mapState.grid.enabled },
     atmosphere,
-    coastline: mapState.coastline,
-    ...(layerVisibility && { layerVisibility }),
-    layerStyle,
     selectedStampId: null,
     selectedTextId: null,
     selectedPathId: null
   });
+  return canvas;
+}
 
-  exportCanvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = filename;
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-  }, 'image/png');
+const toBlob = (canvas, format, quality) =>
+  new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The browser could not encode the image.'))), IMAGE_FORMATS[format], quality));
+
+export function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** PNG / WebP / JPG export. `quality` (0-1) applies to WebP and JPG; PNG is lossless. */
+export async function exportImage({ mapState, format = 'png', quality = 0.92, scale = 1, includeGrid = true, filename }) {
+  const canvas = renderExportCanvas(mapState, { scale: Math.min(scale, maxExportScale(mapState.mapWidth, mapState.mapHeight)), includeGrid });
+  if (format === 'jpg') {
+    // JPG has no alpha; transparent pixels would turn black
+    const flat = document.createElement('canvas');
+    flat.width = canvas.width;
+    flat.height = canvas.height;
+    const fctx = flat.getContext('2d');
+    fctx.fillStyle = '#fff';
+    fctx.fillRect(0, 0, flat.width, flat.height);
+    fctx.drawImage(canvas, 0, 0);
+    return download(await toBlob(flat, format, quality), filename);
+  }
+  download(await toBlob(canvas, format, quality), filename);
 }
 
 /**
  * Universal VTT (.dd2vtt / .uvtt) Exporter for Foundry VTT, Roll20, and Fantasy Grounds
  */
-export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }) {
-  const {
-    mapWidth,
-    mapHeight,
-    mapType,
-    landmasses,
-    brushStrokes,
-    stamps,
-    paths,
-    texts,
-    grid,
-    atmosphere,
-    coastline,
-    layerVisibility,
-    layerStyle
-  } = mapState;
+export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 'png', quality = 0.92, filename = 'battlemap.dd2vtt' }) {
+  const { mapWidth, mapHeight, stamps, paths, grid, atmosphere } = mapState;
 
   const gridSize = grid.size || 60;
 
@@ -154,32 +121,15 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     });
   }
 
-  // Render clean ungridded base image
-  const vttCanvas = document.createElement('canvas');
-  vttCanvas.width = mapWidth;
-  vttCanvas.height = mapHeight;
-  const ctx = vttCanvas.getContext('2d');
-
-  renderMap({
-    ctx,
-    width: mapWidth,
-    height: mapHeight,
-    mapType,
-    landmasses,
-    brushStrokes,
-    stamps,
-    paths,
-    texts,
-    grid: { ...grid, enabled: false },
-    atmosphere: { ...atmosphere, darkness: 0 }, // the VTT does the darkness itself, from the lights above
-    coastline,
-    ...(layerVisibility && { layerVisibility }),
-    layerStyle,
-    selectedStampId: null,
-    selectedTextId: null
+  // clean ungridded base image; the VTT does the darkness itself, from the lights above
+  scale = Math.min(scale, maxExportScale(mapWidth, mapHeight));
+  const vttCanvas = renderExportCanvas(mapState, { scale, includeGrid: false, atmosphere: { ...atmosphere, darkness: 0 } });
+  const imgBlob = await toBlob(vttCanvas, imageFormat, quality);
+  const base64Data = await new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.readAsDataURL(imgBlob);
   });
-
-  const base64Data = vttCanvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
 
   const uvttData = {
     format: 0.3,
@@ -189,7 +139,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
         x: Math.round(mapWidth / gridSize),
         y: Math.round(mapHeight / gridSize)
       },
-      pixels_per_grid: gridSize
+      pixels_per_grid: Math.round(gridSize * scale)
     },
     line_of_sight: lineOfSight,
     portals: portals,
@@ -201,14 +151,7 @@ export function exportToUniversalVtt({ mapState, filename = 'battlemap.dd2vtt' }
     image: base64Data
   };
 
-  const jsonStr = JSON.stringify(uvttData, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  download(new Blob([JSON.stringify(uvttData)], { type: 'application/json' }), filename);
 }
 
 /** Project serialization (.inkforge JSON format v1.1.0) */

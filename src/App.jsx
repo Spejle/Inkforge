@@ -8,6 +8,8 @@ import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
 import StampImportDialog from './components/StampImportDialog';
 import PrintDialog from './components/PrintDialog';
+import ExportDialog from './components/ExportDialog';
+import { useFeatureVersion } from './plugins/features';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
 import { exportPrintPdf } from './utils/printUtils';
 import { sanitizeProject } from './utils/importGuard';
@@ -23,14 +25,12 @@ import { makeThumb } from './utils/thumb';
 import { getStampById } from './engine/stampsCatalog';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
-  exportToPng,
-  exportToHighResPng,
+  exportImage,
   exportToUniversalVtt,
   exportLayersZip,
   exportToJson,
   importFromJson
 } from './utils/exportUtils';
-import { renderMap } from './engine/renderer';
 import './App.css';
 
 const DEFAULT_COASTLINE = {
@@ -80,6 +80,9 @@ export default function App() {
   const [texts, setTexts] = useState(defaultPreset.texts || []);
   const [grid, setGrid] = useState(defaultPreset.grid);
   const [atmosphere, setAtmosphere] = useState(defaultPreset.atmosphere);
+  // toggling a feature plugin (lighting, weather) changes how the atmosphere draws: a fresh object repaints its layer
+  const featureVersion = useFeatureVersion();
+  useEffect(() => { if (featureVersion) setAtmosphere((a) => ({ ...a })); }, [featureVersion]);
   const [coastline, setCoastline] = useState(defaultPreset.coastline || DEFAULT_COASTLINE);
 
   // Layer panel: per-layer visibility / opacity / blend, and the user's stamp library
@@ -615,57 +618,11 @@ export default function App() {
   };
 
   // Export handlers
-  const handleExportPng = (includeGrid = true) => {
-    const offscreen = document.createElement('canvas');
-    offscreen.width = mapWidth;
-    offscreen.height = mapHeight;
-    const ctx = offscreen.getContext('2d');
-
-    renderMap({
-      ctx,
-      width: mapWidth,
-      height: mapHeight,
-      mapType,
-      landmasses,
-      brushStrokes,
-      stamps,
-      paths,
-      texts,
-      grid: { ...grid, enabled: includeGrid && grid.enabled },
-      atmosphere,
-      coastline,
-      selectedStampId: null,
-      selectedTextId: null,
-      layerVisibility,
-      layerStyle
-    });
-
+  const exportState = () => ({ mapWidth, mapHeight, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle });
+  const handleExport = ({ format, quality, scale, includeGrid, vttImage }) => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportToPng(offscreen, `${safeTitle}.png`);
-  };
-
-  const handleExportHighRes = (scaleFactor, includeGrid) => {
-    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportToHighResPng({
-      mapState: {
-        mapWidth,
-        mapHeight,
-        mapType,
-        landmasses,
-        brushStrokes,
-        stamps,
-        paths,
-        texts,
-        grid,
-        atmosphere,
-        coastline,
-        layerVisibility,
-        layerStyle
-      },
-      scaleFactor,
-      includeGrid,
-      filename: `${safeTitle}_${scaleFactor}x.png`
-    });
+    if (format === 'vtt') return exportToUniversalVtt({ mapState: exportState(), scale, imageFormat: vttImage, quality, filename: `${safeTitle}.dd2vtt` });
+    return exportImage({ mapState: exportState(), format, quality, scale, includeGrid, filename: `${safeTitle}${scale === 1 ? '' : `_${scale}x`}.${format}` });
   };
 
   const handleExportLayers = (scaleFactor, includeGrid) => {
@@ -675,28 +632,6 @@ export default function App() {
       scaleFactor,
       includeGrid,
       filename: `${safeTitle}_layers.zip`
-    });
-  };
-
-  const handleExportVtt = () => {
-    const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportToUniversalVtt({
-      mapState: {
-        mapWidth,
-        mapHeight,
-        mapType,
-        landmasses,
-        brushStrokes,
-        stamps,
-        paths,
-        texts,
-        grid,
-        atmosphere,
-        coastline,
-        layerVisibility,
-        layerStyle
-      },
-      filename: `${safeTitle}.dd2vtt`
     });
   };
 
@@ -902,14 +837,10 @@ export default function App() {
         onRedo={handleRedo}
         gridEnabled={grid.enabled}
         setGridEnabled={(val) => setGrid((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
-        onExportPng={handleExportPng}
-        onExportHighRes={handleExportHighRes}
-        onExportLayers={handleExportLayers}
-        onExportVtt={handleExportVtt}
+        onExport={() => setDialog('export')}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
         onNewMap={() => setDialog('newmap')}
-        onPrint={() => setDialog('print')}
       />
 
       <Tooltip />
@@ -1096,6 +1027,17 @@ export default function App() {
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
       {dialog === 'settings' && <SettingsDialog layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
+      {dialog === 'export' && (
+        <ExportDialog
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          gridEnabled={grid.enabled}
+          onClose={() => setDialog(null)}
+          onExport={handleExport}
+          onLayers={handleExportLayers}
+          onPrint={() => setDialog('print')}
+        />
+      )}
       {dialog === 'print' && (
         <PrintDialog
           mapWidth={mapWidth}

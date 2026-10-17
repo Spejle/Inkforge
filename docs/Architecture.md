@@ -469,7 +469,7 @@ npm run build      # Compile production build into dist/
 npm test           # Run unit tests via node:test runner
 npm run typecheck  # Run strict TypeScript compiler verification (tsc)
 npm run lint       # Run Oxlint linter
-node server.js     # Run zero-dependency local static server for dist/
+npm run preview    # Serve dist/ locally
 ```
 
 ### Test Suite (`tests/`)
@@ -515,7 +515,6 @@ form-action 'none';
 - **No Remote Code Execution**: Remote scripts, `eval()`, and inline event attributes are prohibited.
 - **PixiJS Unsafe-Eval Build**: PixiJS is loaded with its `pixi.js/unsafe-eval` shim, eliminating the need for `'unsafe-eval'` in the CSP.
 - **Network Privacy**: Opening a project or installing a plugin pack will never cause the browser to make background HTTP requests to third-party tracking servers.
-- **Local Static Server (`server.js`)**: Configured with strict path traversal checks, MIME type validation, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and default binding to `127.0.0.1`.
 
 ---
 
