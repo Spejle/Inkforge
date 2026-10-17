@@ -3,7 +3,7 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
-## 1.13.0 (unreleased)
+## 1.13.0 (2026-10-17)
 
 - **Export dialog**: PNG, WebP, JPG or Universal VTT; quality slider for the lossy formats; resolution 0.5× to 8× with the pixel size shown (capped at the browser's canvas limit); VTT embeds WebP or PNG and its pixels-per-grid follows the resolution. Layers ZIP and Print PDF moved into it.
 - **Zoom up to 800%**. Fixed the map sliding away from the cursor while zooming: several wheel events between renders each used the old zoom.
