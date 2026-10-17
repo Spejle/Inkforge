@@ -1,3 +1,4 @@
+import { inkPoly, inkShadow, inkStroke, inkHatch } from './inkHelpers.js';
 // Additional viewing directions for civilization stamps (CivB workstream).
 // Light from upper-left, soft ground shadows, crisp dark outline. Deterministic rendering.
 
@@ -610,43 +611,24 @@ export const STAMPS_VIEWS_CIVB = [
     defaultScale: 1.0,
     aspect: 1.1,
     render: (ctx, size, color = '#2c221e', fill = '#fde047') => {
-      ctx.save();
       const w = size * 1.1, h = size;
-
-      groundShadow(ctx, w * 0.50, h * 0.85, w * 0.42, h * 0.06, 0.30);
-
-      // Guy-lines
-      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.beginPath();
-      ctx.moveTo(w * 0.50, h * 0.30); ctx.lineTo(w * 0.08, h * 0.85);
-      ctx.moveTo(w * 0.50, h * 0.30); ctx.lineTo(w * 0.92, h * 0.85);
-      ctx.stroke();
-
-      // Wooden pegs
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(w * 0.06, h * 0.83, w * 0.04, h * 0.06);
-      ctx.fillRect(w * 0.90, h * 0.83, w * 0.04, h * 0.06);
-
-      // Facade (left lit, right shaded)
-      poly(ctx, [[w * 0.50, h * 0.30], [w * 0.20, h * 0.84], [w * 0.50, h * 0.84]], fill);
-      poly(ctx, [[w * 0.50, h * 0.30], [w * 0.50, h * 0.84], [w * 0.80, h * 0.84]], '#eab308');
-
-      // Dark interior opening
-      poly(ctx, [[w * 0.50, h * 0.40], [w * 0.34, h * 0.84], [w * 0.66, h * 0.84]], '#451a03');
-
-      // Center wooden tent pole
-      ctx.fillStyle = '#78350f'; ctx.fillRect(w * 0.485, h * 0.40, w * 0.03, h * 0.44);
-
-      // Warm lantern glow inside
-      ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.arc(w * 0.50, h * 0.68, w * 0.045, 0, TAU); ctx.fill();
-
-      // Outlines
-      poly(ctx, [[w * 0.50, h * 0.30], [w * 0.20, h * 0.84], [w * 0.80, h * 0.84]], null, color, 2.5);
-
-      ctx.lineWidth = 1.8; ctx.beginPath();
-      ctx.moveTo(w * 0.50, h * 0.40); ctx.lineTo(w * 0.34, h * 0.84);
-      ctx.moveTo(w * 0.50, h * 0.40); ctx.lineTo(w * 0.66, h * 0.84);
-      ctx.stroke();
-
+      const P = (x, y) => [x * w, y * h];
+      ctx.save();
+      inkShadow(ctx, w * 0.5, h * 0.85, w * 0.42, h * 0.06);
+      // the base tent's gable end-on: guy ropes, lit left half, shaded right half, door flap, pole and pennant
+      inkHatch(ctx, color, h * 0.008, [[0.5 * w, 0.2 * h, 0.04 * w, 0.84 * h], [0.5 * w, 0.2 * h, 0.96 * w, 0.84 * h]], 0.8);
+      const front = [P(0.5, 0.2), P(0.86, 0.84), P(0.14, 0.84)];
+      inkPoly(ctx, front); ctx.fillStyle = fill; ctx.fill();
+      inkPoly(ctx, [P(0.5, 0.2), P(0.86, 0.84), P(0.5, 0.84)]); ctx.fillStyle = 'rgba(70,40,10,0.32)'; ctx.fill();
+      inkPoly(ctx, [P(0.5, 0.2), P(0.5, 0.84), P(0.14, 0.84)]);
+      const g = ctx.createLinearGradient(0.14 * w, 0, 0.5 * w, 0); g.addColorStop(0, 'rgba(255,250,230,0.4)'); g.addColorStop(1, 'rgba(255,250,230,0)');
+      ctx.fillStyle = g; ctx.fill();
+      inkPoly(ctx, [P(0.5, 0.44), P(0.62, 0.84), P(0.38, 0.84)]); ctx.fillStyle = '#2a1d14'; ctx.fill();
+      inkPoly(ctx, [P(0.5, 0.44), P(0.38, 0.84), P(0.3, 0.84)]); ctx.fillStyle = 'rgba(255,240,200,0.6)'; ctx.fill(); inkStroke(ctx, color, h * 0.014);
+      inkHatch(ctx, color, h * 0.01, [[0.62 * w, 0.46 * h, 0.72 * w, 0.66 * h], [0.66 * w, 0.4 * h, 0.78 * w, 0.62 * h]], 0.4);
+      inkPoly(ctx, front); inkStroke(ctx, color, h * 0.03);
+      inkHatch(ctx, color, h * 0.022, [[0.5 * w, 0.2 * h, 0.5 * w, 0.08 * h]], 1);
+      ctx.beginPath(); ctx.moveTo(0.5 * w, 0.08 * h); ctx.lineTo(0.6 * w, 0.105 * h); ctx.lineTo(0.5 * w, 0.13 * h); ctx.fillStyle = '#b91c1c'; ctx.fill(); inkStroke(ctx, color, h * 0.012);
       ctx.restore();
     }
   },
@@ -662,45 +644,23 @@ export const STAMPS_VIEWS_CIVB = [
     defaultScale: 1.0,
     aspect: 1.1,
     render: (ctx, size, color = '#2c221e', fill = '#fde047') => {
-      ctx.save();
       const w = size * 1.1, h = size;
-
-      ctx.fillStyle = 'rgba(25, 20, 15, 0.22)';
-      ctx.fillRect(w * 0.22, h * 0.22, w * 0.62, h * 0.62);
-
-      // Guy-lines
-      ctx.strokeStyle = color; ctx.lineWidth = 2.0; ctx.beginPath();
-      ctx.moveTo(w * 0.20, h * 0.20); ctx.lineTo(w * 0.08, h * 0.12);
-      ctx.moveTo(w * 0.80, h * 0.20); ctx.lineTo(w * 0.92, h * 0.12);
-      ctx.moveTo(w * 0.20, h * 0.80); ctx.lineTo(w * 0.08, h * 0.88);
-      ctx.moveTo(w * 0.80, h * 0.80); ctx.lineTo(w * 0.92, h * 0.88);
-      ctx.moveTo(w * 0.50, h * 0.20); ctx.lineTo(w * 0.50, h * 0.08);
-      ctx.moveTo(w * 0.50, h * 0.80); ctx.lineTo(w * 0.50, h * 0.92);
-      ctx.stroke();
-
-      // Pegs
-      ctx.fillStyle = '#78350f';
-      for (const [px, py] of [[0.06, 0.10], [0.90, 0.10], [0.485, 0.06], [0.06, 0.86], [0.90, 0.86], [0.485, 0.90]]) {
-        ctx.fillRect(w * px, h * py, w * 0.03, h * 0.04);
-      }
-
-      // Roof slopes (left lit, right shaded)
-      ctx.fillStyle = fill; ctx.fillRect(w * 0.20, h * 0.20, w * 0.30, h * 0.60);
-      ctx.fillStyle = '#eab308'; ctx.fillRect(w * 0.50, h * 0.20, w * 0.30, h * 0.60);
-
-      // Front entrance opening & lantern glow
-      poly(ctx, [[w * 0.50, h * 0.20], [w * 0.38, h * 0.28], [w * 0.62, h * 0.28]], '#451a03');
-      ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.arc(w * 0.50, h * 0.25, w * 0.03, 0, TAU); ctx.fill();
-
-      // Outlines & ridge
-      ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-      ctx.strokeRect(w * 0.20, h * 0.20, w * 0.60, h * 0.60);
-      ctx.beginPath(); ctx.moveTo(w * 0.50, h * 0.20); ctx.lineTo(w * 0.50, h * 0.80); ctx.stroke();
-
-      ctx.lineWidth = 1.8; ctx.beginPath();
-      ctx.moveTo(w * 0.38, h * 0.28); ctx.lineTo(w * 0.50, h * 0.20); ctx.lineTo(w * 0.62, h * 0.28);
-      ctx.stroke();
-
+      const P = (x, y) => [x * w, y * h];
+      ctx.save();
+      inkShadow(ctx, w * 0.54, h * 0.54, w * 0.36, h * 0.36, 0.22);
+      // the base tent from above: ridge pole, lit west slope, shaded east slope, guy ropes to pegs, pennant
+      inkHatch(ctx, color, h * 0.008, [[0.5 * w, 0.18 * h, 0.12 * w, 0.06 * h], [0.5 * w, 0.18 * h, 0.88 * w, 0.06 * h], [0.5 * w, 0.82 * h, 0.12 * w, 0.94 * h], [0.5 * w, 0.82 * h, 0.88 * w, 0.94 * h]], 0.8);
+      ctx.fillStyle = color;
+      for (const [x, y] of [[0.12, 0.06], [0.88, 0.06], [0.12, 0.94], [0.88, 0.94]]) ctx.fillRect(x * w - h * 0.012, y * h - h * 0.012, h * 0.024, h * 0.024);
+      inkPoly(ctx, [P(0.2, 0.18), P(0.5, 0.18), P(0.5, 0.82), P(0.2, 0.82)]); ctx.fillStyle = fill; ctx.fill();
+      const g = ctx.createLinearGradient(0.2 * w, 0, 0.5 * w, 0); g.addColorStop(0, 'rgba(255,250,230,0.4)'); g.addColorStop(1, 'rgba(255,250,230,0)');
+      ctx.fillStyle = g; ctx.fill();
+      inkPoly(ctx, [P(0.5, 0.18), P(0.8, 0.18), P(0.8, 0.82), P(0.5, 0.82)]); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(70,40,10,0.32)'; ctx.fill();
+      inkHatch(ctx, color, h * 0.01, [[0.56 * w, 0.32 * h, 0.76 * w, 0.32 * h], [0.56 * w, 0.5 * h, 0.76 * w, 0.5 * h], [0.56 * w, 0.68 * h, 0.76 * w, 0.68 * h]], 0.4);
+      inkPoly(ctx, [P(0.42, 0.82), P(0.5, 0.82), P(0.5, 0.7)]); ctx.fillStyle = '#2a1d14'; ctx.fill();
+      inkPoly(ctx, [P(0.2, 0.18), P(0.8, 0.18), P(0.8, 0.82), P(0.2, 0.82)]); inkStroke(ctx, color, h * 0.03);
+      inkPoly(ctx, [P(0.5, 0.16), P(0.5, 0.84)], false); inkStroke(ctx, color, h * 0.022);
+      ctx.beginPath(); ctx.moveTo(0.5 * w, 0.16 * h); ctx.lineTo(0.62 * w, 0.12 * h); ctx.lineTo(0.5 * w, 0.09 * h); ctx.closePath(); ctx.fillStyle = '#b91c1c'; ctx.fill(); inkStroke(ctx, color, h * 0.012);
       ctx.restore();
     }
   }

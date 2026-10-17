@@ -1541,3 +1541,6 @@ const FIT_B = {
   sky_spire: [0.17, 0.762, 0.02, 1.077],
 };
 export const STAMPS_SETTLEMENTSB = ALL.map((st) => fitBox(st, FIT_B[st.id.slice(4)]));
+
+// Drawing kit reused by the alternate views (views*.js) so their castles match this art.
+export const CAS_KIT = { pal, tone, lt, dk, shadow, ink, body, merl, tower, wall, gate, slit, flag, cone, tufts, tree, taper, stars, glowAt, rng, RED, BLUE, GOLD, GLOW, ARCANE, VOID, TAU };

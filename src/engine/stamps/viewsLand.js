@@ -42,47 +42,92 @@ function groundShadow(ctx, x, y, rx, ry, alpha = 0.25) {
   ctx.restore();
 }
 
-// One hill/dune: filled mound whose drawn crest really peaks at (ax, ay), shade clipped inside it,
-// crest inked. Fractions of w/h. Painter order = call order, so later mounds occlude earlier ones.
-function moundLayer(ctx, w, h, color, fill, shade, [l, r, base, ax, ay], ripples = false) {
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(w * l, h * base);
-    ctx.quadraticCurveTo(w * (2 * ax - (l + r) / 2), h * (2 * ay - base), w * r, h * base);
-  };
-  ctx.save();
-  path();
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.clip();
-  // lee face: wedge from the apex to the right foot
-  ctx.fillStyle = shade;
-  ctx.beginPath();
-  ctx.moveTo(w * ax, h * ay);
-  ctx.lineTo(w * r, h * base);
-  ctx.lineTo(w * (ax + (r - ax) * 0.15), h * base);
-  ctx.closePath();
-  ctx.fill();
-  if (ripples) {
-    ctx.strokeStyle = 'rgba(120, 53, 15, 0.25)';
-    ctx.lineWidth = lw(h, 0.016);
-    ctx.beginPath();
-    for (const t of [0.35, 0.65]) {
-      const y = ay + (base - ay) * t, x0 = l + (ax - l) * t;
-      ctx.moveTo(w * x0, h * y);
-      ctx.quadraticCurveTo(w * (x0 + 0.06), h * (y - 0.05), w * (x0 + 0.14), h * (y - 0.04));
-    }
-    ctx.stroke();
+import { inkRng, inkPoly, inkShadow, inkStroke, inkHatch, inkPeak, inkMound } from './inkHelpers.js';
+
+// Plan view of an inked peak, matching inkPeak: jagged rim, lit north-west half,
+// shaded south-east half with hatching, ridges from the summit, optional snow cap.
+function inkTopPeak(ctx, s, cx, cy, rx, ry, o) {
+  const r = inkRng(o.seed || 1), n = 16, pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + (r() - 0.5) * 0.2, k = 0.84 + r() * 0.2;
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  const lw = s * (o.lw || 0.03);
+  if (o.shadow !== false) inkShadow(ctx, cx + rx * 0.08, cy + ry * 0.1, rx, ry * 0.98, 0.2);
+  inkPoly(ctx, pts); ctx.fillStyle = o.lit; ctx.fill();
+  ctx.save(); inkPoly(ctx, pts); ctx.clip();
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+  g.addColorStop(0, 'rgba(255,250,235,0.35)'); g.addColorStop(1, 'rgba(60,40,25,0.12)');
+  ctx.fillStyle = g; ctx.fillRect(cx - rx * 1.2, cy - ry * 1.2, rx * 2.4, ry * 2.4);
+  inkPoly(ctx, [[cx - rx * 2, cy + ry * 2], [cx + rx * 2, cy - ry * 2], [cx + rx * 2, cy + ry * 2]]); ctx.fillStyle = o.shade; ctx.fill();
+  const segs = [];
+  for (let k = 1; k <= 5; k++) {
+    const a = -Math.PI / 4 + (k / 6) * Math.PI;
+    segs.push([cx + Math.cos(a) * rx * 0.35, cy + Math.sin(a) * ry * 0.35, cx + Math.cos(a) * rx * 0.85, cy + Math.sin(a) * ry * 0.85]);
+  }
+  inkHatch(ctx, o.color, lw * 0.45, segs, 0.55);
+  if (o.snow) {
+    const sp = pts.map(([x, y]) => { const k = o.snow * (0.8 + r() * 0.4); return [cx + (x - cx) * k, cy + (y - cy) * k]; });
+    inkPoly(ctx, sp); ctx.fillStyle = o.snowCol || '#fbfbf7'; ctx.fill();
+    ctx.save(); inkPoly(ctx, sp); ctx.clip();
+    inkPoly(ctx, [[cx - rx * 2, cy + ry * 2], [cx + rx * 2, cy - ry * 2], [cx + rx * 2, cy + ry * 2]]); ctx.fillStyle = o.snowShade || '#c6d0dc'; ctx.fill();
+    ctx.restore();
+    inkPoly(ctx, sp); ctx.globalAlpha = 0.85; inkStroke(ctx, o.color, lw * 0.5); ctx.globalAlpha = 1;
   }
   ctx.restore();
-  ctx.save();
-  path();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lw(h, 0.035);
-  ctx.lineCap = 'round';
-  ctx.stroke();
+  const rid = [];
+  for (let i = 1; i < n; i += 3) rid.push([cx, cy, cx + (pts[i][0] - cx) * 0.92, cy + (pts[i][1] - cy) * 0.92]);
+  inkHatch(ctx, o.color, lw * 0.6, rid, 0.9);
+  inkPoly(ctx, pts); inkStroke(ctx, o.color, lw);
+}
+
+// One dune exactly as the base hills_dunes draws it (windward slope, knife crest, shaded lee).
+function inkDune(ctx, w, h, color, fill, x0, cx, cy, x1, by) {
+  const sil = () => {
+    ctx.beginPath(); ctx.moveTo(x0 * w, by * h);
+    ctx.bezierCurveTo((x0 + (cx - x0) * 0.5) * w, by * h, (cx - (cx - x0) * 0.25) * w, cy * h, cx * w, cy * h);
+    ctx.bezierCurveTo((cx + (x1 - cx) * 0.25) * w, cy * h, (cx + (x1 - cx) * 0.5) * w, by * h, x1 * w, by * h);
+  };
+  const crest = () => {
+    ctx.beginPath(); ctx.moveTo(cx * w, cy * h);
+    ctx.bezierCurveTo((cx - 0.02) * w, (cy + (by - cy) * 0.4) * h, (cx + 0.06) * w, (by - 0.05) * h, (cx + (x1 - cx) * 0.25) * w, by * h);
+  };
+  sil(); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  ctx.save(); ctx.clip();
+  crest(); ctx.lineTo(w, by * h); ctx.lineTo(w, 0); ctx.closePath();
+  ctx.fillStyle = 'rgba(150,80,20,0.35)'; ctx.fill();
+  const segs = [];
+  for (let k = 1; k <= 3; k++) { const t = k / 4, yy = (cy + (by - cy) * t) * h, xx = (cx - (cx - x0) * t * 0.7) * w; segs.push([xx - (cx - x0) * w * 0.18, yy + h * 0.015, xx, yy]); }
+  inkHatch(ctx, color, h * 0.01, segs, 0.55);
   ctx.restore();
+  sil(); inkStroke(ctx, color, h * 0.03);
+  crest(); inkStroke(ctx, color, h * 0.016);
+}
+
+// Plan view of the inked volcano: cone, crater with lava throat, lava run, smoke puffs.
+function inkTopVolcano(ctx, s, w, color, fill, lite) {
+  const cx = w * 0.5, cy = s * 0.54;
+  inkTopPeak(ctx, s, cx, cy, w * 0.42, s * 0.4, { seed: 11, lit: fill, shade: 'rgba(15,8,5,0.42)', color });
+  const run = (pts, wd) => {
+    ctx.beginPath(); ctx.moveTo(pts[0][0] * w, pts[0][1] * s);
+    for (let i = 1; i < pts.length; i += 2) ctx.quadraticCurveTo(pts[i][0] * w, pts[i][1] * s, pts[i + 1][0] * w, pts[i + 1][1] * s);
+    inkStroke(ctx, '#7c2d12', s * wd * 1.7); ctx.stroke();
+    inkStroke(ctx, '#f97316', s * wd); ctx.stroke();
+    inkStroke(ctx, '#fde047', s * wd * 0.35); ctx.stroke();
+  };
+  run([[0.44, 0.6], [0.36, 0.66], [0.33, 0.74], [0.3, 0.8], [0.24, 0.84]], 0.022);
+  if (!lite) run([[0.56, 0.6], [0.62, 0.68], [0.6, 0.76], [0.58, 0.82], [0.62, 0.88]], 0.016);
+  ctx.beginPath(); ctx.ellipse(cx, cy, w * 0.12, s * 0.11, 0, 0, TAU);
+  ctx.fillStyle = '#1c1210'; ctx.fill(); inkStroke(ctx, color, s * 0.022);
+  ctx.beginPath(); ctx.ellipse(cx, cy, w * 0.075, s * 0.065, 0, 0, TAU); ctx.fillStyle = '#f97316'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx - w * 0.015, cy - s * 0.015, w * 0.035, s * 0.03, 0, 0, TAU); ctx.fillStyle = '#fde047'; ctx.fill();
+  const puffs = lite ? [[0.6, 0.4, 0.06], [0.7, 0.28, 0.07]] : [[0.6, 0.42, 0.065], [0.68, 0.3, 0.08], [0.8, 0.2, 0.07], [0.56, 0.3, 0.055]];
+  for (const [x, y, rr] of puffs) {
+    ctx.beginPath(); ctx.arc(x * w, y * s, rr * s, 0, TAU);
+    ctx.fillStyle = '#b9b2a8'; ctx.fill();
+    ctx.save(); ctx.clip(); ctx.beginPath(); ctx.arc(x * w + rr * s * 0.35, y * s + rr * s * 0.35, rr * s, 0, TAU); ctx.fillStyle = '#8f877d'; ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(x * w, y * s, rr * s, 0, TAU); inkStroke(ctx, color, s * 0.018);
+  }
 }
 
 export const STAMPS_VIEWS_LAND = [
@@ -101,82 +146,12 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.2,
     aspect: 1.15,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
+      const w = size * 1.15, h = size;
       ctx.save();
-      const w = size * 1.15;
-      const h = size;
-      groundShadow(ctx, w * 0.52, h * 0.88, w * 0.42, h * 0.09, 0.2);
-
-      // Light side (Northwest face)
-      ctx.beginPath();
-      ctx.moveTo(w * 0.1, h * 0.84);
-      ctx.lineTo(w * 0.45, h * 0.16);
-      ctx.quadraticCurveTo(w * 0.43, h * 0.55, w * 0.49, h * 0.89);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Shadow side (Southeast face)
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.16);
-      ctx.quadraticCurveTo(w * 0.43, h * 0.55, w * 0.49, h * 0.89);
-      ctx.lineTo(w * 0.92, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.3)';
-      ctx.fill();
-
-      // Secondary eastern shoulder shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.62, h * 0.48);
-      ctx.lineTo(w * 0.74, h * 0.84);
-      ctx.lineTo(w * 0.92, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.12)';
-      ctx.fill();
-
-      // Contour shading lines on shadow side
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.02);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.47, h * 0.36);
-      ctx.lineTo(w * 0.62, h * 0.47);
-      ctx.moveTo(w * 0.48, h * 0.54);
-      ctx.lineTo(w * 0.71, h * 0.66);
-      ctx.moveTo(w * 0.49, h * 0.72);
-      ctx.lineTo(w * 0.82, h * 0.80);
-      ctx.stroke();
-
-      // Main ridge spine & outer outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.036);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.16);
-      ctx.quadraticCurveTo(w * 0.43, h * 0.55, w * 0.49, h * 0.89);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(w * 0.1, h * 0.84);
-      ctx.lineTo(w * 0.45, h * 0.16);
-      ctx.lineTo(w * 0.92, h * 0.82);
-      ctx.stroke();
-
-      // Snow cap
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.16);
-      ctx.lineTo(w * 0.35, h * 0.32);
-      ctx.lineTo(w * 0.40, h * 0.36);
-      ctx.lineTo(w * 0.45, h * 0.31);
-      ctx.lineTo(w * 0.51, h * 0.37);
-      ctx.lineTo(w * 0.56, h * 0.32);
-      ctx.closePath();
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.lineWidth = lw(h, 0.022);
-      ctx.stroke();
-
+      inkShadow(ctx, w * 0.52, h * 0.87, w * 0.46, h * 0.05);
+      // the same snow-capped peak turned: summit off-centre, a long shaded east flank and a shoulder
+      inkPeak(ctx, h, w * 0.5, w * 0.97, h * 0.88, w * 0.7, h * 0.42, { seed: 6, lit: fill, shade: 'rgba(70,52,40,0.38)', color, hatch: 4 });
+      inkPeak(ctx, h, w * 0.04, w * 0.86, h * 0.87, w * 0.38, h * 0.1, { seed: 3, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.3 });
       ctx.restore();
     }
   },
@@ -192,98 +167,9 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.2,
     aspect: 1.0,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
+      const w = size, h = size;
       ctx.save();
-      const s = size;
-      const cx = s * 0.48;
-      const cy = s * 0.48;
-
-      // Outer mountain base footprint (top-down polygon)
-      const basePts = [
-        [s * 0.14, s * 0.22], [s * 0.46, s * 0.10], [s * 0.84, s * 0.18],
-        [s * 0.90, s * 0.54], [s * 0.82, s * 0.84], [s * 0.48, s * 0.92],
-        [s * 0.18, s * 0.82], [s * 0.08, s * 0.50]
-      ];
-      ctx.beginPath();
-      basePts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Slope shadow on the Southeast half
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(s * 0.84, s * 0.18);
-      ctx.lineTo(s * 0.90, s * 0.54);
-      ctx.lineTo(s * 0.82, s * 0.84);
-      ctx.lineTo(s * 0.48, s * 0.92);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.25)';
-      ctx.fill();
-
-      // Mid-level topographic contour ring
-      const midPts = [
-        [s * 0.26, s * 0.32], [s * 0.47, s * 0.25], [s * 0.70, s * 0.30],
-        [s * 0.74, s * 0.52], [s * 0.69, s * 0.70], [s * 0.48, s * 0.75],
-        [s * 0.28, s * 0.68], [s * 0.22, s * 0.50]
-      ];
-      ctx.beginPath();
-      midPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(s, 0.022);
-      ctx.stroke();
-
-      // High-level contour ring
-      const hiPts = [
-        [s * 0.36, s * 0.39], [s * 0.48, s * 0.34], [s * 0.60, s * 0.38],
-        [s * 0.63, s * 0.50], [s * 0.58, s * 0.61], [s * 0.47, s * 0.63],
-        [s * 0.37, s * 0.58], [s * 0.34, s * 0.48]
-      ];
-      ctx.beginPath();
-      hiPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.stroke();
-
-      // Topographic slope hachure ticks on shaded slopes
-      ctx.lineWidth = lw(s, 0.016);
-      ctx.beginPath();
-      ctx.moveTo(s * 0.66, s * 0.38); ctx.lineTo(s * 0.76, s * 0.34);
-      ctx.moveTo(s * 0.69, s * 0.51); ctx.lineTo(s * 0.82, s * 0.52);
-      ctx.moveTo(s * 0.64, s * 0.64); ctx.lineTo(s * 0.75, s * 0.73);
-      ctx.moveTo(s * 0.50, s * 0.69); ctx.lineTo(s * 0.50, s * 0.83);
-      ctx.stroke();
-
-      // Ridge spines from summit to outer spurs
-      ctx.lineWidth = lw(s, 0.034);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(s * 0.14, s * 0.22);
-      ctx.moveTo(cx, cy); ctx.lineTo(s * 0.84, s * 0.18);
-      ctx.moveTo(cx, cy); ctx.lineTo(s * 0.82, s * 0.84);
-      ctx.moveTo(cx, cy); ctx.lineTo(s * 0.18, s * 0.82);
-      ctx.stroke();
-
-      // Base footprint outline
-      ctx.beginPath();
-      basePts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.lineWidth = lw(s, 0.038);
-      ctx.stroke();
-
-      // Snow-capped peak summit
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - s * 0.07);
-      ctx.lineTo(cx + s * 0.06, cy - s * 0.02);
-      ctx.lineTo(cx + s * 0.05, cy + s * 0.06);
-      ctx.lineTo(cx - s * 0.03, cy + s * 0.07);
-      ctx.lineTo(cx - s * 0.07, cy + s * 0.01);
-      ctx.closePath();
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.lineWidth = lw(s, 0.024);
-      ctx.stroke();
-
+      inkTopPeak(ctx, h, w * 0.5, h * 0.5, w * 0.42, h * 0.4, { seed: 3, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.38 });
       ctx.restore();
     }
   },
@@ -303,109 +189,13 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.4,
     aspect: 1.5,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
+      const w = size * 1.5, h = size;
       ctx.save();
-      const w = size * 1.5;
-      const h = size;
-      groundShadow(ctx, w * 0.5, h * 0.88, w * 0.44, h * 0.08, 0.22);
-
-      // Back right peak
-      ctx.beginPath();
-      ctx.moveTo(w * 0.58, h * 0.85);
-      ctx.lineTo(w * 0.78, h * 0.25);
-      ctx.lineTo(w * 0.95, h * 0.85);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      // Back right peak shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.78, h * 0.25);
-      ctx.quadraticCurveTo(w * 0.80, h * 0.52, w * 0.84, h * 0.85);
-      ctx.lineTo(w * 0.95, h * 0.85);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.25)';
-      ctx.fill();
-
-      // Front left peak
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.85);
-      ctx.lineTo(w * 0.25, h * 0.38);
-      ctx.lineTo(w * 0.48, h * 0.85);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      // Front left peak shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.25, h * 0.38);
-      ctx.lineTo(w * 0.33, h * 0.85);
-      ctx.lineTo(w * 0.48, h * 0.85);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.25)';
-      ctx.fill();
-
-      // Center grand peak
-      ctx.beginPath();
-      ctx.moveTo(w * 0.18, h * 0.90);
-      ctx.lineTo(w * 0.48, h * 0.16);
-      ctx.lineTo(w * 0.82, h * 0.90);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      // Center peak shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.48, h * 0.16);
-      ctx.quadraticCurveTo(w * 0.51, h * 0.50, w * 0.56, h * 0.90);
-      ctx.lineTo(w * 0.82, h * 0.90);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.30)';
-      ctx.fill();
-
-      // Inking all spines and outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.035);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Back peak inking
-      ctx.beginPath();
-      ctx.moveTo(w * 0.65, h * 0.55);
-      ctx.lineTo(w * 0.78, h * 0.25);
-      ctx.lineTo(w * 0.95, h * 0.85);
-      ctx.moveTo(w * 0.78, h * 0.25);
-      ctx.quadraticCurveTo(w * 0.80, h * 0.52, w * 0.84, h * 0.85);
-      ctx.stroke();
-
-      // Connecting arête ridge
-      ctx.beginPath();
-      ctx.moveTo(w * 0.38, h * 0.44);
-      ctx.lineTo(w * 0.48, h * 0.16);
-      ctx.lineTo(w * 0.66, h * 0.48);
-      ctx.stroke();
-
-      // Left peak inking
-      ctx.beginPath();
-      ctx.moveTo(w * 0.05, h * 0.85);
-      ctx.lineTo(w * 0.25, h * 0.38);
-      ctx.lineTo(w * 0.34, h * 0.58);
-      ctx.moveTo(w * 0.25, h * 0.38);
-      ctx.lineTo(w * 0.33, h * 0.85);
-      ctx.stroke();
-
-      // Center grand peak outline and spine
-      ctx.beginPath();
-      ctx.moveTo(w * 0.18, h * 0.90);
-      ctx.lineTo(w * 0.48, h * 0.16);
-      ctx.lineTo(w * 0.82, h * 0.90);
-      ctx.moveTo(w * 0.48, h * 0.16);
-      ctx.quadraticCurveTo(w * 0.51, h * 0.50, w * 0.56, h * 0.90);
-      ctx.stroke();
-
-      // Center hachures on shadow side
-      ctx.lineWidth = lw(h, 0.018);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.50, h * 0.38); ctx.lineTo(w * 0.62, h * 0.48);
-      ctx.moveTo(w * 0.52, h * 0.56); ctx.lineTo(w * 0.68, h * 0.68);
-      ctx.stroke();
-
+      inkShadow(ctx, w * 0.5, h * 0.86, w * 0.47, h * 0.06);
+      // the base's three peaks receding diagonally: far right high, near left low
+      inkPeak(ctx, h, w * 0.5, w * 0.98, h * 0.74, w * 0.76, h * 0.06, { seed: 8, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.27, hatch: 5 });
+      inkPeak(ctx, h, w * 0.24, w * 0.74, h * 0.82, w * 0.5, h * 0.2, { seed: 5, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.22, hatch: 4 });
+      inkPeak(ctx, h, w * 0.02, w * 0.5, h * 0.9, w * 0.24, h * 0.44, { seed: 2, lit: fill, shade: 'rgba(70,52,40,0.38)', color, hatch: 4 });
       ctx.restore();
     }
   },
@@ -421,102 +211,11 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.4,
     aspect: 1.4,
     render: (ctx, size, color = '#2c221e', fill = '#f2ebd9') => {
+      const w = size * 1.4, h = size;
       ctx.save();
-      const w = size * 1.4;
-      const h = size;
-
-      // Range perimeter contour polygon
-      const perim = [
-        [w * 0.06, h * 0.52], [w * 0.20, h * 0.20], [w * 0.48, h * 0.14],
-        [w * 0.74, h * 0.22], [w * 0.94, h * 0.48], [w * 0.86, h * 0.82],
-        [w * 0.54, h * 0.88], [w * 0.24, h * 0.84], [w * 0.08, h * 0.74]
-      ];
-      ctx.beginPath();
-      perim.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Ridge crest coordinates
-      const p1 = [w * 0.26, h * 0.48];
-      const p2 = [w * 0.50, h * 0.42];
-      const p3 = [w * 0.76, h * 0.49];
-
-      // Southern / Southeast slope shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.06, h * 0.52);
-      ctx.lineTo(p1[0], p1[1]);
-      ctx.lineTo(w * 0.38, h * 0.45);
-      ctx.lineTo(p2[0], p2[1]);
-      ctx.lineTo(w * 0.63, h * 0.46);
-      ctx.lineTo(p3[0], p3[1]);
-      ctx.lineTo(w * 0.94, h * 0.48);
-      ctx.lineTo(w * 0.86, h * 0.82);
-      ctx.lineTo(w * 0.54, h * 0.88);
-      ctx.lineTo(w * 0.24, h * 0.84);
-      ctx.lineTo(w * 0.08, h * 0.74);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(50, 40, 35, 0.26)';
-      ctx.fill();
-
-      // Intermediate contour loops around peaks
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.02);
-      // loops follow the ridge (wide, flat) and stay inside the range outline
-      ctx.save();
-      ctx.beginPath();
-      perim.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.clip();
-      for (const [px, py, rx, ry] of [[p1[0], p1[1], w * 0.10, h * 0.10], [p2[0], p2[1], w * 0.12, h * 0.12], [p3[0], p3[1], w * 0.09, h * 0.10]]) {
-        ctx.beginPath();
-        ctx.ellipse(px, py + ry * 0.25, rx, ry, 0, 0, TAU);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // Shaded slope hachures on southern flanks
-      ctx.lineWidth = lw(h, 0.016);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.24, h * 0.64); ctx.lineTo(w * 0.23, h * 0.77);
-      ctx.moveTo(w * 0.44, h * 0.61); ctx.lineTo(w * 0.46, h * 0.78);
-      ctx.moveTo(w * 0.56, h * 0.62); ctx.lineTo(w * 0.60, h * 0.80);
-      ctx.moveTo(w * 0.76, h * 0.64); ctx.lineTo(w * 0.78, h * 0.77);
-      ctx.stroke();
-
-      // Ridge crest spine connecting peaks and spurs
-      ctx.lineWidth = lw(h, 0.038);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.06, h * 0.52);
-      ctx.lineTo(p1[0], p1[1]);
-      ctx.lineTo(w * 0.38, h * 0.45);
-      ctx.lineTo(p2[0], p2[1]);
-      ctx.lineTo(w * 0.63, h * 0.46);
-      ctx.lineTo(p3[0], p3[1]);
-      ctx.lineTo(w * 0.94, h * 0.48);
-      // North & south lateral spurs
-      ctx.moveTo(p1[0], p1[1]); ctx.lineTo(w * 0.20, h * 0.20);
-      ctx.moveTo(p2[0], p2[1]); ctx.lineTo(w * 0.48, h * 0.14);
-      ctx.moveTo(p2[0], p2[1]); ctx.lineTo(w * 0.54, h * 0.88);
-      ctx.moveTo(p3[0], p3[1]); ctx.lineTo(w * 0.74, h * 0.22);
-      ctx.stroke();
-
-      // Outer perimeter outline
-      ctx.beginPath();
-      perim.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.stroke();
-
-      // Small snow patches on peak summits
-      ctx.fillStyle = '#ffffff';
-      for (const [px, py] of [p1, p2, p3]) {
-        ctx.beginPath();
-        ctx.arc(px, py, w * 0.024, 0, TAU);
-        ctx.fill();
-        ctx.stroke();
-      }
-
+      inkTopPeak(ctx, h, w * 0.5, h * 0.7, w * 0.15, h * 0.22, { seed: 2, lit: fill, shade: 'rgba(70,52,40,0.38)', color });
+      inkTopPeak(ctx, h, w * 0.22, h * 0.4, w * 0.18, h * 0.3, { seed: 5, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.4 });
+      inkTopPeak(ctx, h, w * 0.76, h * 0.38, w * 0.2, h * 0.32, { seed: 8, lit: fill, shade: 'rgba(70,52,40,0.34)', color, snow: 0.45 });
       ctx.restore();
     }
   },
@@ -536,69 +235,11 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.2,
     aspect: 1.1,
     render: (ctx, size, color = '#1e293b', fill = '#f8fafc') => {
+      const w = size * 1.1, h = size;
       ctx.save();
-      const w = size * 1.1;
-      const h = size;
-      groundShadow(ctx, w * 0.5, h * 0.88, w * 0.42, h * 0.08, 0.2);
-
-      // Main horn peak pyramid
-      // West face (lit)
-      ctx.beginPath();
-      ctx.moveTo(w * 0.12, h * 0.84);
-      ctx.lineTo(w * 0.44, h * 0.12);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.52, w * 0.50, h * 0.89);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // East shadow face (icy deep blue shadow)
-      ctx.beginPath();
-      ctx.moveTo(w * 0.44, h * 0.12);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.52, w * 0.50, h * 0.89);
-      ctx.lineTo(w * 0.90, h * 0.82);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.fillStyle = 'rgba(56, 110, 168, 0.38)';
-      ctx.fill();
-
-      // Blue ice crevasse fissures on shadow face
-      ctx.strokeStyle = '#2563eb';
-      ctx.lineWidth = lw(h, 0.02);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.48, h * 0.36); ctx.lineTo(w * 0.66, h * 0.48);
-      ctx.moveTo(w * 0.49, h * 0.58); ctx.lineTo(w * 0.74, h * 0.69);
-      ctx.moveTo(w * 0.54, h * 0.76); ctx.lineTo(w * 0.82, h * 0.81);
-      ctx.stroke();
-
-      // Arêtes and dark ink outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.038);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Spine arête
-      ctx.beginPath();
-      ctx.moveTo(w * 0.44, h * 0.12);
-      ctx.quadraticCurveTo(w * 0.45, h * 0.52, w * 0.50, h * 0.89);
-      ctx.stroke();
-
-      // Outer silhouette
-      ctx.beginPath();
-      ctx.moveTo(w * 0.12, h * 0.84);
-      ctx.lineTo(w * 0.44, h * 0.12);
-      ctx.lineTo(w * 0.90, h * 0.82);
-      ctx.stroke();
-
-      // Lateral bergschrund crevasse on sunlit face
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = lw(h, 0.018);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.60);
-      ctx.lineTo(w * 0.39, h * 0.64);
-      ctx.stroke();
-
+      inkShadow(ctx, w * 0.52, h * 0.88, w * 0.42, h * 0.05);
+      // same blue-grey rock and deep snow mantle as the base, summit pushed left so the shaded face shows
+      inkPeak(ctx, h, w * 0.08, w * 0.95, h * 0.88, w * 0.4, h * 0.06, { seed: 9, lit: '#a9b4c2', shade: 'rgba(25,35,60,0.42)', color, snow: 0.55, snowCol: fill, snowShade: '#b5c6dc', hatch: 7 });
       ctx.restore();
     }
   },
@@ -618,87 +259,7 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.3,
     aspect: 1.0,
     render: (ctx, size, color = '#271c19', fill = '#4a3f35') => {
-      ctx.save();
-      const s = size;
-      const cx = s * 0.5;
-      const cy = s * 0.52;
-      const outerR = s * 0.42;
-      const rimR = s * 0.19;
-
-      // Outer conical volcano slope
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, 0, TAU);
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Dark basalt shadow on Southeast slope
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, -Math.PI * 0.15, Math.PI * 0.85);
-      ctx.arc(cx, cy, rimR, Math.PI * 0.85, -Math.PI * 0.15, true);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(20, 15, 12, 0.45)';
-      ctx.fill();
-
-      // Basalt ash ridges radiating down flanks
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(s, 0.02);
-      for (let a = 0; a < TAU; a += TAU / 8) {
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(a) * rimR * 1.1, cy + Math.sin(a) * rimR * 1.1);
-        ctx.lineTo(cx + Math.cos(a + 0.1) * outerR * 0.95, cy + Math.sin(a + 0.1) * outerR * 0.95);
-        ctx.stroke();
-      }
-
-      // Outer cone outline
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(s, 0.035);
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, 0, TAU);
-      ctx.stroke();
-
-      // Caldera crater outer rim
-      ctx.beginPath();
-      ctx.arc(cx, cy, rimR, 0, TAU);
-      ctx.fillStyle = 'rgba(20, 15, 12, 0.7)';
-      ctx.fill();
-      ctx.stroke();
-
-      // Bubbling fiery magma pool
-      ctx.beginPath();
-      ctx.arc(cx, cy, rimR * 0.75, 0, TAU);
-      ctx.fillStyle = '#f97316';
-      ctx.fill();
-      ctx.strokeStyle = '#ea580c';
-      ctx.lineWidth = lw(s, 0.02);
-      ctx.stroke();
-
-      // Magma bubbling hotspots
-      ctx.fillStyle = '#fef08a';
-      for (const [bx, by, br] of [[-0.03, -0.02, 0.035], [0.04, 0.03, 0.03], [-0.01, 0.05, 0.025], [0.03, -0.05, 0.02]]) {
-        ctx.beginPath();
-        ctx.arc(cx + s * bx, cy + s * by, s * br, 0, TAU);
-        ctx.fill();
-      }
-
-      // Lava streaks overflowing the southern flank
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = lw(s, 0.025);
-      ctx.beginPath();
-      ctx.moveTo(cx + s * 0.05, cy + rimR);
-      ctx.quadraticCurveTo(cx + s * 0.08, cy + s * 0.28, cx + s * 0.12, cy + outerR * 0.92);
-      ctx.moveTo(cx - s * 0.06, cy + rimR * 0.95);
-      ctx.quadraticCurveTo(cx - s * 0.12, cy + s * 0.26, cx - s * 0.15, cy + outerR * 0.88);
-      ctx.stroke();
-
-      // Smoke billow drifting northeast
-      ctx.fillStyle = 'rgba(100, 95, 90, 0.40)';
-      ctx.beginPath();
-      ctx.arc(cx + s * 0.06, cy - s * 0.18, s * 0.08, 0, TAU);
-      ctx.arc(cx + s * 0.14, cy - s * 0.28, s * 0.10, 0, TAU);
-      ctx.arc(cx + s * 0.22, cy - s * 0.36, s * 0.07, 0, TAU);
-      ctx.fill();
-
-      ctx.restore();
+      ctx.save(); inkTopVolcano(ctx, size, size, color, fill, false); ctx.restore();
     }
   },
 
@@ -717,67 +278,7 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.2,
     aspect: 1.0,
     render: (ctx, size, color = '#271c19', fill = '#57534e') => {
-      ctx.save();
-      const s = size;
-      const cx = s * 0.5;
-      const cy = s * 0.5;
-      const outerR = s * 0.40;
-      const rimR = s * 0.16;
-
-      // Outer cone
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, 0, TAU);
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Southeast slope shadow
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, -Math.PI * 0.1, Math.PI * 0.8);
-      ctx.arc(cx, cy, rimR, Math.PI * 0.8, -Math.PI * 0.1, true);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(25, 18, 15, 0.35)';
-      ctx.fill();
-
-      // Outer cone outline
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, 0, TAU);
-      ctx.stroke();
-
-      // Caldera crater rim
-      ctx.beginPath();
-      ctx.arc(cx, cy, rimR, 0, TAU);
-      ctx.fillStyle = '#ea580c';
-      ctx.fill();
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, rimR, 0, TAU);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // Lava trickle running down southern flank
-      ctx.beginPath();
-      ctx.moveTo(cx + s * 0.02, cy + rimR);
-      ctx.quadraticCurveTo(cx - s * 0.03, cy + s * 0.26, cx - s * 0.05, cy + outerR * 0.95);
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // Smoke plume drifting off
-      ctx.fillStyle = 'rgba(120, 113, 108, 0.38)';
-      ctx.beginPath();
-      ctx.arc(cx + s * 0.04, cy - s * 0.14, s * 0.06, 0, TAU);
-      ctx.arc(cx + s * 0.10, cy - s * 0.22, s * 0.07, 0, TAU);
-      ctx.arc(cx + s * 0.16, cy - s * 0.29, s * 0.05, 0, TAU);
-      ctx.fill();
-
-      ctx.restore();
+      ctx.save(); inkTopVolcano(ctx, size, size, color, fill, true); ctx.restore();
     }
   },
 
@@ -796,70 +297,31 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.3,
     aspect: 1.4,
     render: (ctx, size, color = '#451a03', fill = '#d97706') => {
+      const w = size * 1.4, h = size;
+      const P = (pts) => pts.map(([x, y]) => [x * w, y * h]);
       ctx.save();
-      const w = size * 1.4;
-      const h = size;
-      groundShadow(ctx, w * 0.5, h * 0.86, w * 0.44, h * 0.08, 0.22);
-
-      // Mesa base profile
-      const x0 = w * 0.08, x1 = w * 0.92, yBase = h * 0.85;
-      const topPts = [
-        [w * 0.22, h * 0.38], [w * 0.32, h * 0.26], [w * 0.74, h * 0.26],
-        [w * 0.82, h * 0.38], [w * 0.62, h * 0.44], [w * 0.28, h * 0.44]
-      ];
-
-      // Stepped cliff wall fill
-      ctx.beginPath();
-      ctx.moveTo(x0, yBase);
-      ctx.lineTo(topPts[0][0], topPts[0][1]);
-      ctx.lineTo(topPts[3][0], topPts[3][1]);
-      ctx.lineTo(x1, yBase);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Shadow on Southeast facing cliff face
-      ctx.beginPath();
-      ctx.moveTo(topPts[4][0], topPts[4][1]);
-      ctx.lineTo(topPts[3][0], topPts[3][1]);
-      ctx.lineTo(x1, yBase);
-      ctx.lineTo(w * 0.54, yBase);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(70, 20, 10, 0.38)';
-      ctx.fill();
-
-      // Horizontal sedimentary stratum lines across cliff
-      ctx.strokeStyle = '#92400e';
-      ctx.lineWidth = lw(h, 0.02);
-      for (const yf of [0.52, 0.64, 0.75]) {
-        const span = (yf - 0.4) / 0.45;
-        ctx.beginPath();
-        ctx.moveTo(w * (0.22 - span * 0.12), h * yf);
-        ctx.lineTo(w * (0.80 + span * 0.10), h * yf);
-        ctx.stroke();
+      inkShadow(ctx, w * 0.52, h * 0.86, w * 0.46, h * 0.06);
+      // talus apron, front cliff (lit), side cliff (shaded), sunlit table top
+      const apron = P([[0.04, 0.86], [0.14, 0.7], [0.8, 0.74], [0.92, 0.66], [0.97, 0.82], [0.9, 0.88]]);
+      inkPoly(ctx, apron); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(120,60,20,0.22)'; ctx.fill();
+      const front = P([[0.16, 0.72], [0.19, 0.42], [0.66, 0.46], [0.68, 0.76]]);
+      const side = P([[0.66, 0.46], [0.86, 0.32], [0.88, 0.64], [0.68, 0.76]]);
+      const top = P([[0.19, 0.42], [0.38, 0.27], [0.86, 0.32], [0.66, 0.46]]);
+      inkPoly(ctx, front); ctx.fillStyle = fill; ctx.fill();
+      inkPoly(ctx, side); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(70,20,8,0.38)'; ctx.fill();
+      inkPoly(ctx, top); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(255,240,200,0.55)'; ctx.fill();
+      // strata on both cliffs and cracks
+      const segs = [];
+      for (const t of [0.3, 0.52, 0.74]) {
+        segs.push([0.18 * w, (0.42 + 0.3 * t) * h, 0.665 * w, (0.46 + 0.3 * t) * h]);
+        segs.push([0.665 * w, (0.46 + 0.3 * t) * h, 0.87 * w, (0.32 + 0.32 * t) * h]);
       }
-
-      // Flat tabletop surface
-      ctx.beginPath();
-      topPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = sh(fill, 0.18);
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.035);
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-
-      // Outlines of cliffs & base
-      ctx.beginPath();
-      ctx.moveTo(x0, yBase);
-      ctx.lineTo(topPts[0][0], topPts[0][1]);
-      ctx.moveTo(topPts[3][0], topPts[3][1]);
-      ctx.lineTo(x1, yBase);
-      ctx.moveTo(topPts[4][0], topPts[4][1]);
-      ctx.lineTo(w * 0.54, yBase);
-      ctx.stroke();
-
+      for (const x of [0.28, 0.4, 0.53]) segs.push([x * w, 0.45 * h, (x + 0.01) * w, 0.7 * h]);
+      inkHatch(ctx, color, h * 0.011, segs, 0.45);
+      inkHatch(ctx, color, h * 0.01, [[0.25 * w, 0.8 * h, 0.3 * w, 0.77 * h], [0.6 * w, 0.83 * h, 0.66 * w, 0.8 * h]], 0.5);
+      inkPoly(ctx, P([[0.19, 0.42], [0.66, 0.46], [0.86, 0.32]]), false); inkStroke(ctx, color, h * 0.014);
+      inkPoly(ctx, P([[0.66, 0.46], [0.68, 0.76]]), false); inkStroke(ctx, color, h * 0.014);
+      inkPoly(ctx, P([[0.04, 0.86], [0.14, 0.7], [0.16, 0.72], [0.19, 0.42], [0.38, 0.27], [0.86, 0.32], [0.88, 0.64], [0.92, 0.66], [0.97, 0.82], [0.9, 0.88]])); inkStroke(ctx, color, h * 0.032);
       ctx.restore();
     }
   },
@@ -875,77 +337,27 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.3,
     aspect: 1.2,
     render: (ctx, size, color = '#451a03', fill = '#d97706') => {
+      const w = size * 1.2, h = size;
+      const P = (pts) => pts.map(([x, y]) => [x * w, y * h]);
       ctx.save();
-      const w = size * 1.2;
-      const h = size;
-
-      // Outer base perimeter (talus apron)
-      const outerPts = [
-        [w * 0.10, h * 0.22], [w * 0.35, h * 0.10], [w * 0.82, h * 0.14],
-        [w * 0.92, h * 0.48], [w * 0.86, h * 0.84], [w * 0.45, h * 0.90],
-        [w * 0.14, h * 0.80], [w * 0.06, h * 0.50]
-      ];
-      ctx.beginPath();
-      outerPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // Southeast cliff slope shadow
-      ctx.beginPath();
-      ctx.moveTo(w * 0.82, h * 0.14);
-      ctx.lineTo(w * 0.92, h * 0.48);
-      ctx.lineTo(w * 0.86, h * 0.84);
-      ctx.lineTo(w * 0.45, h * 0.90);
-      ctx.lineTo(w * 0.46, h * 0.74);
-      ctx.lineTo(w * 0.74, h * 0.70);
-      ctx.lineTo(w * 0.78, h * 0.46);
-      ctx.lineTo(w * 0.70, h * 0.24);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(70, 20, 10, 0.42)';
-      ctx.fill();
-
-      // Intermediate stepped contour ring
-      const midPts = [
-        [w * 0.18, h * 0.25], [w * 0.38, h * 0.17], [w * 0.75, h * 0.19],
-        [w * 0.84, h * 0.46], [w * 0.79, h * 0.76], [w * 0.46, h * 0.81],
-        [w * 0.20, h * 0.74], [w * 0.14, h * 0.48]
-      ];
-      ctx.beginPath();
-      midPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.strokeStyle = '#92400e';
-      ctx.lineWidth = lw(h, 0.02);
-      ctx.stroke();
-
-      // Tabletop plateau rim (flat summit polygon)
-      const rimPts = [
-        [w * 0.26, h * 0.30], [w * 0.42, h * 0.22], [w * 0.70, h * 0.24],
-        [w * 0.78, h * 0.46], [w * 0.74, h * 0.70], [w * 0.46, h * 0.74],
-        [w * 0.28, h * 0.68], [w * 0.22, h * 0.48]
-      ];
-      ctx.beginPath();
-      rimPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.fillStyle = sh(fill, 0.22);
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw(h, 0.035);
-      ctx.stroke();
-
-      // Outer perimeter outline & radial cliff tick marks
-      ctx.beginPath();
-      outerPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-      ctx.stroke();
-
-      ctx.lineWidth = lw(h, 0.018);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.78, h * 0.46); ctx.lineTo(w * 0.90, h * 0.48);
-      ctx.moveTo(w * 0.74, h * 0.70); ctx.lineTo(w * 0.84, h * 0.80);
-      ctx.moveTo(w * 0.46, h * 0.74); ctx.lineTo(w * 0.45, h * 0.88);
-      ctx.stroke();
-
+      inkShadow(ctx, w * 0.54, h * 0.55, w * 0.46, h * 0.42, 0.2);
+      // talus apron ring, cliff band (shaded on the south-east), flat sunlit table
+      const apron = P([[0.06, 0.48], [0.14, 0.2], [0.42, 0.08], [0.78, 0.1], [0.95, 0.34], [0.93, 0.7], [0.72, 0.92], [0.34, 0.92], [0.1, 0.76]]);
+      const cliff = P([[0.16, 0.46], [0.22, 0.24], [0.44, 0.15], [0.74, 0.17], [0.86, 0.36], [0.84, 0.64], [0.68, 0.82], [0.36, 0.82], [0.18, 0.7]]);
+      const table = P([[0.24, 0.45], [0.28, 0.29], [0.46, 0.22], [0.7, 0.24], [0.78, 0.38], [0.76, 0.58], [0.64, 0.72], [0.38, 0.72], [0.26, 0.62]]);
+      inkPoly(ctx, apron); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(120,60,20,0.22)'; ctx.fill();
+      inkPoly(ctx, cliff); ctx.fillStyle = fill; ctx.fill();
+      ctx.save(); inkPoly(ctx, cliff); ctx.clip();
+      inkPoly(ctx, P([[0, 1], [1, 0], [1, 1]])); ctx.fillStyle = 'rgba(70,20,8,0.38)'; ctx.fill();
+      ctx.restore();
+      inkPoly(ctx, table); ctx.fillStyle = fill; ctx.fill(); ctx.fillStyle = 'rgba(255,240,200,0.55)'; ctx.fill();
+      // strata contour between table and cliff edge, cracks on the table
+      const mid = cliff.map(([x, y], i) => [(x + table[i][0]) / 2, (y + table[i][1]) / 2]);
+      inkPoly(ctx, mid); ctx.save(); ctx.globalAlpha = 0.45; inkStroke(ctx, color, h * 0.011); ctx.restore();
+      inkHatch(ctx, color, h * 0.01, [[0.4 * w, 0.36 * h, 0.48 * w, 0.42 * h], [0.55 * w, 0.52 * h, 0.62 * w, 0.5 * h], [0.36 * w, 0.58 * h, 0.42 * w, 0.62 * h]], 0.45);
+      inkPoly(ctx, table); inkStroke(ctx, color, h * 0.014);
+      inkPoly(ctx, apron); inkStroke(ctx, color, h * 0.032);
+      inkPoly(ctx, cliff); inkStroke(ctx, color, h * 0.02);
       ctx.restore();
     }
   },
@@ -965,13 +377,18 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.0,
     aspect: 1.3,
     render: (ctx, size, color = '#2c221e', fill = '#dbe5c5') => {
-      const w = size * 1.3;
-      const h = size;
-      groundShadow(ctx, w * 0.5, h * 0.86, w * 0.46, h * 0.05);
-      // back to front: [left, right, base, apex x, apex y]
-      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.22)', [0.42, 0.95, 0.75, 0.68, 0.40]);
-      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.22)', [0.05, 0.65, 0.82, 0.32, 0.45]);
-      moundLayer(ctx, w, h, color, fill, 'rgba(50, 40, 35, 0.25)', [0.28, 0.95, 0.86, 0.62, 0.55]);
+      const w = size * 1.3, h = size;
+      ctx.save();
+      inkShadow(ctx, w * 0.52, h * 0.84, w * 0.46, h * 0.06);
+      const o = { lit: fill, shade: 'rgba(50,60,30,0.28)', color };
+      // the base's two mounds plus a third, staggered back to the upper right
+      const far = inkMound(ctx, h, w * 0.5, w * 0.98, w * 0.76, h * 0.22, h * 0.62, o);
+      far(); inkStroke(ctx, color, h * 0.028);
+      const back = inkMound(ctx, h, w * 0.3, w * 0.86, w * 0.58, h * 0.36, h * 0.74, o);
+      back(); inkStroke(ctx, color, h * 0.03);
+      const front = inkMound(ctx, h, w * 0.02, w * 0.6, w * 0.3, h * 0.42, h * 0.86, o);
+      front(); inkStroke(ctx, color, h * 0.032);
+      ctx.restore();
     }
   },
 
@@ -990,11 +407,13 @@ export const STAMPS_VIEWS_LAND = [
     defaultScale: 1.1,
     aspect: 1.3,
     render: (ctx, size, color = '#78350f', fill = '#fde68a') => {
-      const w = size * 1.3;
-      const h = size;
-      groundShadow(ctx, w * 0.52, h * 0.84, w * 0.44, h * 0.05);
-      moundLayer(ctx, w, h, color, fill, 'rgba(180, 83, 9, 0.28)', [0.10, 0.86, 0.70, 0.48, 0.42], true);
-      moundLayer(ctx, w, h, color, fill, 'rgba(180, 83, 9, 0.32)', [0.25, 0.96, 0.84, 0.64, 0.54], true);
+      const w = size * 1.3, h = size;
+      ctx.save();
+      inkShadow(ctx, w * 0.52, h * 0.82, w * 0.46, h * 0.05, 0.18);
+      // the base's two dunes, the back one set further away (higher, smaller)
+      inkDune(ctx, w, h, color, fill, 0.36, 0.72, 0.24, 0.98, 0.64);
+      inkDune(ctx, w, h, color, fill, 0.02, 0.4, 0.36, 0.78, 0.82);
+      ctx.restore();
     }
   },
 

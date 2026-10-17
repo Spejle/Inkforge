@@ -1,4 +1,6 @@
 import { fitBox } from './settlementsA.js';
+import { CAS_KIT as K } from './settlementsB.js';
+import { inkPoly, inkShadow, inkStroke, inkHatch } from './inkHelpers.js';
 // Additional viewing directions for civilization stamps (CivA workstream).
 // Light comes from the upper left; soft ground shadow falls to the lower right.
 // Deterministic: no Math.random. Crisp dark outline, balanced ctx.save()/ctx.restore().
@@ -61,20 +63,50 @@ function coneTop(ctx, cx, cy, r, fillCol, outlineCol, lw, shadeCol = 'rgba(30, 2
   ctx.fill();
 }
 
-function crenellations(ctx, x, y, w, h, count, fillCol, outlineCol, lw) {
-  const cw = w / (count * 2 - 1);
-  ctx.fillStyle = fillCol;
-  ctx.strokeStyle = outlineCol;
-  ctx.lineWidth = lw;
-  for (let i = 0; i < count; i++) {
-    const cx = x + i * cw * 2;
-    ctx.fillRect(cx, y, cw, h);
-    ctx.strokeRect(cx, y, cw, h);
-  }
-}
-
 // measured ink bounds of the stamps that overflow their box (see fitBox)
 const FIT_VA = { windmill_front: [0.077, 0.823, -0.092, 0.98], tower_wizard_side: [0.055, 0.642, -0.052, 0.98], civ_lighthouse_side: [-0.003, 0.938, 0.005, 1] };
+
+
+// Draw in the 100-unit space of the cas_* settlement art (settlementsB), so the
+// castle/keep/spire views share its palette, ink weight and lighting.
+function casView(ctx, size, color, fill, aspect, seed, draw) {
+  ctx.save();
+  ctx.scale(size / 100, size / 100);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  draw(ctx, K.pal(color, fill), 100 * aspect, 100, K.rng(seed));
+  ctx.restore();
+}
+// Conical tower roof seen from above: lit north-west half, shaded south-east, shingle rays.
+function casConeTop(c, P, cx, cy, r, col, tip = [cx, cy]) {
+  c.beginPath(); c.arc(cx, cy, r, 0, K.TAU); c.fillStyle = K.dk(col, 0.3); c.fill();
+  c.save(); c.clip();
+  c.beginPath(); c.moveTo(cx - r * 2, cy + r * 2); c.lineTo(cx + r * 2, cy - r * 2); c.lineTo(cx - r * 2, cy - r * 2); c.closePath();
+  c.fillStyle = K.lt(col, 0.22); c.fill();
+  c.globalAlpha = 0.28; c.lineWidth = 0.5; c.strokeStyle = P.ink; c.beginPath();
+  for (let i = 0; i < 10; i++) { const a = (i / 10) * K.TAU; c.moveTo(tip[0], tip[1]); c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  c.stroke(); c.restore();
+  c.beginPath(); c.arc(cx, cy, r, 0, K.TAU); K.ink(c, P);
+  c.beginPath(); c.arc(tip[0], tip[1], 1.2, 0, K.TAU); c.fillStyle = P.ink; c.fill();
+}
+// Hipped roof seen from above: north/west faces lit, south/east shaded.
+function casHipTop(c, P, x, y, w, h, col) {
+  const m = [x + w / 2, y + h / 2];
+  const faces = [[[x, y], [x + w, y], m, 0.22], [[x, y], [x, y + h], m, 0.12], [[x + w, y], [x + w, y + h], m, -0.2], [[x, y + h], [x + w, y + h], m, -0.32]];
+  for (const [a, b, mm, t] of faces) { c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(mm[0], mm[1]); c.closePath(); c.fillStyle = t > 0 ? K.lt(col, t) : K.dk(col, -t); c.fill(); }
+  c.beginPath(); c.moveTo(x, y); c.lineTo(x + w, y + h); c.moveTo(x + w, y); c.lineTo(x, y + h); c.strokeStyle = P.ink; c.globalAlpha = 0.6; c.lineWidth = 0.8; c.stroke(); c.globalAlpha = 1;
+  c.beginPath(); c.rect(x, y, w, h); K.ink(c, P);
+}
+// Curtain wall seen from above: stone wall-walk band with merlon teeth on the outer edge.
+function casWallTop(c, P, x, y, w, h, t) {
+  c.beginPath(); c.rect(x, y, w, h); c.rect(x + t, y + t, w - 2 * t, h - 2 * t);
+  c.fillStyle = P.lit; c.fill('evenodd');
+  c.fillStyle = P.dk; c.fillRect(x + w - t, y, t, h); c.fillRect(x, y + h - t, w, t);
+  c.fillStyle = P.dd;
+  for (let k = x + 2; k < x + w - 2; k += 4) { c.fillRect(k, y, 2, t * 0.35); c.fillRect(k, y + h - t * 0.35, 2, t * 0.35); }
+  for (let k = y + 2; k < y + h - 2; k += 4) { c.fillRect(x, k, t * 0.35, 2); c.fillRect(x + w - t * 0.35, k, t * 0.35, 2); }
+  c.beginPath(); c.rect(x, y, w, h); K.ink(c, P);
+  c.beginPath(); c.rect(x + t, y + t, w - 2 * t, h - 2 * t); K.ink(c, P, 1.2);
+}
 
 export const STAMPS_VIEWS_CIVA = [
   // 1. castle_citadel (Side)
@@ -90,63 +122,17 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.3,
     aspect: 1.2,
     render: (ctx, size, color = '#271c19', fill = '#e2d9cc') => {
-      ctx.save();
-      const w = size * 1.2;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.5, h * 0.92, w * 0.44, h * 0.07);
-
-      // Central Great Tower (background)
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.38, h * 0.25, w * 0.24, h * 0.65);
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.3)';
-      ctx.fillRect(w * 0.5, h * 0.25, w * 0.12, h * 0.65);
-      coneRoof(ctx, w * 0.34, h * 0.25, w * 0.5, h * 0.05, w * 0.66, h * 0.25, '#b91c1c', color, lw);
-
-      // Curtain wall
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.18, h * 0.5, w * 0.64, h * 0.4);
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.18)';
-      ctx.fillRect(w * 0.5, h * 0.5, w * 0.32, h * 0.4);
-      crenellations(ctx, w * 0.3, h * 0.44, w * 0.4, h * 0.06, 5, fill, color, lw);
-
-      // Left bastion tower
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.14, h * 0.45, w * 0.18, h * 0.45);
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.3)';
-      ctx.fillRect(w * 0.23, h * 0.45, w * 0.09, h * 0.45);
-      coneRoof(ctx, w * 0.11, h * 0.45, w * 0.23, h * 0.28, w * 0.35, h * 0.45, '#b91c1c', color, lw);
-
-      // Right bastion tower
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.68, h * 0.45, w * 0.18, h * 0.45);
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.3)';
-      ctx.fillRect(w * 0.77, h * 0.45, w * 0.09, h * 0.45);
-      coneRoof(ctx, w * 0.65, h * 0.45, w * 0.77, h * 0.28, w * 0.89, h * 0.45, '#b91c1c', color, lw);
-
-      // Side postern arch
-      ctx.fillStyle = '#1c1917';
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.82, w * 0.04, Math.PI, 0);
-      ctx.lineTo(w * 0.54, h * 0.9);
-      ctx.lineTo(w * 0.46, h * 0.9);
-      ctx.closePath();
-      ctx.fill();
-
-      // Slits
-      ctx.fillRect(w * 0.22, h * 0.58, w * 0.025, h * 0.08);
-      ctx.fillRect(w * 0.76, h * 0.58, w * 0.025, h * 0.08);
-
-      // Outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.38, h * 0.25, w * 0.24, h * 0.65);
-      ctx.strokeRect(w * 0.18, h * 0.5, w * 0.64, h * 0.4);
-      ctx.strokeRect(w * 0.14, h * 0.45, w * 0.18, h * 0.45);
-      ctx.strokeRect(w * 0.68, h * 0.45, w * 0.18, h * 0.45);
-
-      ctx.restore();
+      // cas_human_castle seen from its flank: keep and blue inner tower behind, curtain wall, red corner towers
+      casView(ctx, size, color, fill, 1.2, 11, (c, P, W, H, r) => {
+        K.shadow(c, 62, 91, 50, 6);
+        K.tufts(c, P, r, 8, 112, 91, 12);
+        K.tower(c, P, 74, 78, 28, 42, { rnd: r, roof: K.RED, rh: 21, slits: 2, flag: K.RED, flagH: 9, cyl: false, ov: 3 });
+        K.tower(c, P, 42, 78, 12, 40, { rnd: r, roof: K.BLUE, rh: 16, slits: 1 });
+        K.wall(c, P, 18, 102, 90, 22, { rnd: r, slits: 6 });
+        K.gate(c, P, 58, 90, 8, 12, { port: true });
+        K.tower(c, P, 100, 86, 14, 46, { rnd: r, roof: K.RED, rh: 19, slits: 2, flag: K.GOLD, flagH: 8, fdir: -1 });
+        K.tower(c, P, 18, 90, 17, 52, { rnd: r, roof: K.RED, rh: 22, slits: 2, flag: K.GOLD, flagH: 9 });
+      });
     }
   },
 
@@ -163,114 +149,22 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.3,
     aspect: 1.0,
     render: (ctx, size, color = '#271c19', fill = '#e2d9cc') => {
-      ctx.save();
-      const w = size;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.54, h * 0.54, w * 0.44, h * 0.44, 0.28);
-
-      // Outer square curtain wall ring
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.16, h * 0.16, w * 0.68, h * 0.68);
-
-      // Courtyard in a lighter tone
-      ctx.fillStyle = '#f5efe6';
-      ctx.fillRect(w * 0.28, h * 0.28, w * 0.44, h * 0.44);
-
-      // Shaded south and east wall walkways
-      ctx.fillStyle = 'rgba(30, 25, 20, 0.2)';
-      ctx.fillRect(w * 0.26, h * 0.72, w * 0.52, h * 0.08);
-      ctx.fillRect(w * 0.72, h * 0.26, w * 0.08, h * 0.52);
-
-      // Gatehouse notch in the south wall
-      ctx.fillStyle = '#f5efe6';
-      ctx.fillRect(w * 0.43, h * 0.8, w * 0.14, h * 0.08);
-      ctx.fillStyle = '#1c1917';
-      ctx.fillRect(w * 0.47, h * 0.82, w * 0.06, h * 0.06);
-
-      // Curtain wall outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.16, h * 0.16, w * 0.68, h * 0.68);
-      ctx.strokeRect(w * 0.28, h * 0.28, w * 0.44, h * 0.44);
-      ctx.strokeRect(w * 0.43, h * 0.8, w * 0.14, h * 0.08);
-
-      // Crenellation ticks along curtain wall outer edge
-      ctx.lineWidth = lw * 0.75;
-      const ticks = [0.28, 0.36, 0.44, 0.52, 0.60, 0.68, 0.72];
-      ctx.beginPath();
-      for (const t of ticks) {
-        ctx.moveTo(w * t, h * 0.16); ctx.lineTo(w * t, h * 0.20);
-        ctx.moveTo(w * 0.84, h * t); ctx.lineTo(w * 0.80, h * t);
-        ctx.moveTo(w * 0.16, h * t); ctx.lineTo(w * 0.20, h * t);
-        if (t < 0.42 || t > 0.58) {
-          ctx.moveTo(w * t, h * 0.84); ctx.lineTo(w * t, h * 0.80);
-        }
-      }
-      ctx.stroke();
-
-      // Central keep with red roof ridge line
-      const kw = w * 0.26;
-      const kh = h * 0.20;
-      const kx = w * 0.37;
-      const ky = h * 0.38;
-      groundShadow(ctx, kx + kw * 0.52, ky + kh * 0.54, kw * 0.52, kh * 0.52, 0.2);
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(kx, ky, kw, kh * 0.5);
-      ctx.fillStyle = '#991b1b';
-      ctx.fillRect(kx, ky + kh * 0.5, kw, kh * 0.5);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.strokeRect(kx, ky, kw, kh);
-      ctx.beginPath();
-      ctx.moveTo(kx, ky + kh * 0.5);
-      ctx.lineTo(kx + kw, ky + kh * 0.5);
-      ctx.stroke();
-
-      // Four round corner towers: grey stone circles with darker rim + 8-wedge red conical roof
-      const rStone = w * 0.11;
-      const rRoof = w * 0.082;
-      const corners = [
-        [w * 0.16, h * 0.16],
-        [w * 0.84, h * 0.16],
-        [w * 0.16, h * 0.84],
-        [w * 0.84, h * 0.84]
-      ];
-      for (const [cx, cy] of corners) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, rStone, 0, Math.PI * 2);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fill();
-        ctx.strokeStyle = '#475569';
-        ctx.lineWidth = lw * 1.1;
-        ctx.stroke();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = lw * 0.7;
-        ctx.stroke();
-
-        for (let i = 0; i < 8; i++) {
-          const a0 = (i * Math.PI) / 4;
-          const a1 = ((i + 1) * Math.PI) / 4;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.arc(cx, cy, rRoof, a0, a1);
-          ctx.closePath();
-          const isShaded = i >= 1 && i <= 4;
-          ctx.fillStyle = isShaded ? (i % 2 === 0 ? '#991b1b' : '#b91c1c') : (i % 2 === 0 ? '#dc2626' : '#ef4444');
-          ctx.fill();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = lw * 0.4;
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(1, rRoof * 0.12), 0, Math.PI * 2);
-        ctx.fillStyle = '#fef08a';
-        ctx.fill();
-        ctx.stroke();
-      }
-
-      ctx.restore();
+      // cas_human_castle from above: walled courtyard, red-roofed keep, red front / blue back towers, gatehouse
+      casView(ctx, size, color, fill, 1.0, 11, (c, P) => {
+        K.shadow(c, 54, 56, 44, 40, 0.28);
+        c.fillStyle = '#b8a77c'; c.fillRect(18, 18, 64, 64);
+        c.fillStyle = 'rgba(76,122,62,0.35)'; c.fillRect(18, 18, 64, 64);
+        casWallTop(c, P, 14, 14, 72, 72, 7);
+        casHipTop(c, P, 36, 26, 28, 26, K.RED);
+        K.flag(c, P, 50, 39, 0.1, K.RED, { w: 10, h: 4 });
+        c.fillStyle = P.lit; c.fillRect(41, 76, 18, 14); c.fillStyle = P.dk; c.fillRect(52, 76, 7, 14);
+        c.fillStyle = K.VOID; c.fillRect(46, 84, 8, 6);
+        c.beginPath(); c.rect(41, 76, 18, 14); K.ink(c, P);
+        casConeTop(c, P, 18, 18, 8, K.BLUE);
+        casConeTop(c, P, 82, 18, 8, K.BLUE);
+        casConeTop(c, P, 17, 83, 11, K.RED);
+        casConeTop(c, P, 83, 83, 11, K.RED);
+      });
     }
   },
 
@@ -287,58 +181,18 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.2,
     aspect: 1.1,
     render: (ctx, size, color = '#1c1917', fill = '#cbd5e1') => {
-      ctx.save();
-      const w = size * 1.1;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.52, h * 0.9, w * 0.38, h * 0.06, 0.3);
-
-      // Same plain keep as the base, turned so a narrow shaded flank shows
-      const x0 = w * 0.2, x1 = w * 0.62, x2 = w * 0.8, top = h * 0.35, bot = h * 0.9, sk = h * 0.06;
-      ctx.fillStyle = fill;
-      ctx.fillRect(x0, top, x1 - x0, bot - top);
-      ctx.beginPath();
-      ctx.moveTo(x1, top); ctx.lineTo(x2, top - sk); ctx.lineTo(x2, bot - sk); ctx.lineTo(x1, bot);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-      ctx.fill();
-
-      // Merlons on both faces (front 4, flank 2), seated on the wall top
-      const mh = h * 0.08, n = 4, cw = (x1 - x0) / (n * 2 - 1);
-      ctx.lineWidth = h * 0.02;
-      ctx.strokeStyle = color;
-      for (let i = 0; i < n; i++) {
-        ctx.fillStyle = fill;
-        ctx.fillRect(x0 + i * cw * 2, top - mh, cw, mh);
-        ctx.strokeRect(x0 + i * cw * 2, top - mh, cw, mh);
-      }
-      for (const t of [0.2, 0.7]) {
-        const fx = x1 + (x2 - x1) * t, fw = (x2 - x1) * 0.3, fy = top - sk * t;
-        ctx.beginPath();
-        ctx.moveTo(fx, fy); ctx.lineTo(fx + fw, fy - sk * 0.3);
-        ctx.lineTo(fx + fw, fy - sk * 0.3 - mh); ctx.lineTo(fx, fy - mh);
-        ctx.closePath();
-        ctx.fillStyle = fill; ctx.fill();
-        ctx.fillStyle = 'rgba(30, 41, 59, 0.35)'; ctx.fill();
-        ctx.stroke();
-      }
-
-      // Arrow slits
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(w * 0.31, h * 0.47, w * 0.03, h * 0.12);
-      ctx.fillRect(w * 0.48, h * 0.47, w * 0.03, h * 0.12);
-      ctx.fillRect(w * 0.7, h * 0.45, w * 0.025, h * 0.12);
-
-      // Outlines
-      ctx.lineWidth = lw;
-      ctx.strokeRect(x0, top, x1 - x0, bot - top);
-      ctx.beginPath();
-      ctx.moveTo(x1, top); ctx.lineTo(x2, top - sk); ctx.lineTo(x2, bot - sk); ctx.lineTo(x1, bot);
-      ctx.stroke();
-
-      ctx.restore();
+      // cas_human_keep from the flank: the twin red towers line up, one in front of the other
+      casView(ctx, size, color, fill, 1.1, 11, (c, P, W, H, r) => {
+        K.shadow(c, 58, 90, 44, 6);
+        K.tufts(c, P, r, 12, 100, 90, 10);
+        K.tower(c, P, 34, 84, 12, 54, { rnd: r, roof: K.RED, rh: 16, slits: 1 });
+        K.body(c, P, 36, 38, 54, 50, { rnd: r });
+        K.merl(c, P, 36, 38, 54);
+        K.slit(c, P, 52, 50, 2.4, 8); K.slit(c, P, 66, 50, 2.4, 8, K.GLOW); K.slit(c, P, 80, 50, 2.4, 8);
+        K.gate(c, P, 72, 88, 7, 11, { glow: '#2a1d14' });
+        K.flag(c, P, 63, 33, 20, K.RED, { dot: K.GOLD });
+        K.tower(c, P, 28, 88, 14, 58, { rnd: r, roof: K.RED, rh: 17, slits: 1, flag: K.BLUE, flagH: 9 });
+      });
     }
   },
 
@@ -355,47 +209,17 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.2,
     aspect: 1.0,
     render: (ctx, size, color = '#1c1917', fill = '#cbd5e1') => {
-      ctx.save();
-      const w = size;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.53, h * 0.53, w * 0.4, h * 0.4, 0.32);
-
-      // Same plain square keep as the base, seen from above: walls, merlon ring, roof terrace
-      const a = w * 0.16, s = w * 0.68, m = s * 0.12;
-      ctx.fillStyle = fill;
-      ctx.fillRect(a, a, s, s);
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
-      ctx.fillRect(a + s * 0.5, a, s * 0.5, s);
-
-      // Roof terrace inside the wall walk
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(a + m, a + m, s - 2 * m, s - 2 * m);
-
-      // Crenel gaps cut into the wall walk, 5 merlons per side like the base
-      ctx.fillStyle = '#0f172a';
-      const n = 5, step = s / (n * 2 - 1);
-      for (let i = 1; i < n * 2 - 1; i += 2) {
-        ctx.fillRect(a + i * step, a, step, m * 0.45);
-        ctx.fillRect(a + i * step, a + s - m * 0.45, step, m * 0.45);
-        ctx.fillRect(a, a + i * step, m * 0.45, step);
-        ctx.fillRect(a + s - m * 0.45, a + i * step, m * 0.45, step);
-      }
-
-      // Trapdoor
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(w * 0.44, h * 0.44, w * 0.12, h * 0.12);
-
-      // Outlines
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.strokeRect(a, a, s, s);
-      ctx.lineWidth = h * 0.02;
-      ctx.strokeRect(a + m, a + m, s - 2 * m, s - 2 * m);
-      ctx.strokeRect(w * 0.44, h * 0.44, w * 0.12, h * 0.12);
-
-      ctx.restore();
+      // cas_human_keep from above: square keep with wall-walk, two red-capped towers flanking the gate
+      casView(ctx, size, color, fill, 1.0, 11, (c, P) => {
+        K.shadow(c, 54, 54, 40, 36, 0.28);
+        c.fillStyle = P.dk; c.fillRect(26, 22, 48, 46);
+        casWallTop(c, P, 26, 22, 48, 46, 7);
+        c.fillStyle = '#56607a'; c.fillRect(46, 40, 8, 8); c.beginPath(); c.rect(46, 40, 8, 8); K.ink(c, P, 1);
+        K.flag(c, P, 50, 34, 0.1, K.RED, { w: 11, h: 4.5, dot: K.GOLD });
+        c.fillStyle = K.VOID; c.fillRect(45, 68, 10, 6); c.beginPath(); c.rect(45, 68, 10, 6); K.ink(c, P, 1);
+        casConeTop(c, P, 29, 70, 11, K.RED);
+        casConeTop(c, P, 71, 70, 11, K.RED);
+      });
     }
   },
 
@@ -412,101 +236,24 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.1,
     aspect: 1.3,
     render: (ctx, size, color = '#2c221e', fill = '#dcd4c0') => {
+      const w = size * 1.3, h = size;
       ctx.save();
-      const w = size * 1.3;
-      const h = size;
-      const lw = h * 0.032;
-
-      groundShadow(ctx, w * 0.5, h * 0.52, w * 0.48, h * 0.42, 0.2);
-
-      // Slightly green ground tone
-      ctx.beginPath();
-      ctx.ellipse(w * 0.5, h * 0.5, w * 0.46, h * 0.42, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#c8d6af';
-      ctx.fill();
-
-      // Short dirt-path strips connecting houses
-      ctx.strokeStyle = '#d4b896';
-      ctx.lineWidth = w * 0.045;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(w * 0.22, h * 0.48);
-      ctx.lineTo(w * 0.48, h * 0.48);
-      ctx.lineTo(w * 0.78, h * 0.44);
-      ctx.moveTo(w * 0.48, h * 0.48);
-      ctx.lineTo(w * 0.46, h * 0.74);
-      ctx.moveTo(w * 0.48, h * 0.48);
-      ctx.lineTo(w * 0.52, h * 0.24);
-      ctx.stroke();
-
-      // Tiny well circle
-      const wellX = w * 0.48;
-      const wellY = h * 0.48;
-      ctx.beginPath();
-      ctx.arc(wellX, wellY, w * 0.038, 0, Math.PI * 2);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw * 0.8;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(wellX, wellY, w * 0.02, 0, Math.PI * 2);
-      ctx.fillStyle = '#0284c7';
-      ctx.fill();
-
-      // 6 clustered gabled house roofs with tile variations
-      const houses = [
-        { x: 0.12, y: 0.18, w: 0.25, h: 0.18, vert: false, lit: '#ea580c', dark: '#9a3412', ch: [0.26, 0.21] },
-        { x: 0.54, y: 0.12, w: 0.18, h: 0.26, vert: true,  lit: '#dc2626', dark: '#991b1b', ch: [0.60, 0.16] },
-        { x: 0.74, y: 0.22, w: 0.22, h: 0.17, vert: false, lit: '#a16207', dark: '#713f12', ch: null },
-        { x: 0.10, y: 0.54, w: 0.18, h: 0.28, vert: true,  lit: '#b91c1c', dark: '#7f1d1d', ch: [0.14, 0.60] },
-        { x: 0.35, y: 0.68, w: 0.24, h: 0.18, vert: false, lit: '#854d0e', dark: '#582f0e', ch: null },
-        { x: 0.66, y: 0.58, w: 0.26, h: 0.19, vert: false, lit: '#d97706', dark: '#9a3412', ch: [0.82, 0.62] }
-      ];
-
-      for (const b of houses) {
-        const hx = w * b.x;
-        const hy = h * b.y;
-        const hw = w * b.w;
-        const hh = h * b.h;
-
-        groundShadow(ctx, hx + hw * 0.52, hy + hh * 0.54, hw * 0.52, hh * 0.52, 0.2);
-
-        if (b.vert) {
-          ctx.fillStyle = b.lit;
-          ctx.fillRect(hx, hy, hw * 0.5, hh);
-          ctx.fillStyle = b.dark;
-          ctx.fillRect(hx + hw * 0.5, hy, hw * 0.5, hh);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = lw;
-          ctx.strokeRect(hx, hy, hw, hh);
-          ctx.beginPath();
-          ctx.moveTo(hx + hw * 0.5, hy);
-          ctx.lineTo(hx + hw * 0.5, hy + hh);
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = b.lit;
-          ctx.fillRect(hx, hy, hw, hh * 0.5);
-          ctx.fillStyle = b.dark;
-          ctx.fillRect(hx, hy + hh * 0.5, hw, hh * 0.5);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = lw;
-          ctx.strokeRect(hx, hy, hw, hh);
-          ctx.beginPath();
-          ctx.moveTo(hx, hy + hh * 0.5);
-          ctx.lineTo(hx + hw, hy + hh * 0.5);
-          ctx.stroke();
-        }
-
-        if (b.ch) {
-          ctx.fillStyle = '#57534e';
-          ctx.fillRect(w * b.ch[0], h * b.ch[1], w * 0.035, h * 0.035);
-          ctx.strokeRect(w * b.ch[0], h * b.ch[1], w * 0.035, h * 0.035);
-          ctx.fillStyle = '#1c1917';
-          ctx.fillRect(w * b.ch[0] + 1, h * b.ch[1] + 1, w * 0.02, h * 0.02);
-        }
-      }
-
+      // the base's three gabled houses from above: ridge roofs, lit north slope, shaded south slope
+      ctx.beginPath(); ctx.moveTo(w * 0.05, h * 0.62); ctx.bezierCurveTo(w * 0.35, h * 0.5, w * 0.6, h * 0.62, w * 0.95, h * 0.5);
+      ctx.strokeStyle = 'rgba(150,120,80,0.45)'; ctx.lineWidth = h * 0.08; ctx.lineCap = 'round'; ctx.stroke();
+      const house = (x, y, rw, rd, roof) => {
+        inkShadow(ctx, x + rw * 0.56, y + rd * 0.62, rw * 0.6, rd * 0.62, 0.24);
+        inkPoly(ctx, [[x, y], [x + rw, y], [x + rw, y + rd / 2], [x, y + rd / 2]]); ctx.fillStyle = roof; ctx.fill(); ctx.fillStyle = 'rgba(255,246,220,0.25)'; ctx.fill();
+        inkPoly(ctx, [[x, y + rd / 2], [x + rw, y + rd / 2], [x + rw, y + rd], [x, y + rd]]); ctx.fillStyle = roof; ctx.fill(); ctx.fillStyle = 'rgba(50,35,25,0.35)'; ctx.fill();
+        const segs = []; for (let k = 1; k < 6; k++) { const xx = x + (rw * k) / 6; segs.push([xx, y, xx, y + rd]); }
+        inkHatch(ctx, color, h * 0.008, segs, 0.4);
+        ctx.fillStyle = '#6b5a4a'; ctx.fillRect(x + rw * 0.72, y + rd * 0.12, rw * 0.1, rd * 0.22);
+        inkPoly(ctx, [[x, y], [x + rw, y], [x + rw, y + rd], [x, y + rd]]); inkStroke(ctx, color, h * 0.024);
+        inkPoly(ctx, [[x, y + rd / 2], [x + rw, y + rd / 2]], false); inkStroke(ctx, color, h * 0.014);
+      };
+      house(w * 0.08, h * 0.16, w * 0.3, h * 0.26, '#9a3b2a');
+      house(w * 0.58, h * 0.14, w * 0.28, h * 0.24, '#6b4a2b');
+      house(w * 0.32, h * 0.58, w * 0.34, h * 0.3, '#b4532a');
       ctx.restore();
     }
   },
@@ -610,28 +357,13 @@ export const STAMPS_VIEWS_CIVA = [
         const fw = w * 0.12;
         const fh = w * 0.34;
         const fy = -w * 0.42;
-        ctx.fillStyle = 'rgba(250, 246, 238, 0.75)';
+        ctx.fillStyle = 'rgba(240, 235, 220, 0.85)';
         ctx.fillRect(w * 0.02, fy, fw, fh);
         ctx.strokeStyle = color;
         ctx.lineWidth = lw * 0.7;
         ctx.strokeRect(w * 0.02, fy, fw, fh);
 
-        // Lattice cross-hatching: longitudinal bar + crossbars + diagonals
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.08, fy);
-        ctx.lineTo(w * 0.08, fy + fh);
-        for (let r = 0; r <= 4; r++) {
-          const ry = fy + (fh * r) / 4;
-          ctx.moveTo(w * 0.02, ry);
-          ctx.lineTo(w * 0.02 + fw, ry);
-          if (r < 4) {
-            const nextRy = fy + (fh * (r + 1)) / 4;
-            ctx.moveTo(w * 0.02, ry);
-            ctx.lineTo(w * 0.02 + fw, nextRy);
-          }
-        }
-        ctx.stroke();
+        // Plain sail cloth like the base windmill (no lattice hatching)
       }
 
       // Sail hub in the middle of the cap
@@ -929,64 +661,19 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.1,
     aspect: 0.7,
     render: (ctx, size, color = '#1e1b4b', fill = '#c7d2fe') => {
-      ctx.save();
-      const w = size * 0.7;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.5, h * 0.92, w * 0.42, h * 0.06, 0.3);
-
-      // Slender tower shaft
-      ctx.fillStyle = fill;
-      ctx.fillRect(w * 0.36, h * 0.32, w * 0.28, h * 0.58);
-
-      // Arcane blue shading
-      ctx.fillStyle = 'rgba(49, 46, 129, 0.35)';
-      ctx.fillRect(w * 0.5, h * 0.32, w * 0.14, h * 0.58);
-
-      // Spiraling arcane stone stairs / buttress rings
-      ctx.fillStyle = fill;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw * 0.7;
-      const spiralRungs = [
-        [w * 0.32, h * 0.78, w * 0.36, h * 0.06],
-        [w * 0.34, h * 0.62, w * 0.34, h * 0.06],
-        [w * 0.32, h * 0.46, w * 0.36, h * 0.06]
-      ];
-      for (const [sx, sy, sw, sh] of spiralRungs) {
-        ctx.beginPath();
-        ctx.ellipse(sx + sw * 0.5, sy + sh * 0.5, sw * 0.5, sh * 0.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-
-      // Arched arcane slit window
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(w * 0.42, h * 0.52, w * 0.05, h * 0.1);
-
-      // High spire cone (Indigo)
-      coneRoof(ctx, w * 0.3, h * 0.32, w * 0.5, h * 0.05, w * 0.7, h * 0.32, '#4338ca', color, lw, 'rgba(30, 27, 75, 0.35)');
-
-      // Floating arcane crystal orb with magical aura
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.03, w * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.03, w * 0.08, 0, Math.PI * 2);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fill();
-      ctx.strokeStyle = '#e0f2fe';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Inking
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.strokeRect(w * 0.36, h * 0.32, w * 0.28, h * 0.58);
-
-      ctx.restore();
+      // cas_wizard_spire turned: same tapered tower, balconies, crooked blue hat and orb, tree behind on the other side
+      casView(ctx, size, color, fill, 0.7, 7, (c, P, W, H, r) => {
+        const Z = K.tone(P, '#9aa0c8', 0.28);
+        K.shadow(c, 36, 92, 28, 5);
+        K.tree(c, P, 12, 90, 20, { col: '#4f8a6a' });
+        K.taper(c, P, 36, 90, 26, 18, 52, Z, r);
+        [[66, 28], [46, 24]].forEach(([y, w]) => { c.fillStyle = Z.dk; c.fillRect(36 - w / 2 - 2, y, w + 4, 3); c.beginPath(); c.rect(36 - w / 2 - 2, y, w + 4, 3); K.ink(c, P, 1.1); for (let k = 0; k < 6; k++) { c.fillStyle = Z.mid; c.fillRect(36 - w / 2 - 1.5 + k * ((w + 3) / 6), y - 2, 2.4, 2.2); } });
+        K.slit(c, P, 30, 72, 3, 8, K.GLOW); K.slit(c, P, 42, 54, 3, 8, K.GLOW); K.slit(c, P, 36, 36, 2.6, 7, K.ARCANE);
+        K.cone(c, P, 36, 34, 24, 30, '#4a4fb0', { ov: 4, tx: 30, cv: 1 });
+        K.stars(c, 36, 22, 3, r);
+        c.beginPath(); c.arc(24, 5, 3, 0, K.TAU); c.fillStyle = K.ARCANE; c.fill(); K.ink(c, P, 1); K.glowAt(c, 24, 5, 11, 'rgba(110,214,255,0.5)');
+        c.strokeStyle = 'rgba(111,214,255,0.8)'; c.lineWidth = 1; c.beginPath(); c.ellipse(36, 56, 18, 3, 0, 0, K.TAU); c.stroke();
+      });
     }
   },
 
@@ -1003,55 +690,21 @@ export const STAMPS_VIEWS_CIVA = [
     defaultScale: 1.1,
     aspect: 1.0,
     render: (ctx, size, color = '#1e1b4b', fill = '#c7d2fe') => {
-      ctx.save();
-      const w = size;
-      const h = size;
-      const lw = h * 0.035;
-
-      groundShadow(ctx, w * 0.54, h * 0.54, w * 0.4, h * 0.4, 0.3);
-
-      // Outer circular tower foundation
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.5, w * 0.36, 0, Math.PI * 2);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      ctx.stroke();
-
-      // Spiraling buttress notches
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw * 0.8;
-      for (let a = 0; a < Math.PI * 2; a += Math.PI * 0.5) {
-        ctx.beginPath();
-        ctx.arc(w * 0.5, h * 0.5, w * 0.36, a, a + 0.35);
-        ctx.lineTo(w * 0.5 + Math.cos(a + 0.35) * w * 0.28, h * 0.5 + Math.sin(a + 0.35) * h * 0.28);
-        ctx.stroke();
-      }
-
-      // Conical spire roof
-      coneTop(ctx, w * 0.5, h * 0.5, w * 0.26, '#4338ca', color, lw, 'rgba(49, 46, 129, 0.4)');
-
-      // Floating arcane crystal orb radiating energy rings
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.5, w * 0.16, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.5, w * 0.1, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.5, w * 0.06, 0, Math.PI * 2);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-
-      ctx.restore();
+      // cas_wizard_spire from above: balcony ring, crooked blue hat, glowing orb, floating ring, tree beside it
+      casView(ctx, size, color, fill, 1.0, 7, (c, P, W, H, r) => {
+        const Z = K.tone(P, '#9aa0c8', 0.28);
+        K.shadow(c, 50, 52, 30, 28, 0.3);
+        c.beginPath(); c.arc(78, 76, 14, 0, K.TAU); c.fillStyle = '#4f8a6a'; c.fill();
+        c.save(); c.clip(); c.beginPath(); c.arc(82, 80, 14, 0, K.TAU); c.fillStyle = K.dk('#4f8a6a', 0.3); c.fill(); c.restore();
+        c.beginPath(); c.arc(78, 76, 14, 0, K.TAU); K.ink(c, P);
+        c.beginPath(); c.arc(48, 50, 26, 0, K.TAU); c.fillStyle = Z.dk; c.fill(); K.ink(c, P, 1.1);
+        c.fillStyle = Z.mid;
+        for (let k = 0; k < 16; k++) { const a = (k / 16) * K.TAU; c.fillRect(48 + Math.cos(a) * 24 - 1.2, 50 + Math.sin(a) * 24 - 1.2, 2.4, 2.4); }
+        casConeTop(c, P, 48, 50, 20, '#4a4fb0', [54, 44]);
+        K.stars(c, 40, 40, 3, r);
+        c.beginPath(); c.arc(60, 34, 3.5, 0, K.TAU); c.fillStyle = K.ARCANE; c.fill(); K.ink(c, P, 1); K.glowAt(c, 60, 34, 12, 'rgba(110,214,255,0.5)');
+        c.strokeStyle = 'rgba(111,214,255,0.8)'; c.lineWidth = 1; c.beginPath(); c.arc(48, 50, 34, 0, K.TAU); c.stroke();
+      });
     }
   },
 
