@@ -45,7 +45,7 @@ npm run preview  # serve dist/ locally
 - **Atmosphere & Weather**: Presets for Day, Dusk, Night, Cloudy, Rain, Snow, Torchlit, and Fog with vignette, parchment grain, sepia warmth, and deterministic weather precipitation.
 - **High-DPI Sharpness**: Zooming in redraws vector art, coastlines, and textures at 1.5×, 2×, 3×, or 4× resolution steps.
 - **Export & Print**:
-  - Standard and high-resolution PNG exports up to 16K (2× / 4K, 4× / 8K).
+  - Export dialog: PNG, WebP or JPG at 0.5× to 8× (capped by the browser's canvas limit, 16384 px on the long side).
   - Transparent per-layer PNGs bundled in a ZIP archive.
   - Universal VTT (`.dd2vtt`) export with line-of-sight walls, door portals, and light source metadata.
   - Tiled multi-sheet table-scale PDF printing (A4, Letter, A3, Poster) with crop marks, overlap margins, and assembly guides.
