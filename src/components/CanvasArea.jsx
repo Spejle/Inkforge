@@ -2,9 +2,7 @@ import { simplifyPath } from '../utils/pathSmooth';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap, buildPlan, snapToGrid, stampAspect, onImageLoad } from '../engine/renderer';
 import { getStampById } from '../engine/stampsCatalog';
-import { generateRiver } from '../plugins/builtin/riverGen/index.js';
-import { maskFillStroke } from '../plugins/builtin/maskFill/index.js';
-import { isFeatureOn } from '../plugins/features.js';
+import { feature } from '../plugins/features.js';
 import { makeStepper } from '../utils/adjust';
 import { pickQuality, MIN_ZOOM, MAX_ZOOM } from '../utils/quality';
 
@@ -522,9 +520,9 @@ export default function CanvasArea({
     }
 
     // 2. MASK TOOL (Landmass & Coastline Sculptor)
-    if (activeTool === 'mask' && maskShape === 'fill' && isFeatureOn('maskFill')) {
+    if (activeTool === 'mask' && maskShape === 'fill' && feature('maskFill')) {
       isInteractingRef.current = false;
-      const stroke = maskFillStroke(mapWidth, mapHeight, landmasses, brushStrokes, x, y, maskMode);
+      const stroke = feature('maskFill').maskFillStroke(mapWidth, mapHeight, landmasses, brushStrokes, x, y, maskMode);
       if (stroke) onCommitStroke?.(stroke);
       else { setHud(maskMode === 'land' ? 'Already land' : 'Already water'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1200); }
       return;
@@ -571,11 +569,11 @@ export default function CanvasArea({
     }
 
     // 5. PATH TOOL (Rivers, Roads, Walls)
-    if (activeTool === 'path' && pathType === 'river' && riverGen && isFeatureOn('riverGen')) {
-      const pts = generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000);
+    if (activeTool === 'path' && pathType === 'river' && riverGen && feature('riverGen')) {
+      const gen = feature('riverGen').generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000, { paths, stamps });
       isInteractingRef.current = false;
-      if (!pts) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }
-      onAddPath({ id: 'path_' + Date.now(), type: 'river', color: pathColor, width: pathWidth, points: simplifyPath(pts, 3) });
+      if (!gen) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }
+      onAddPath({ id: 'path_' + Date.now(), type: 'river', color: pathColor, width: pathWidth, taper: gen.joins ? 'join' : true, points: simplifyPath(gen.points, 1.5) });
       onCommitAction?.();
       return;
     }

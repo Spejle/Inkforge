@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildZip } from '../src/utils/exportUtils.js';
+import { buildZip } from '../src/plugins/builtin/layersZip/index.js';
 
 test('buildZip: store-only archive with correct entry count, names and sizes', async () => {
   const blob = buildZip([

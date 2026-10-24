@@ -2,7 +2,9 @@
 
 InkForge has two kinds of plugin:
 
-- **Feature plugins**: first-party code bundled with the app, one folder each under `src/plugins/builtin/` (`maskFill`, `lighting`, `riverGen`, `weather`). Each can be switched off in Settings > Plugins; the app checks `isFeatureOn(id)` / `useFeature(id)` from `src/plugins/features.js`, where their names and defaults are listed. A new feature goes in its own folder, adds an entry to `FEATURES`, and gates its UI and drawing on that id.
+- **Marketplace plugins**: first-party code, one folder each under `src/plugins/builtin/` (`lighting`, `riverGen`, `weather`, `maskFill`, `vttExport`, `print`, `layersZip`), installed from the marketplace (puzzle button in the header, or Settings > Plugins). Each is its own build chunk, downloaded from the same site only when installed, so it fits the CSP (`script-src 'self'`). The app reaches a plugin only through `feature(id)` from `src/plugins/features.js`, which returns the loaded module or `null`; UI uses `useFeature(id)`. A map that relies on an uninstalled plugin (darkness, weather) keeps its settings, draws without the effect, and shows an "Install" bar.
+  - **Adding one**: create `src/plugins/builtin/<id>/index.js` exporting functions (or React components), add an entry with `load: () => import('./builtin/<id>/index.js')` to `FEATURES`, call it as `feature('<id>')?.fn(...)`, never with a static import, and list its exports in `tests/marketplace.test.js`.
+  - **Third-party code plugins** are not supported (see Roadmap).
 - **Content packs**: data files anyone can make, described below.
 
 ## Content packs

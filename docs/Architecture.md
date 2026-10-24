@@ -49,9 +49,8 @@ src/
 │   ├── LayersPanel.jsx      # Layer stack UI, visibility, locking, opacity, blend pickers
 │   ├── NewMapDialog.jsx     # Template picker and dimension configuration dialog
 │   ├── ObjectsPanel.jsx     # Hierarchical listing of all stamps, paths, labels; drag-to-layer
-│   ├── PluginsSettings.jsx  # Plugin pack installer and management UI
+│   ├── PluginsSettings.jsx  # Plugin marketplace and content pack installer
 │   ├── PreviewPicker.jsx    # Pure canvas preview widgets (fonts, biomes, blends, grids)
-│   ├── PrintDialog.jsx      # Multi-page tiled table-scale PDF print configuration
 │   ├── SettingsDialog.jsx   # Tabbed settings dialog (Appearance, Layout, Keys, Plugins)
 │   ├── StampDrawer.jsx      # Right sidebar panel: dynamic tool tab, Stamp Library, tabs
 │   ├── StampImportDialog.jsx# Custom image stamp upload and cropping dialog
@@ -93,7 +92,6 @@ src/
 │   ├── layout.js            # Workspace layout configuration and CSS custom property applicator
 │   ├── pathSmooth.js        # Polyline smoothing and Ramer-Douglas-Peucker simplification
 │   ├── previews.js          # Pure canvas drawing helpers for preview pickers
-│   ├── printUtils.js        # Sheet tiling mathematics and client-side PDF generator
 │   ├── quality.js           # Zoom-adaptive resolution scaling and memory capping
 │   ├── theme.js             # Theme definition catalog (Candlelit, Parchment, Orbit)
 │   └── thumb.js             # Low-resolution map thumbnail generator

@@ -47,14 +47,3 @@ export function maskFillStroke(width, height, landmasses, brushStrokes, x, y, mo
   const points = runs.filter((_, i) => i % 8 === 0).flatMap(([ry, a, b]) => [{ x: a * cell, y: ry * cell }, { x: (b + 1) * cell, y: ry * cell }]);
   return { id: 'mask_' + Date.now(), type: 'mask', mode, shape: 'fill', cell, runs, size: cell * 2, opacity: 1, points };
 }
-
-/** Paints a fill stroke's runs, grown by one cell so it meets the antialiased edge it was bounded by. */
-export function drawFillRuns(ctx, stroke) {
-  const k = stroke.cell || 2;
-  ctx.beginPath();
-  for (const r of stroke.runs || []) {
-    if (!Array.isArray(r) || r.length < 3) continue;
-    ctx.rect((r[1] - 1) * k, (r[0] - 1) * k, (r[2] - r[1] + 3) * k, 3 * k);
-  }
-  ctx.fill();
-}

@@ -2,11 +2,20 @@
 import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
 import { safeImageSrc } from '../utils/importGuard.js';
-import { withLighting, drawLighting } from '../plugins/builtin/lighting/index.js';
-import { drawWeather } from '../plugins/builtin/weather/index.js';
-import { isFeatureOn } from '../plugins/features.js';
-import { drawFillRuns } from '../plugins/builtin/maskFill/index.js';
+import { feature } from '../plugins/features.js';
 import { simplifyPath } from '../utils/pathSmooth.js';
+
+/** Paints a mask-fill stroke's row runs, grown by one cell so it meets the antialiased edge it was bounded by. Core, not
+ * part of the Mask fill plugin: a map with fills must still draw after the plugin is removed. */
+export function drawFillRuns(ctx, stroke) {
+  const k = stroke.cell || 2;
+  ctx.beginPath();
+  for (const r of stroke.runs || []) {
+    if (!Array.isArray(r) || r.length < 3) continue;
+    ctx.rect((r[1] - 1) * k, (r[0] - 1) * k, (r[2] - r[1] + 3) * k, 3 * k);
+  }
+  ctx.fill();
+}
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -127,7 +136,7 @@ export function buildPlan({
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
-  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere: withLighting(atmosphere, stamps, paths, grid) });
+  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere: feature('lighting')?.withLighting(atmosphere, stamps, paths, grid) ?? atmosphere });
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
@@ -852,13 +861,48 @@ function renderPaths(ctx, paths, selectedPathId, world) {
   drawPaths(ctx, paths, selectedPathId);
 }
 
+/**
+ * A generated river: the same midpoint curves as drawSmoothPolyline, stroked piece by piece with the width growing
+ * from a quarter at the source to full at the mouth (eased, so most of the length stays slim); a tributary
+ * (taper 'join') only reaches 60%, so it meets the river it flows into without a blob. All bank pieces go
+ * down before any water piece, so the joins stay seamless.
+ */
+function drawTaperedRiver(ctx, path) {
+  const p = path.points, W = path.width || 12, end = path.taper === 'join' ? 0.6 : 1;
+  const len = [0];
+  for (let i = 1; i < p.length; i++) len.push(len[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
+  const total = len[len.length - 1] || 1;
+  const mid = (i) => [(p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2];
+  const pieces = []; // [from, control | null, to, widthFactor]
+  pieces.push([p[0], null, mid(0), 0.25]);
+  for (let i = 1; i < p.length - 1; i++) pieces.push([mid(i - 1), p[i], mid(i), 0.25 + (end - 0.25) * (len[i] / total) ** 1.6]);
+  pieces.push([mid(p.length - 2), null, p[p.length - 1], end]);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [stroke, extra] of [['#1e3a5f', 4], [path.color || '#3b82f6', 0]]) {
+    ctx.strokeStyle = stroke;
+    for (const [a, c, b, f] of pieces) {
+      ctx.lineWidth = W * f + extra;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      if (c) ctx.quadraticCurveTo(c[0], c[1], b[0], b[1]);
+      else ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+    }
+  }
+}
+
 function drawPaths(ctx, paths, selectedPathId) {
   for (const path of paths) {
     if (!path.points || path.points.length < 2) continue;
 
     ctx.save();
 
-    if (path.type === 'river') {
+    if (path.type === 'river' && path.taper && path.points.length > 2) {
+      drawTaperedRiver(ctx, path);
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points); // for the selection outline below
+    } else if (path.type === 'river') {
       // River: outer shoreline banks + inner blue watercourse
       ctx.beginPath();
       drawSmoothPolyline(ctx, path.points);
@@ -1243,8 +1287,8 @@ export function atmosphereOps(a) {
     else ops.push({ type: 'solid', rgb: [0, 0, 0], alpha: (1.0 - a.brightness) * 0.6, blend: 'multiply' });
   }
   if (a.tint && a.tintAmount > 0) ops.push({ type: 'solid', rgb: a.tint, alpha: a.tintAmount, blend: a.tintBlend || 'multiply' });
-  if (a.weather && a.weatherAmount > 0 && isFeatureOn('weather')) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
-  if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
+  if (a.weather && a.weatherAmount > 0 && feature('weather')) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
+  if (a.darkness > 0 && feature('lighting')) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
   if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
   return ops;
 }
@@ -1273,9 +1317,9 @@ function renderAtmosphere(ctx, width, height, atmosphere) {
       ctx.globalCompositeOperation = op.blend;
       ctx.fillRect(0, 0, width, height);
     } else if (op.type === 'weather') {
-      drawWeather(ctx, width, height, op.kind, op.amount);
+      feature('weather')?.drawWeather(ctx, width, height, op.kind, op.amount);
     } else if (op.type === 'lighting') {
-      drawLighting(ctx, width, height, op);
+      feature('lighting')?.drawLighting(ctx, width, height, op);
     } else {
       drawVignette(ctx, width, height, op.vignette);
     }

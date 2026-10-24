@@ -7,11 +7,9 @@ import { loadLayout, saveLayout, applyLayout } from './utils/layout';
 import StampDrawer from './components/StampDrawer';
 import CanvasArea from './components/CanvasArea';
 import StampImportDialog from './components/StampImportDialog';
-import PrintDialog from './components/PrintDialog';
 import ExportDialog from './components/ExportDialog';
-import { useFeatureVersion } from './plugins/features';
+import { useFeatureVersion, feature, isInstalled, install, FEATURES } from './plugins/features';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
-import { exportPrintPdf } from './utils/printUtils';
 import { sanitizeProject } from './utils/importGuard';
 import { actionFor, comboOf, loadKeymap, saveKeymap } from './utils/keymap';
 import { stepAngle, stepScale } from './utils/adjust';
@@ -26,8 +24,6 @@ import { getStampById } from './engine/stampsCatalog';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
   exportImage,
-  exportToUniversalVtt,
-  exportLayersZip,
   exportToJson,
   importFromJson
 } from './utils/exportUtils';
@@ -89,7 +85,8 @@ export default function App() {
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
   const [customStamps, setCustomStamps] = useState([]);
   const [activeLayer, setActiveLayer] = useState(''); // custom layer new objects are drawn on ('' = built-in layers)
-  const [dialog, setDialog] = useState(null); // 'stamps' | 'print' | null
+  const [dialog, setDialog] = useState(null); // 'stamps' | 'print' | 'export' | 'settings' | 'plugins' | 'newmap' | null
+  const [pluginHint, setPluginHint] = useState(true); // the "this map uses an uninstalled plugin" bar, until dismissed
   // memoised: a new object every render re-ran the whole map paint on every zoom/pan tick
   const layerVisibility = useMemo(
     () => ({ ...Object.fromEntries(Object.entries(layers).map(([k, v]) => [k, v.visible])), atmosphere: true }),
@@ -610,7 +607,7 @@ export default function App() {
 
   const handlePrint = (options) => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportPrintPdf({
+    feature('print')?.exportPrintPdf({
       mapState: { mapWidth, mapHeight, mapTitle, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle },
       options,
       filename: `${safeTitle}_print.pdf`
@@ -621,13 +618,13 @@ export default function App() {
   const exportState = () => ({ mapWidth, mapHeight, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle });
   const handleExport = ({ format, quality, scale, includeGrid, vttImage }) => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    if (format === 'vtt') return exportToUniversalVtt({ mapState: exportState(), scale, imageFormat: vttImage, quality, filename: `${safeTitle}.dd2vtt` });
+    if (format === 'vtt') return feature('vttExport')?.exportToUniversalVtt({ mapState: exportState(), scale, imageFormat: vttImage, quality, filename: `${safeTitle}.dd2vtt` });
     return exportImage({ mapState: exportState(), format, quality, scale, includeGrid, filename: `${safeTitle}${scale === 1 ? '' : `_${scale}x`}.${format}` });
   };
 
   const handleExportLayers = (scaleFactor, includeGrid) => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    exportLayersZip({
+    feature('layersZip')?.exportLayersZip({
       mapState: { mapWidth, mapHeight, mapType, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layerVisibility, layerStyle },
       scaleFactor,
       includeGrid,
@@ -805,13 +802,17 @@ export default function App() {
   const selectedPath = paths.find((p) => p.id === selectedPathId);
 
   const tpl = getTemplate(template);
+  const PrintDialog = feature('print')?.PrintDialog;
+  // plugins this map's settings call for that are not installed (their effect is skipped until they are)
+  const missingPlugins = pluginHint ? FEATURES.filter((f) => !isInstalled(f.id) && (
+    (f.id === 'lighting' && atmosphere.darkness > 0) || (f.id === 'weather' && atmosphere.weather && atmosphere.weatherAmount > 0))) : [];
 
   if (view === 'home') {
     return (
       <div className="inkforge-app">
         <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} onSettings={() => setDialog('settings')} />
         {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
-        {dialog === 'settings' && <SettingsDialog layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
+        {(dialog === 'settings' || dialog === 'plugins') && <SettingsDialog initialTab={dialog === 'plugins' ? 'plugins' : 'appearance'} layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       </div>
     );
   }
@@ -823,6 +824,7 @@ export default function App() {
         theme={theme}
         setTheme={setTheme}
         onOpenSettings={() => setDialog('settings')}
+        onOpenPlugins={() => setDialog('plugins')}
         mapTitle={mapTitle}
         setMapTitle={setMapTitle}
         templateName={tpl.name}
@@ -851,8 +853,13 @@ export default function App() {
 
 
         <div className="center-stage">
-
-
+          {missingPlugins.length > 0 && (
+            <div className="plugin-banner" role="status">
+              <span>This map uses {missingPlugins.map((f) => f.name).join(' and ')}, which {missingPlugins.length > 1 ? 'are' : 'is'} not installed, so {missingPlugins.length > 1 ? 'they are' : 'it is'} not drawn.</span>
+              {missingPlugins.map((f) => <button key={f.id} className="btn-primary" onClick={() => install(f.id)}>Install {f.name}</button>)}
+              <button className="btn-icon" onClick={() => setPluginHint(false)} aria-label="Dismiss" title="Dismiss">×</button>
+            </div>
+          )}
           <CanvasArea
             onWheelAdjust={adjustByWheel}
             strokeOutline={strokeOutline}
@@ -1025,7 +1032,7 @@ export default function App() {
         />
       </div>
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
-      {dialog === 'settings' && <SettingsDialog layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
+      {(dialog === 'settings' || dialog === 'plugins') && <SettingsDialog initialTab={dialog === 'plugins' ? 'plugins' : 'appearance'} layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       {dialog === 'stamps' && <StampImportDialog onClose={() => setDialog(null)} onAdd={handleAddCustomStamps} />}
       {dialog === 'export' && (
         <ExportDialog
@@ -1034,11 +1041,13 @@ export default function App() {
           gridEnabled={grid.enabled}
           onClose={() => setDialog(null)}
           onExport={handleExport}
-          onLayers={handleExportLayers}
-          onPrint={() => setDialog('print')}
+          onLayers={feature('layersZip') ? handleExportLayers : null}
+          onPrint={feature('print') ? () => setDialog('print') : null}
+          vtt={!!feature('vttExport')}
+          onPlugins={() => setDialog('plugins')}
         />
       )}
-      {dialog === 'print' && (
+      {dialog === 'print' && PrintDialog && (
         <PrintDialog
           mapWidth={mapWidth}
           mapHeight={mapHeight}

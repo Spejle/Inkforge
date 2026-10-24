@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { planPrint, PAPERS } from '../src/utils/printUtils.js';
+import { planPrint, PAPERS } from '../src/plugins/builtin/print/print.js';
 
 test('planPrint: A4 portrait fit-to-one-page gives cols=1 rows=1', () => {
   const plan = planPrint({

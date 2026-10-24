@@ -16,8 +16,7 @@ import {
   stampImage,
   stampSprite
 } from './renderer.js';
-import { drawLighting } from '../plugins/builtin/lighting/index.js';
-import { drawWeather } from '../plugins/builtin/weather/index.js';
+import { feature } from '../plugins/features.js';
 import { getStampById } from './stampsCatalog.js';
 import type { AtmoOp, AtmosphereSettings, Ctx2D, LayerStyle, Part, Plan, PlanItem, RasterPart, Stamp, StampsPart } from '../types';
 
@@ -450,8 +449,8 @@ export class PixiMapView {
           canvas.width = plan.width;
           canvas.height = plan.height;
           const g = canvas.getContext('2d') as Ctx2D;
-          if (op.type === 'weather') drawWeather(g, plan.width, plan.height, op.kind, op.amount);
-          else if (op.type === 'lighting') drawLighting(g, plan.width, plan.height, op);
+          if (op.type === 'weather') feature('weather')?.drawWeather(g, plan.width, plan.height, op.kind, op.amount);
+          else if (op.type === 'lighting') feature('lighting')?.drawLighting(g, plan.width, plan.height, op);
           else drawVignette(g, plan.width, plan.height, op.vignette);
           box.container.addChild(new Sprite(Texture.from(canvas)));
         }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Trash2 } from 'lucide-react';
+import { Upload, Trash2, Download } from 'lucide-react';
 import { installPack, removePack, setEnabled, listPacks, usePluginVersion } from '../plugins/registry';
-import { FEATURES, isFeatureOn, setFeature, useFeatureVersion } from '../plugins/features';
+import { FEATURES, isInstalled, isFeatureOn, isPending, loadError, install, uninstall, useFeatureVersion } from '../plugins/features';
 import { useStampPrefs, setStampPref } from '../utils/stampPrefs';
 import '../plugins/plugins.css';
 
@@ -24,14 +24,28 @@ export default function PluginsSettings() {
   const packs = listPacks();
   return (
     <div className="plugins-settings">
-      <h4>Features</h4>
-      <p className="mute">Built-in tools, each developed as its own plugin. Switch off what you don't use.</p>
-      {FEATURES.map((f) => (
-        <div key={f.id} className="plugin-row">
-          <div className="plugin-info"><b>{f.name}</b><div className="mute">{f.description}</div></div>
-          <label className="plugin-toggle"><input type="checkbox" checked={isFeatureOn(f.id)} onChange={(e) => setFeature(f.id, e.target.checked)} /> Enabled</label>
-        </div>
-      ))}
+      <h4>Marketplace</h4>
+      <p className="mute">Optional features by the InkForge project. Each one downloads only when you install it, from this site; maps that use a removed plugin keep their settings and draw without it.</p>
+      {FEATURES.map((f) => {
+        const err = loadError(f.id), busy = isPending(f.id);
+        return (
+          <div key={f.id} className="plugin-row">
+            <div className="plugin-info">
+              <b>{f.name}</b> <span className="plugin-kind">{f.kind}</span>
+              <div className="mute">{f.description}</div>
+              {err && <div className="plugin-error-line" role="alert">Could not load: {err}</div>}
+            </div>
+            {busy ? <span className="mute">Installing…</span>
+              : isInstalled(f.id) ? (
+                <>
+                  {err && <button className="btn-ghost" onClick={() => install(f.id)}>Retry</button>}
+                  {!err && isFeatureOn(f.id) && <span className="plugin-installed">Installed</span>}
+                  <button className="btn-icon" onClick={() => uninstall(f.id)} aria-label={`Remove ${f.name}`} title="Remove"><Trash2 size={14} /></button>
+                </>
+              ) : <button className="btn-ghost" onClick={() => install(f.id)}><Download size={14} /> Install</button>}
+          </div>
+        );
+      })}
       <div className="plugin-row">
         <div className="plugin-info"><b>Built-in stamps</b><div className="mute">The procedural stamp catalog, written with generative AI. Off: only your imported images and content packs are offered. Maps that already use them still draw them.</div></div>
         <label className="plugin-toggle"><input type="checkbox" checked={stampPrefs.builtin} onChange={(e) => setStampPref('builtin', e.target.checked)} /> Enabled</label>

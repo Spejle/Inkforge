@@ -2,7 +2,6 @@
 import { getStampById } from '../../../engine/stampsCatalog.js';
 import { stampAspect, layerScale, makeLayer } from '../../../engine/renderer.js';
 import { simplifyPath } from '../../../utils/pathSmooth.js';
-import { isFeatureOn } from '../../features.js';
 
 /** Stamps that give light: campfires and braziers. Shared with the VTT export, so what you see is what Foundry gets. */
 export const isLightStamp = (s) => /campfire|brazier/.test(s.stampId || '');
@@ -65,7 +64,6 @@ export function blockerOutline(s) {
 let lightMemo = { a: null, s: null, p: null, g: null, out: null };
 export function withLighting(a, stamps, paths, grid) {
   if (!(a.darkness > 0)) return a;
-  if (!isFeatureOn('lighting')) return { ...a, darkness: 0 };
   const m = lightMemo;
   if (m.a === a && m.s === stamps && m.p === paths && m.g === grid) return m.out;
   const out = {

@@ -4,6 +4,7 @@ import { THEMES } from '../utils/theme';
 import { MIN_ZOOM, MAX_ZOOM } from '../utils/quality';
 import {
   Settings as SettingsIcon,
+  Puzzle,
   Download,
   FolderOpen,
   Save,
@@ -39,7 +40,8 @@ export default function Header({
   onNewMap,
   theme,
   setTheme,
-  onOpenSettings
+  onOpenSettings,
+  onOpenPlugins
 }) {
   const fileInputRef = useRef(null);
 
@@ -90,6 +92,9 @@ export default function Header({
       </button>
       <button className="theme-toggle" onClick={onOpenSettings} title="Settings: themes, keyboard shortcuts" aria-label="Settings">
         <SettingsIcon size={15} />
+      </button>
+      <button className="theme-toggle" onClick={onOpenPlugins} title="Plugins: lighting, river generation, weather, extra exports" aria-label="Plugins">
+        <Puzzle size={15} />
       </button>
 
       {/* History and Zoom Controls */}
