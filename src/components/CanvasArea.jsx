@@ -570,10 +570,10 @@ export default function CanvasArea({
 
     // 5. PATH TOOL (Rivers, Roads, Walls)
     if (activeTool === 'path' && pathType === 'river' && riverGen && feature('riverGen')) {
-      const pts = feature('riverGen').generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000);
+      const gen = feature('riverGen').generateRiver(mapWidth, mapHeight, landmasses, brushStrokes, x, y, Date.now() % 100000, { paths, stamps });
       isInteractingRef.current = false;
-      if (!pts) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }
-      onAddPath({ id: 'path_' + Date.now(), type: 'river', color: pathColor, width: pathWidth, points: simplifyPath(pts, 3) });
+      if (!gen) { setHud('Click on land to start a river'); clearTimeout(hudTimer.current); hudTimer.current = setTimeout(() => setHud(''), 1500); return; }
+      onAddPath({ id: 'path_' + Date.now(), type: 'river', color: pathColor, width: pathWidth, taper: gen.joins ? 'join' : true, points: simplifyPath(gen.points, 1.5) });
       onCommitAction?.();
       return;
     }

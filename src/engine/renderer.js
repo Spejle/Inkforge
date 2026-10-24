@@ -861,13 +861,48 @@ function renderPaths(ctx, paths, selectedPathId, world) {
   drawPaths(ctx, paths, selectedPathId);
 }
 
+/**
+ * A generated river: the same midpoint curves as drawSmoothPolyline, stroked piece by piece with the width growing
+ * from a quarter at the source to full at the mouth (eased, so most of the length stays slim); a tributary
+ * (taper 'join') only reaches 60%, so it meets the river it flows into without a blob. All bank pieces go
+ * down before any water piece, so the joins stay seamless.
+ */
+function drawTaperedRiver(ctx, path) {
+  const p = path.points, W = path.width || 12, end = path.taper === 'join' ? 0.6 : 1;
+  const len = [0];
+  for (let i = 1; i < p.length; i++) len.push(len[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
+  const total = len[len.length - 1] || 1;
+  const mid = (i) => [(p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2];
+  const pieces = []; // [from, control | null, to, widthFactor]
+  pieces.push([p[0], null, mid(0), 0.25]);
+  for (let i = 1; i < p.length - 1; i++) pieces.push([mid(i - 1), p[i], mid(i), 0.25 + (end - 0.25) * (len[i] / total) ** 1.6]);
+  pieces.push([mid(p.length - 2), null, p[p.length - 1], end]);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [stroke, extra] of [['#1e3a5f', 4], [path.color || '#3b82f6', 0]]) {
+    ctx.strokeStyle = stroke;
+    for (const [a, c, b, f] of pieces) {
+      ctx.lineWidth = W * f + extra;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      if (c) ctx.quadraticCurveTo(c[0], c[1], b[0], b[1]);
+      else ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+    }
+  }
+}
+
 function drawPaths(ctx, paths, selectedPathId) {
   for (const path of paths) {
     if (!path.points || path.points.length < 2) continue;
 
     ctx.save();
 
-    if (path.type === 'river') {
+    if (path.type === 'river' && path.taper && path.points.length > 2) {
+      drawTaperedRiver(ctx, path);
+      ctx.beginPath();
+      drawSmoothPolyline(ctx, path.points); // for the selection outline below
+    } else if (path.type === 'river') {
       // River: outer shoreline banks + inner blue watercourse
       ctx.beginPath();
       drawSmoothPolyline(ctx, path.points);
