@@ -3,7 +3,7 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
-## 1.14.0 (unreleased)
+## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.
 - **Moved into plugins**: Dynamic lighting, River generation, Weather, Mask fill, and the VTT export, Print at table scale and Layers ZIP exporters. PNG, WebP, JPG and .inkforge saving stay built in; the export dialog offers "More formats…" while exporters are missing.
