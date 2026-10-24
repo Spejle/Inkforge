@@ -2,11 +2,20 @@
 import { getStampById } from './stampsCatalog.js';
 import { getBiomePattern } from './biomesCatalog.js';
 import { safeImageSrc } from '../utils/importGuard.js';
-import { withLighting, drawLighting } from '../plugins/builtin/lighting/index.js';
-import { drawWeather } from '../plugins/builtin/weather/index.js';
-import { isFeatureOn } from '../plugins/features.js';
-import { drawFillRuns } from '../plugins/builtin/maskFill/index.js';
+import { feature } from '../plugins/features.js';
 import { simplifyPath } from '../utils/pathSmooth.js';
+
+/** Paints a mask-fill stroke's row runs, grown by one cell so it meets the antialiased edge it was bounded by. Core, not
+ * part of the Mask fill plugin: a map with fills must still draw after the plugin is removed. */
+export function drawFillRuns(ctx, stroke) {
+  const k = stroke.cell || 2;
+  ctx.beginPath();
+  for (const r of stroke.runs || []) {
+    if (!Array.isArray(r) || r.length < 3) continue;
+    ctx.rect((r[1] - 1) * k, (r[0] - 1) * k, (r[2] - r[1] + 3) * k, 3 * k);
+  }
+  ctx.fill();
+}
 
 // Cache for static background & noise buffers
 let backgroundCache = null;
@@ -127,7 +136,7 @@ export function buildPlan({
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
-  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere: withLighting(atmosphere, stamps, paths, grid) });
+  if (layerVisibility.atmosphere) items.push({ kind: 'atmosphere', atmosphere: feature('lighting')?.withLighting(atmosphere, stamps, paths, grid) ?? atmosphere });
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
@@ -1243,8 +1252,8 @@ export function atmosphereOps(a) {
     else ops.push({ type: 'solid', rgb: [0, 0, 0], alpha: (1.0 - a.brightness) * 0.6, blend: 'multiply' });
   }
   if (a.tint && a.tintAmount > 0) ops.push({ type: 'solid', rgb: a.tint, alpha: a.tintAmount, blend: a.tintBlend || 'multiply' });
-  if (a.weather && a.weatherAmount > 0 && isFeatureOn('weather')) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
-  if (a.darkness > 0) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
+  if (a.weather && a.weatherAmount > 0 && feature('weather')) ops.push({ type: 'weather', kind: a.weather, amount: a.weatherAmount });
+  if (a.darkness > 0 && feature('lighting')) ops.push({ type: 'lighting', darkness: a.darkness, lights: a.lights || [], walls: a.walls || [], blocks: a.blocks || [] });
   if (a.vignette > 0) ops.push({ type: 'vignette', vignette: a.vignette });
   return ops;
 }
@@ -1273,9 +1282,9 @@ function renderAtmosphere(ctx, width, height, atmosphere) {
       ctx.globalCompositeOperation = op.blend;
       ctx.fillRect(0, 0, width, height);
     } else if (op.type === 'weather') {
-      drawWeather(ctx, width, height, op.kind, op.amount);
+      feature('weather')?.drawWeather(ctx, width, height, op.kind, op.amount);
     } else if (op.type === 'lighting') {
-      drawLighting(ctx, width, height, op);
+      feature('lighting')?.drawLighting(ctx, width, height, op);
     } else {
       drawVignette(ctx, width, height, op.vignette);
     }

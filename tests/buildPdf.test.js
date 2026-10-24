@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { buildPdf } from '../src/utils/printUtils.js';
+import { buildPdf } from '../src/plugins/builtin/print/print.js';
 
 test('buildPdf: generates minimal PDF 1.4 from fake pages with valid structure and xref offsets', () => {
   const fakePages = [

@@ -366,6 +366,7 @@ Open the **Export** menu in the top header to access export options:
 - **High-DPI Zoom Crispness**: Zooming in redraws the canvas at higher density (1×, 1.5×, 2×, 3×, or 4×) approximately 250ms after zooming stops, ensuring vector stamps, coastline contours, and labels remain crisp.
 - **Hardware Acceleration**: InkForge automatically utilizes WebGL via PixiJS when available. If running on software OpenGL (such as SwiftShader or llvmpipe) or if WebGL is unavailable, it falls back seamlessly to the Canvas 2D engine. You can force a specific renderer via URL parameters: `?renderer=2d` or `?renderer=pixi`.
 - **Memory Safeguards**: Live canvases are capped at 36 million pixels and individual raster layers at 12 million pixels to prevent browser tab crashes on ultra-large maps.
+- **Plugin marketplace**: Dynamic lighting, river generation, weather, mask fill and the VTT, print and layers-ZIP exports are optional plugins. Click the puzzle button in the header (or Settings > Plugins) to install or remove them; a map that needs a missing one shows an Install bar.
 - **Plugin Asset Packs**: Extend your stamp, biome, and lighting presets using declarative JSON plugin packs without writing code. See [Plugin Packs Documentation](PLUGINS.md).
 
 

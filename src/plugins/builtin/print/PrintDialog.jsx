@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { PAPERS, planPrint } from '../utils/printUtils';
+import { PAPERS, planPrint } from './print.js';
 
 export default function PrintDialog({ mapWidth, mapHeight, gridSize, onClose, onPrint }) {
   const [o, setO] = useState({

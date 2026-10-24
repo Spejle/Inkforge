@@ -5,3 +5,7 @@
 .plugin-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 6px; }
 .plugin-info { flex: 1; font-size: 12px; }
 .plugin-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.plugin-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 8px; border: 1px solid rgba(128, 128, 128, 0.4); opacity: 0.8; }
+.plugin-installed { font-size: 12px; opacity: 0.75; }
+.plugin-error-line { color: #c2564b; margin-top: 2px; }
+.plugin-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 6px 8px 6px 12px; border-radius: 8px; font-size: 12px; background: var(--bg-panel, #2a2118); border: 1px solid var(--border-color, rgba(128, 128, 128, 0.4)); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }

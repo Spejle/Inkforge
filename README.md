@@ -28,10 +28,10 @@ npm run preview  # serve dist/ locally
 - **Stamps & Props**: Catalog of 281 procedural vector stamps plus user image imports (PNG/SVG/WebP). Directional perspective views (side, top/plan, diag, front) and smart rotation policies (`fixed`, `tilt`, `free`) with spray and jitter modes.
 - **Rivers, Roads & Walls**:
   - Editable spline vertices: drag points to reshape, double-click a point to delete, double-click the line to add a point. Dense freehand strokes automatically simplify to an editable spine (4px tolerance).
-  - Procedural river generation: "Generate on click" meanders hydrologically plausible rivers from land to the nearest coast.
+  - Procedural river generation (plugin): "Generate on click" meanders hydrologically plausible rivers from land to the nearest coast.
   - Shoreline boundary clipping: Rivers terminate cleanly at the coastline and render beneath roads and walls.
 - **Curved Typography & Banners**: Fantasy typefaces (Cinzel, MedievalSharp, Pirata One, Uncial Antiqua, Inter) with circular arc curvature (-50% to +50%) and contrasting halo strokes.
-- **Dynamic Lighting & Realistic Shadows**:
+- **Dynamic Lighting & Realistic Shadows** (plugin):
   - Darkness slider darkens maps for night encounters and unlit dungeons.
   - Campfires and braziers act as light sources (6 grid squares at scale 1).
   - Area light emitters sampled across 8 jittered multi-ring positions cast soft-edged shadows whose penumbra widens naturally with distance.
@@ -42,14 +42,13 @@ npm run preview  # serve dist/ locally
   - Objects tab: Hierarchical inspection of all stamps, labels, and paths grouped by layer with real-time filtering and drag-to-layer organization.
 - **Custom Layers & Styles**: Built-in layers plus user-created custom layers with independent visibility, locking, opacity, and blend modes (Normal, Multiply, Overlay, Soft light).
 - **Tactical Grid**: Square, hex (flat/pointy), and isometric grids with customizable size, opacity, color, and snap-to-grid alignment.
-- **Atmosphere & Weather**: Presets for Day, Dusk, Night, Cloudy, Rain, Snow, Torchlit, and Fog with vignette, parchment grain, sepia warmth, and deterministic weather precipitation.
+- **Atmosphere & Weather**: Presets for Day, Dusk, Night, Cloudy, Rain, Snow, Torchlit, and Fog with vignette, parchment grain, sepia warmth, and deterministic weather precipitation (Weather plugin).
 - **High-DPI Sharpness**: Zooming in redraws vector art, coastlines, and textures at 1.5×, 2×, 3×, or 4× resolution steps.
 - **Export & Print**:
   - Export dialog: PNG, WebP or JPG at 0.5× to 8× (capped by the browser's canvas limit, 16384 px on the long side).
-  - Transparent per-layer PNGs bundled in a ZIP archive.
-  - Universal VTT (`.dd2vtt`) export with line-of-sight walls, door portals, and light source metadata.
-  - Tiled multi-sheet table-scale PDF printing (A4, Letter, A3, Poster) with crop marks, overlap margins, and assembly guides.
-- **Plugin Packs**: Data-only JSON asset packs for stamps, biomes, and lighting presets.
+  - Plugins: transparent per-layer PNGs in a ZIP; Universal VTT (`.dd2vtt`) with line-of-sight walls, door portals and lights; tiled multi-sheet table-scale PDF printing (A4, Letter, A3, Poster) with crop marks, overlap margins and assembly guides.
+- **Plugin marketplace** (puzzle button in the header): optional first-party features (dynamic lighting, river generation, weather, mask fill, VTT export, print, layers ZIP), each downloaded only when installed.
+- **Content Packs**: Data-only JSON asset packs for stamps, biomes, and lighting presets.
 
 ## Shortcuts
 

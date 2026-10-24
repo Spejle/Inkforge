@@ -1,5 +1,5 @@
 // Print at table scale: tiles the map across paper sheets and writes a PDF (JPEG pages, no library).
-import { renderMap } from '../engine/renderer.js';
+import { renderMap } from '../../../engine/renderer.js';
 
 export const PAPERS = { A4: [210, 297], Letter: [215.9, 279.4], A3: [297, 420], Poster: [610, 914] };
 const DPI = 150;

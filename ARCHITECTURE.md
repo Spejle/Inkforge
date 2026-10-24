@@ -8,12 +8,12 @@ Stack: React 19, Canvas 2D (all drawing code), PixiJS 8 (live view only), Vite 8
 ## src map
 
 ```
-main.jsx            loads installed content packs, then renders <App/> (StrictMode)
+main.jsx            loads installed content packs and marketplace plugins, then renders <App/> (StrictMode)
 App.jsx             the one stateful component: document, history, tool settings, library, import/export
 App.css, index.css  styles (themes via data-theme)
 types.ts            Plan / Part / Stamp / AtmosphereSettings types shared with pixiView.ts
 components/         UI (CanvasArea = pointer input + render trigger; ToolOptions, StampDrawer, LayersPanel,
-                    ObjectsPanel, ExportDialog, PrintDialog, SettingsDialog, PluginsSettings, Home, NewMapDialog,
+                    ObjectsPanel, ExportDialog, SettingsDialog, PluginsSettings, Home, NewMapDialog,
                     PreviewPicker, StampImportDialog, Header, ToolBar, Tooltip)
 engine/
   renderer.js       buildPlan() + renderMap() + all Canvas 2D drawing (land mask, coast FX, biomes, paths, text,
@@ -25,17 +25,19 @@ engine/
   mapTemplates.js   TEMPLATES, getTemplate, blankProject, biomesFor
   presetMaps.js, presets/*  sample maps (PRESET_MAPS) shown on the home screen
 plugins/
-  features.js       FEATURES manifests + isFeatureOn/setFeature/useFeature (localStorage 'inkforge.features')
-  builtin/<id>/     first-party feature plugins: maskFill, lighting, riverGen (+flow.js), weather
+  features.js       marketplace: FEATURES catalog (lazy `load`), install/uninstall, feature(id) -> loaded module or null,
+                    useFeature; installed ids in localStorage 'inkforge.plugins' (1.13's 'inkforge.features' migrates)
+  builtin/<id>/     first-party plugins, one build chunk each: lighting, riverGen (+flow.js), weather, maskFill,
+                    vttExport, print (print.js + PrintDialog.jsx), layersZip (ZIP writer)
   registry.js       content packs (data only): installPack/removePack/setEnabled/loadInstalled, pluginStamps/Biomes/...
   schema.js, vectorRender.js   pack validation and drawing of pack vector stamps
 utils/
-  autosave.js       IndexedDB library          exportUtils.js  PNG/WebP/JPG, VTT, .inkforge JSON, ZIP writer
-  importGuard.js    sanitizeProject, size clamp printUtils.js   print planner + PDF writer
+  autosave.js       IndexedDB library          exportUtils.js  PNG/WebP/JPG, .inkforge JSON, download()
+  importGuard.js    sanitizeProject, size clamp
   keymap.js         rebindable keys            layout.js, theme.js, stampPrefs.js, quality.js (zoom, quality levels)
   pathSmooth.js, thumb.js, adjust.js, previews.js
 tests/*.test.js     node:test unit tests for the pure modules (keymap, layout, importGuard, planPrint, buildPdf,
-                    buildZip, lighting, maskFill, riverGen, plugins, previews, pathSmooth, liveStroke)
+                    buildZip, lighting, maskFill, riverGen, plugins, marketplace, previews, pathSmooth, liveStroke)
 ```
 
 Stamp views: stamps carry `family`/`view` (see `stamps/views*.js`) and are appended in `stamps/index.js`.
@@ -85,7 +87,8 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 6. Live painting: `liveStroke` (cheap outline) or `landStroke` (real land layer at reduced scale, `liveScale`
    <= 0.5 / ~1.5M px) depending on the Live preview / Stroke outline toggles.
 7. Atmosphere: `atmosphereOps()` turns settings into ops (`grain`, `solid`, `lighting`, `weather`, `vignette`);
-   lighting and weather come from feature plugins and are skipped when switched off.
+   lighting and weather ops are only emitted while their plugin is loaded (`feature('lighting')`). Mask-fill
+   strokes always draw (`drawFillRuns` is core), so removing the Mask fill plugin never breaks a map.
 8. Lighting: light stamps are those matching `/campfire|brazier/`; shadows use traced sprite silhouettes
    (`blockerOutline`) and `visibilityPolygon`; the VTT export reuses the same functions.
 
@@ -132,8 +135,9 @@ npm test | npm run typecheck | npm run lint
 
 - Pixi is rejected on software GL, so headless Chromium without a GPU always uses Canvas 2D; use
   `?renderer=pixi` to test Pixi there.
-- `plugins/features.js` holds the feature manifests on purpose: the renderer imports the plugins and plugins import
-  `isFeatureOn`, so manifests inside plugin folders would make an import cycle.
+- Nothing may import `plugins/builtin/*` statically except tests and other plugins: a static import pulls the plugin
+  back into the main bundle. Go through `feature(id)`. The plugin catalog lives in `features.js` because each
+  entry's `load` must be a literal `import()` for Vite to split it.
 - Custom stamp images: `customImage` is an `Image` in memory but a data URL on disk/IndexedDB; `hydrateStamps`
   and `importFromJson` convert back. The Pixi view tracks an `epoch` that bumps when an image finishes loading.
 - Only landmasses, brushStrokes, stamps, paths and texts are undoable.
