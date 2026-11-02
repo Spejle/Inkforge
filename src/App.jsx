@@ -1066,6 +1066,7 @@ export default function App() {
           mapWidth={mapWidth}
           mapHeight={mapHeight}
           gridEnabled={grid.enabled}
+          gridType={grid.type}
           onClose={() => setDialog(null)}
           onExport={handleExport}
           onLayers={feature('layersZip') ? handleExportLayers : null}
