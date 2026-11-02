@@ -57,6 +57,10 @@ function usePref(key, fallback) {
   return [v, set];
 }
 
+// requestIdleCallback with a deadline, or a short timeout where it is missing (Safari)
+const whenIdle = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 2000 }) : -setTimeout(fn, 200));
+const cancelIdle = (h) => (h < 0 ? clearTimeout(-h) : h && window.cancelIdleCallback?.(h));
+
 export default function App() {
   const defaultPreset = PRESET_MAPS[0]; // The Shattered Archipelago
 
@@ -545,13 +549,22 @@ export default function App() {
     setStamps((prev) => [...prev, { ...stamp, ...layerTag() }]);
   };
 
+  // Moves stamps or labels: `id, updates` for one object, or a Map id -> updates for many (a multiselection drag). Lists with
+  // no match keep their identity, so dragging a stamp does not repaint the text layer (and vice versa).
   const handleUpdateStamp = (id, updates) => {
-    setStamps((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-    );
-    setTexts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
+    const changes = id instanceof Map ? id : new Map([[id, updates]]);
+    const apply = (prev) => {
+      let hit = false;
+      const next = prev.map((o) => {
+        const u = changes.get(o.id);
+        if (!u) return o;
+        hit = true;
+        return { ...o, ...u };
+      });
+      return hit ? next : prev;
+    };
+    setStamps(apply);
+    setTexts(apply);
   };
 
   const handleAddPath = (path) => {
@@ -712,7 +725,9 @@ export default function App() {
   const [autosaveStatus, setAutosaveStatus] = useState('');
   const thumbRef = useRef({ at: 0, url: null });
   const persist = (project, id, withThumb) => {
-    if (withThumb || Date.now() - thumbRef.current.at > 10000) {
+    // the thumbnail is a full map render on the main thread (about a second on the stress map), so autosave refreshes it
+    // at most every 30 s; leaving to the main menu always takes a fresh one
+    if (withThumb || Date.now() - thumbRef.current.at > 30000) {
       thumbRef.current = { at: Date.now(), url: makeThumb(project) };
     }
     return saveMap(id, project, {
@@ -725,12 +740,15 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (view !== 'editor' || !currentMapId) return;
-    const t = setTimeout(() => {
+    let idle = 0;
+    const save = () => {
       persist(buildProject(), currentMapId, false)
         .then(() => setAutosaveStatus('Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
         .catch(() => setAutosaveStatus('Save failed (storage full?)'));
-    }, 1500);
-    return () => clearTimeout(t);
+    };
+    // after 1.5 s without edits, then in an idle moment so a save does not land in the middle of a drag
+    const t = setTimeout(() => { idle = whenIdle(save); }, 1500);
+    return () => { clearTimeout(t); cancelIdle(idle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
 
@@ -741,7 +759,10 @@ export default function App() {
     setActiveTool('select');
     setView('editor');
   };
+  const adoptSave = useRef(0); // pending first save of a just-opened sample / new map
   const goHome = async () => {
+    cancelIdle(adoptSave.current); // superseded by the save below, which has the latest edits
+    adoptSave.current = 0;
     if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
     await refreshLibrary();
     setView('home');
@@ -752,11 +773,16 @@ export default function App() {
     applyProject(data);
     enterEditor(id);
   };
-  const adoptProject = async (project) => {
+  const adoptProject = (project) => {
     const id = newMapId();
     applyProject(project);
-    await persist(project, id, true).catch(() => {});
     enterEditor(id);
+    // the library entry and its thumbnail (a full render) are written once the editor has painted, not before it opens
+    cancelIdle(adoptSave.current);
+    adoptSave.current = whenIdle(() => {
+      adoptSave.current = 0;
+      persist(project, id, true).catch(() => {});
+    });
   };
   const createMap = (templateId, title, w, h) => {
     setDialog(null);

@@ -3,6 +3,18 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+Performance. Measured on the 4000×2800 stress map in headless Chromium with software rendering (Canvas 2D view), so real GPUs are faster overall:
+
+- **Dragging a stamp: 2.8 s → 0.45 s per frame.** The stamp sprite cache held 700 entries, but the stress map needs about 1,200, so every repaint missed it and re-baked every sprite (blur shadow included). The cache now has a soft pixel budget, and a sprite used in the last 3 s is never evicted.
+- Moving one stamp repainted every custom layer, because each layer's cache key was the whole stamp list and the global selection. Each layer now keys on its own objects, and on the selection only when it is on that layer.
+- Moving a stamp also rebuilt the label list (and moving a label rebuilt the stamp list), which repainted that layer as well. A multiselection drag now updates all its stamps in one pass instead of one pass per stamp.
+- Path layers repainted on every biome brush stroke. They now depend on the land only when they contain rivers, and then only on mask strokes.
+- Pixi view: every atmosphere change (each vignette, weather or darkness slider tick) leaked a full-map canvas and GPU texture, about 45 MB each on big maps. These canvases are now reused, and the vignette and weather layers are redrawn only when their own values change.
+- Opening a sample or new map no longer waits for the library thumbnail, a full map render that took about 1.3 s on the stress map. Autosave runs in an idle moment and refreshes the thumbnail at most every 30 s (was 10 s).
+- Labels drawn before their web font loaded stayed in the fallback font until the next edit. They now repaint when fonts finish loading.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

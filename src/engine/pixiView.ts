@@ -66,6 +66,9 @@ export class PixiMapView {
   private nodes = new Map<string, LayerNode>();
   private live: { sprite: Sprite; canvas: HTMLCanvasElement } | null = null;
   private atmo: { key: AtmosphereSettings | null; size: string; container: Container } = { key: null, size: '', container: new Container() };
+  // full-map canvases of the atmosphere (vignette, weather, lighting), one per op slot, reused across rebuilds and redrawn
+  // only when that op changes: a new canvas and Texture.from per slider tick piled up ~45 MB (CPU and GPU) each on big maps
+  private atmoCanvases = new Map<string, { canvas: HTMLCanvasElement; texture: Texture; key: string }>();
   private canvasTex = new WeakMap<HTMLCanvasElement, Texture>();
   private customTex = new Map<string, { canvas: HTMLCanvasElement; pad: number; res: number }>();
   private dead = false;
@@ -97,6 +100,8 @@ export class PixiMapView {
 
   destroy() {
     this.dead = true;
+    for (const e of this.atmoCanvases.values()) e.texture.destroy(true);
+    this.atmoCanvases.clear();
     this.app.destroy({ removeView: true }, { children: true });
   }
 
@@ -445,19 +450,42 @@ export class PixiMapView {
           s.blendMode = op.blend;
           box.container.addChild(s);
         } else {
-          const canvas = document.createElement('canvas');
-          canvas.width = plan.width;
-          canvas.height = plan.height;
-          const g = canvas.getContext('2d') as Ctx2D;
-          if (op.type === 'weather') feature('weather')?.drawWeather(g, plan.width, plan.height, op.kind, op.amount);
-          else if (op.type === 'lighting') feature('lighting')?.drawLighting(g, plan.width, plan.height, op);
-          else drawVignette(g, plan.width, plan.height, op.vignette);
-          box.container.addChild(new Sprite(Texture.from(canvas)));
+          // lighting depends on the stamps and walls (carried on `a`), so it redraws whenever `a` changes
+          const key = size + '|' + (op.type === 'weather' ? `${op.kind}|${op.amount}` : op.type === 'vignette' ? String(op.vignette) : '');
+          box.container.addChild(new Sprite(this.atmoCanvas(op.type, key, op.type === 'lighting', plan, (g) => {
+            if (op.type === 'weather') feature('weather')?.drawWeather(g, plan.width, plan.height, op.kind, op.amount);
+            else if (op.type === 'lighting') feature('lighting')?.drawLighting(g, plan.width, plan.height, op);
+            else drawVignette(g, plan.width, plan.height, op.vignette);
+          })));
         }
       }
       box.key = a;
       box.size = size;
     }
     return box.container;
+  }
+
+  private atmoCanvas(slot: string, key: string, always: boolean, plan: Plan, draw: (g: Ctx2D) => void): Texture {
+    let e = this.atmoCanvases.get(slot);
+    if (e && (e.canvas.width !== plan.width || e.canvas.height !== plan.height)) {
+      e.texture.destroy(true);
+      e = undefined;
+    }
+    if (!e) {
+      const canvas = document.createElement('canvas');
+      canvas.width = plan.width;
+      canvas.height = plan.height;
+      e = { canvas, texture: this.canvasTexture(canvas, 1), key: '' };
+      this.atmoCanvases.set(slot, e);
+    }
+    if (always || e.key !== key) {
+      const g = e.canvas.getContext('2d') as Ctx2D;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, plan.width, plan.height);
+      draw(g);
+      e.texture.source.update();
+      e.key = key;
+    }
+    return e.texture;
   }
 }

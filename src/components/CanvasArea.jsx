@@ -213,8 +213,10 @@ export default function CanvasArea({
   }, [fallback, mapWidth, mapHeight, rendererParam]);
 
   // Main render trigger
+  const planMemo = useRef(new Map());
   useEffect(() => {
     const props = {
+      memo: planMemo.current,
       width: mapWidth,
       height: mapHeight,
       mapType,
@@ -675,7 +677,7 @@ export default function CanvasArea({
       if (starts) {
         const dx = Math.round(x - cursor0.x);
         const dy = Math.round(y - cursor0.y);
-        starts.forEach((t) => onUpdateStamp(t.id, { x: t.x + dx, y: t.y + dy }));
+        onUpdateStamp(new Map(starts.map((t) => [t.id, { x: t.x + dx, y: t.y + dy }]))); // one pass over the list, not one per stamp
         return;
       }
       let targetX = Math.round(x - offsetX);
