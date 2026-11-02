@@ -3,6 +3,13 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+- **Undo covers map settings**: grid, atmosphere (light presets, sliders), coastline and layer changes are now undo steps; deleting a custom layer can be undone. History keeps the last 200 steps.
+- **VTT export fixes**: dungeon wall and pillar stamps (the Dungeon template's default brush) export as line-of-sight walls; before, a stamp-built dungeon reached Foundry with no walls. Doors follow the stamp's rotation and width, and the grid offset is honoured so the VTT grid lines up. Hex grids still export as square (the format has no hex grid).
+- **Content-pack map templates** appear in the New Map dialog, built on a built-in template (new optional `base` field). Pack template sizes now use the dialog's 600-8000 px limits.
+- **New stamps**: Title Cartouche (scroll) and Scale Bar, under World: Nautical next to the compass rose. Put a text label on top for the title or distances.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

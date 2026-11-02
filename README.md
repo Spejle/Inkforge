@@ -25,7 +25,7 @@ npm run preview  # serve dist/ locally
 
 - **Landmass Sculptor**: Add land or carve water with fractal jagged or smooth circular brushes, flow control, and dynamic coastline FX (shallow ripples, sand rims, ink outlines, elevation shadows).
 - **Biome & Texture Painting**: Procedural biome textures (grassland, desert, tundra, mire, lava, flagstone, cobblestone, planks) with live brush previews, feathering softness, and blend modes.
-- **Stamps & Props**: Catalog of 281 procedural vector stamps plus user image imports (PNG/SVG/WebP). Directional perspective views (side, top/plan, diag, front) and smart rotation policies (`fixed`, `tilt`, `free`) with spray and jitter modes.
+- **Stamps & Props**: Catalog of 283 procedural vector stamps plus user image imports (PNG/SVG/WebP). Directional perspective views (side, top/plan, diag, front) and smart rotation policies (`fixed`, `tilt`, `free`) with spray and jitter modes.
 - **Rivers, Roads & Walls**:
   - Editable spline vertices: drag points to reshape, double-click a point to delete, double-click the line to add a point. Dense freehand strokes automatically simplify to an editable spine (4px tolerance).
   - Procedural river generation (plugin): "Generate on click" meanders hydrologically plausible rivers from land to the nearest coast.
