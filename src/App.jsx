@@ -29,6 +29,8 @@ import {
 } from './utils/exportUtils';
 import './App.css';
 
+const MAX_HISTORY = 200; // undo steps kept; older snapshots are dropped
+
 const DEFAULT_COASTLINE = {
   ripplesEnabled: true,
   rippleCount: 3,
@@ -102,7 +104,11 @@ export default function App() {
         brushStrokes: [],
         stamps: defaultPreset.stamps || [],
         paths: defaultPreset.paths || [],
-        texts: defaultPreset.texts || []
+        texts: defaultPreset.texts || [],
+        grid: defaultPreset.grid,
+        atmosphere: defaultPreset.atmosphere,
+        coastline: defaultPreset.coastline || DEFAULT_COASTLINE,
+        layers: DEFAULT_LAYERS
       }
     ],
     index: 0
@@ -170,9 +176,9 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   // Latest document state, readable from timers and handlers without stale closures
-  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts });
+  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers });
   useEffect(() => {
-    docRef.current = { landmasses, brushStrokes, stamps, paths, texts };
+    docRef.current = { landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers };
   });
   const pendingRef = useRef(null);
 
@@ -182,7 +188,7 @@ export default function App() {
     setHist((h) => {
       const cur = h.list[h.index];
       if (Object.keys(snapshot).every((k) => snapshot[k] === cur[k])) return h;
-      const list = [...h.list.slice(0, h.index + 1), snapshot];
+      const list = [...h.list.slice(0, h.index + 1), snapshot].slice(-MAX_HISTORY);
       return { list, index: list.length - 1 };
     });
   }, []);
@@ -202,6 +208,13 @@ export default function App() {
     }, 400);
   }, [recordHistory]);
 
+  // Map settings edited from panels (grid, atmosphere, coastline, layers): set, then fold into one undo step
+  const withCommit = (set) => (v) => { set(v); scheduleCommit(); };
+  const setGridH = withCommit(setGrid);
+  const setAtmosphereH = withCommit(setAtmosphere);
+  const setCoastlineH = withCommit(setCoastline);
+  const setLayersH = withCommit(setLayers);
+
   // Atomic commit on mouse release
   const handleCommitAction = useCallback(() => {
     flushPending();
@@ -220,6 +233,11 @@ export default function App() {
     setStamps(snap.stamps);
     setPaths(snap.paths);
     setTexts(snap.texts);
+    setGrid(snap.grid);
+    setAtmosphere(snap.atmosphere);
+    setCoastline(snap.coastline);
+    setLayers(snap.layers);
+    setActiveLayer((k) => (k && !snap.layers[k] ? '' : k));
     setSelectedStampId(null);
     setSelectedTextId(null);
     setSelectedPathId(null);
@@ -482,7 +500,8 @@ export default function App() {
     setStamps(next.stamps);
     setPaths(next.paths);
     setTexts(next.texts);
-    setLayers((p) => Object.fromEntries(Object.entries(p).filter(([k]) => k !== key)));
+    next.layers = Object.fromEntries(Object.entries(layers).filter(([k]) => k !== key));
+    setLayers(next.layers);
     if (activeLayer === key) setActiveLayer('');
     recordHistory(next);
   };
@@ -676,10 +695,16 @@ export default function App() {
     setStamps(loadedStamps);
     setPaths(data.paths || []);
     setTexts(data.texts || []);
-    if (data.grid) setGrid(data.grid);
-    if (data.atmosphere) setAtmosphere(data.atmosphere);
-    setCoastline(data.coastline || DEFAULT_COASTLINE);
-    setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
+    const loaded = {
+      grid: data.grid || docRef.current.grid,
+      atmosphere: data.atmosphere || docRef.current.atmosphere,
+      coastline: data.coastline || DEFAULT_COASTLINE,
+      layers: { ...DEFAULT_LAYERS, ...(data.layers || {}) }
+    };
+    setGrid(loaded.grid);
+    setAtmosphere(loaded.atmosphere);
+    setCoastline(loaded.coastline);
+    setLayers(loaded.layers);
     setCustomStamps(
       (data.customStamps || []).map((c) => {
         const img = new Image();
@@ -695,7 +720,8 @@ export default function App() {
       brushStrokes: data.brushStrokes || [],
       stamps: loadedStamps,
       paths: data.paths || [],
-      texts: data.texts || []
+      texts: data.texts || [],
+      ...loaded
     });
   };
 
@@ -838,7 +864,7 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         gridEnabled={grid.enabled}
-        setGridEnabled={(val) => setGrid((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
+        setGridEnabled={(val) => setGridH((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
         onExport={() => setDialog('export')}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
@@ -945,7 +971,7 @@ export default function App() {
             maskRoughness={maskRoughness}
             setMaskRoughness={setMaskRoughness}
             coastlineConfig={coastline}
-            setCoastlineConfig={setCoastline}
+            setCoastlineConfig={setCoastlineH}
             brushSize={brushSize}
             setBrushSize={setBrushSize}
             activeBiome={activeBiome}
@@ -992,9 +1018,9 @@ export default function App() {
             setTextStroke={setTextStroke}
             onAddText={handleAddText}
             gridConfig={grid}
-            setGridConfig={setGrid}
+            setGridConfig={setGridH}
             atmosphereConfig={atmosphere}
-            setAtmosphereConfig={setAtmosphere}
+            setAtmosphereConfig={setAtmosphereH}
             selectedStamp={selectedStamp}
             selectedText={selectedText}
             selectedPath={selectedPath}
@@ -1016,7 +1042,7 @@ export default function App() {
           customStamps={customStamps}
           onOpenImport={() => setDialog('stamps')}
           layers={layers}
-          setLayers={setLayers}
+          setLayers={setLayersH}
           activeLayer={activeLayer}
           setActiveLayer={setActiveLayer}
           onDeleteLayer={handleDeleteLayer}
@@ -1024,11 +1050,11 @@ export default function App() {
           hasSelection={!!(selectedStampId || selectedTextId || selectedPathId)}
           objects={{ stamps, texts, paths, selectedStampId, groupIds, selectedTextId, selectedPathId, onSelect: handleSelectObject, onMove: handleMoveObjectsTo }}
           gridConfig={grid}
-          setGridConfig={setGrid}
+          setGridConfig={setGridH}
           atmosphereConfig={atmosphere}
-          setAtmosphereConfig={setAtmosphere}
+          setAtmosphereConfig={setAtmosphereH}
           coastlineConfig={coastline}
-          setCoastlineConfig={setCoastline}
+          setCoastlineConfig={setCoastlineH}
         />
       </div>
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
