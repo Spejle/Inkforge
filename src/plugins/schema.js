@@ -41,6 +41,7 @@ export function satisfies(version, range) {
 }
 export const validRange = (r) => typeof r === 'string' && r.length < 60 && r.trim().split(/\s+/).every((c) => c === '*' || c === 'x' || /^(\d+\.x|(\^|>=|<=|>|<|=)?\d+\.\d+\.\d+)$/.test(c));
 
+const TEMPLATE_BASES = ['world', 'region', 'town', 'battle', 'dungeon', 'free']; // built-in templates (engine/mapTemplates.js)
 const num = (v, lo, hi, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
 const text = (v, max = LIMITS.text) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max) : '');
 
@@ -150,10 +151,10 @@ export function validatePack(input, { appVersion = '1.12.0' } = {}) {
     return { name: text(p.name, 40), atmosphere: atm };
   }).filter(Boolean);
 
-  // Map templates are validated and stored but not yet offered in the New Map dialog (see docs/PLUGINS.md).
+  // Map templates: extra cards in the New Map dialog, built on a built-in template (`base`). Sizes match the dialog's limits.
   const mapTemplates = list(c.mapTemplates, LIMITS.templates, 'mapTemplates', err).map((t, i) => {
     if (!t || typeof t.id !== 'string' || !ID.test(t.id)) return err(`mapTemplates[${i}]: bad id`), null;
-    return { id: ns(t.id), name: text(t.name, 60) || t.id, description: text(t.description), width: Math.round(num(t.width, 64, 8000, 1920)), height: Math.round(num(t.height, 64, 8000, 1080)), biome: typeof t.biome === 'string' && ID.test(t.biome.replace(':', '-')) ? t.biome : undefined };
+    return { id: ns(t.id), name: text(t.name, 60) || t.id, description: text(t.description), width: Math.round(num(t.width, 600, 8000, 1920)), height: Math.round(num(t.height, 600, 8000, 1080)), base: TEMPLATE_BASES.includes(t.base) ? t.base : 'free', biome: typeof t.biome === 'string' && ID.test(t.biome.replace(':', '-')) ? t.biome : undefined };
   }).filter(Boolean);
 
   if (errors.length) return { ok: false, errors, pack: null };

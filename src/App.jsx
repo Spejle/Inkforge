@@ -784,9 +784,10 @@ export default function App() {
     await persist(project, id, true).catch(() => {});
     enterEditor(id);
   };
-  const createMap = (templateId, title, w, h) => {
+  const createMap = (tpl, title, w, h) => {
     setDialog(null);
-    adoptProject(blankProject(getTemplate(templateId), title, w, h));
+    adoptProject(blankProject(tpl, title, w, h));
+    if (tpl.pack) setActiveBiome(tpl.defaultBiome); // a pack template's starting brush
   };
   const openSample = (presetId) => {
     const found = PRESET_MAPS.find((p) => p.id === presetId);

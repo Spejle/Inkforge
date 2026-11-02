@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { X, Globe, Map as MapIcon, Castle, Swords, Skull, Brush } from 'lucide-react';
-import { TEMPLATES } from '../engine/mapTemplates';
+import { TEMPLATES, packTemplate } from '../engine/mapTemplates';
+import { pluginMapTemplates, usePluginVersion } from '../plugins/registry';
 
 const ICONS = { Globe, Map: MapIcon, Castle, Swords, Skull, Brush };
 
 export default function NewMapDialog({ onClose, onCreate }) {
+  usePluginVersion(); // re-render when content packs change
+  const all = [...TEMPLATES, ...pluginMapTemplates().map(packTemplate)];
   const [tplId, setTplId] = useState('world');
-  const tpl = TEMPLATES.find((t) => t.id === tplId);
+  const tpl = all.find((t) => t.id === tplId) || all[0];
   const [sizeIdx, setSizeIdx] = useState(tpl.defaultSize);
   const [custom, setCustom] = useState(false);
   const [w, setW] = useState(tpl.sizes[tpl.defaultSize].w);
@@ -33,7 +36,7 @@ export default function NewMapDialog({ onClose, onCreate }) {
     setH(tpl.sizes[i].h);
   };
   const clamp = (v) => Math.max(600, Math.min(8000, Math.round(Number(v) || 600)));
-  const create = () => onCreate(tpl.id, title.trim() || `Untitled ${tpl.name}`, clamp(w), clamp(h));
+  const create = () => onCreate(tpl, title.trim() || `Untitled ${tpl.name}`, clamp(w), clamp(h));
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -44,13 +47,14 @@ export default function NewMapDialog({ onClose, onCreate }) {
         </div>
         <div className="dialog-body">
           <div className="tpl-grid">
-            {TEMPLATES.map((t) => {
+            {all.map((t) => {
               const Icon = ICONS[t.icon] || Brush;
               return (
                 <button key={t.id} className={`tpl-card ${t.id === tplId ? 'active' : ''}`} onClick={() => pick(t)}>
                   <Icon size={22} />
                   <b>{t.name}</b>
                   <span>{t.desc}</span>
+                  {t.pack && <small className="mute">Content pack</small>}
                 </button>
               );
             })}

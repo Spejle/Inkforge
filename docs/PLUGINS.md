@@ -43,7 +43,7 @@ A map that uses a plugin stamp stores only its namespaced id. Without the pack i
   - `vector`: list of shapes in a 0-100 box: `{type:'circle',cx,cy,r}`, `{type:'rect',x,y,w,h,rx}`, `{type:'polygon',points:[[x,y],...]}`, `{type:'path',d:'M..'}`, each with optional `fill`, `stroke`, `lineWidth`, `opacity`. `$color` / `$fill` follow the stamp's ink and paper colours.
 - **lightPresets**: `{name, atmosphere:{vignette, parchmentGrain, sepia, brightness, darkness, tint:[r,g,b], tintAmount, tintBlend, weather:'rain'|'snow', weatherAmount}}`.
 - **biomes**: `{id, name, color, secondaryColor, roughness, description}`. They use the default mottled texture and appear under "Other map types" in the biome list.
-- **mapTemplates**: `{id, name, description, width, height, biome}`. Validated and stored; **not yet offered** in the New Map dialog.
+- **mapTemplates**: `{id, name, description, width, height, biome, base}`. Shown as extra cards in the New Map dialog. `base` is the built-in template it builds on (`world`, `region`, `town`, `battle`, `dungeon` or `free`, the default): its grid, look, brushes and stamps. `width`/`height` are 600-8000 px. `biome` is the starting brush (ignored if the base does not offer it). Maps record the base, so they still open after the pack is removed.
 
 ## Authoring
 
