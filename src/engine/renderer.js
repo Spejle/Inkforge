@@ -34,7 +34,7 @@ export function onImageLoad(fn) {
 // load bumps the epoch in the text layers' cache key and asks for a repaint (through the same handler as images).
 let fontEpoch = 0;
 if (typeof document !== 'undefined' && document.fonts?.addEventListener) {
-  document.fonts.addEventListener('loadingdone', () => { fontEpoch++; imageLoadHandler && imageLoadHandler(); });
+  document.fonts.addEventListener('loadingdone', () => { fontEpoch++; imageLoadHandler?.(); });
 }
 export function stampImage(src) {
   if (typeof src === 'string' && !safeImageSrc(src)) return null; // never fetch a remote URL for a stamp
