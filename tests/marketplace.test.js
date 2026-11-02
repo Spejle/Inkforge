@@ -6,6 +6,7 @@ import { FEATURES, feature, install, uninstall, isInstalled, loadError } from '.
 const API = {
   lighting: ['withLighting', 'drawLighting'], riverGen: ['generateRiver'], weather: ['drawWeather'], maskFill: ['maskFillStroke'],
   vttExport: ['exportToUniversalVtt'], print: ['exportPrintPdf', 'PrintDialog'], layersZip: ['exportLayersZip'],
+  worldGen: ['generateWorld'],
   fog: ['drawFog', 'openPlayerLink', 'openPlayerWindow', 'PlayerView']
 };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Globe, Map as MapIcon, Castle, Swords, Skull, Brush } from 'lucide-react';
 import { TEMPLATES, packTemplate } from '../engine/mapTemplates';
 import { pluginMapTemplates, usePluginVersion } from '../plugins/registry';
+import { useFeature } from '../plugins/features';
 
 const ICONS = { Globe, Map: MapIcon, Castle, Swords, Skull, Brush };
 
@@ -15,6 +16,10 @@ export default function NewMapDialog({ onClose, onCreate }) {
   const [w, setW] = useState(tpl.sizes[tpl.defaultSize].w);
   const [h, setH] = useState(tpl.sizes[tpl.defaultSize].h);
   const [title, setTitle] = useState('');
+  const genOn = useFeature('worldGen');
+  const [gen, setGen] = useState(() => ({ on: true, seed: Math.floor(Math.random() * 100000), land: 38, mountains: 50, forests: 50, rivers: 6 }));
+  const canGen = genOn && tpl.mode === 'world';
+  const setG = (patch) => setGen((g) => ({ ...g, ...patch }));
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -36,7 +41,8 @@ export default function NewMapDialog({ onClose, onCreate }) {
     setH(tpl.sizes[i].h);
   };
   const clamp = (v) => Math.max(600, Math.min(8000, Math.round(Number(v) || 600)));
-  const create = () => onCreate(tpl, title.trim() || `Untitled ${tpl.name}`, clamp(w), clamp(h));
+  const create = () => onCreate(tpl, title.trim() || `Untitled ${tpl.name}`, clamp(w), clamp(h),
+    canGen && gen.on ? { seed: gen.seed, land: gen.land / 100, mountains: gen.mountains / 100, forests: gen.forests / 100, rivers: gen.rivers } : null);
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -77,6 +83,30 @@ export default function NewMapDialog({ onClose, onCreate }) {
               <input className="text-input" type="number" min="600" max="8000" value={w} onChange={(e) => setW(e.target.value)} aria-label="Width" />
               ×
               <input className="text-input" type="number" min="600" max="8000" value={h} onChange={(e) => setH(e.target.value)} aria-label="Height" />
+            </div>
+          )}
+
+          {canGen && (
+            <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label className="checkbox-label">
+                <input type="checkbox" checked={gen.on} onChange={(e) => setG({ on: e.target.checked })} /> Generate land (World generator)
+              </label>
+              {gen.on && (
+                <>
+                  <div className="flex-row gap-3 items-center">
+                    <span>Seed</span>
+                    <input className="text-input" style={{ maxWidth: 140 }} type="number" value={gen.seed} onChange={(e) => setG({ seed: Math.abs(parseInt(e.target.value) || 0) })} aria-label="Seed" />
+                    <button className="btn-ghost" onClick={() => setG({ seed: Math.floor(Math.random() * 100000) })}>Re-roll</button>
+                  </div>
+                  {[['land', 'Land', 15, 70, '%'], ['mountains', 'Mountains', 0, 100, '%'], ['forests', 'Forests', 0, 100, '%'], ['rivers', 'Rivers', 0, 16, '']].map(([k, label, lo, hi, unit]) => (
+                    <label key={k} className="option-label">
+                      {label}: <span className="val-badge">{gen[k]}{unit}</span>
+                      <input type="range" min={lo} max={hi} value={gen[k]} onChange={(e) => setG({ [k]: parseInt(e.target.value) })} />
+                    </label>
+                  ))}
+                  <span className="mute">Makes ordinary land, biome strokes, stamps and rivers: edit or undo any of it. The same seed makes the same world.</span>
+                </>
+              )}
             </div>
           )}
 

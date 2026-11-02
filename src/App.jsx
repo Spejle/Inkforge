@@ -820,9 +820,12 @@ export default function App() {
     await persist(project, id, true).catch(() => {});
     enterEditor(id);
   };
-  const createMap = (tpl, title, w, h) => {
+  const createMap = (tpl, title, w, h, gen = null) => {
     setDialog(null);
-    adoptProject(blankProject(tpl, title, w, h));
+    const project = blankProject(tpl, title, w, h);
+    const worldGen = gen && feature('worldGen');
+    if (worldGen) Object.assign(project, worldGen.generateWorld({ ...gen, width: w, height: h, climate: tpl.id === 'region' ? 'region' : 'world' }));
+    adoptProject(project);
     if (tpl.pack) setActiveBiome(tpl.defaultBiome); // a pack template's starting brush
   };
   const openSample = (presetId) => {

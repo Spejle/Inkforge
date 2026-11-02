@@ -14,6 +14,13 @@ export const FEATURES = [
     load: () => import('./builtin/lighting/index.js')
   },
   {
+    id: 'worldGen',
+    name: 'World generator',
+    kind: 'Tool',
+    description: '"Generate land" in New Map for world and region maps: continents, climate biomes, mountains, forests and rivers from a seed, all editable.',
+    load: () => import('./builtin/worldGen/index.js')
+  },
+  {
     id: 'riverGen',
     name: 'River generation',
     kind: 'Tool',
