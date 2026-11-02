@@ -17,6 +17,19 @@ export function clampDim(v, fallback) {
 
 const isLoadedImage = (v) => typeof HTMLImageElement !== 'undefined' && v instanceof HTMLImageElement && !v.src.startsWith('http');
 
+/** Fog of war: { enabled, strokes: [{ mode: 'reveal'|'hide', size, points: [[x, y]...] } | { mode, all: true }] }. */
+export function sanitizeFog(f) {
+  if (!f || typeof f !== 'object') return { enabled: false, strokes: [] };
+  const strokes = (Array.isArray(f.strokes) ? f.strokes : []).filter((s) => s && typeof s === 'object').map((s) => {
+    const mode = s.mode === 'hide' ? 'hide' : 'reveal';
+    if (s.all) return { mode, all: true };
+    const points = (Array.isArray(s.points) ? s.points : []).filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).map((p) => [p[0], p[1]]);
+    const size = Number.isFinite(s.size) ? Math.min(2000, Math.max(4, s.size)) : 60;
+    return points.length ? { mode, size, points } : null;
+  }).filter(Boolean);
+  return { enabled: !!f.enabled, strokes };
+}
+
 /** Shallow copy of a parsed project with the dangerous parts normalised. */
 export function sanitizeProject(d) {
   const p = d && typeof d === 'object' ? d : {};
@@ -30,6 +43,7 @@ export function sanitizeProject(d) {
     paths: list(p.paths),
     texts: list(p.texts),
     stamps: list(p.stamps).map((s) => ({ ...s, customImage: safeImageSrc(s.customImage) || (isLoadedImage(s.customImage) ? s.customImage : null) })),
-    customStamps: list(p.customStamps).filter((c) => safeImageSrc(c.dataUrl))
+    customStamps: list(p.customStamps).filter((c) => safeImageSrc(c.dataUrl)),
+    fog: sanitizeFog(p.fog)
   };
 }

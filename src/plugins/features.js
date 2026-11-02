@@ -35,6 +35,13 @@ export const FEATURES = [
     load: () => import('./builtin/maskFill/index.js')
   },
   {
+    id: 'fog',
+    name: 'Fog of war',
+    kind: 'Tool',
+    description: 'Paint what the players may see, then open a player window (a second screen or a shared tab) that shows only that.',
+    load: () => import('./builtin/fog/index.js')
+  },
+  {
     id: 'vttExport',
     name: 'VTT export',
     kind: 'Export',

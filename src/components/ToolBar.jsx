@@ -9,9 +9,11 @@ import {
   Grid,
   SunMoon,
   Hand,
-  Eraser
+  Eraser,
+  CloudFog
 } from 'lucide-react';
 import { shortcutOf } from '../utils/keymap';
+import { useFeature } from '../plugins/features';
 
 export const TOOLS = [
   { id: 'select', name: 'Select & Transform', icon: MousePointer, shortcut: 'V', desc: 'Select, move, scale and rotate stamps and labels' },
@@ -22,6 +24,7 @@ export const TOOLS = [
   { id: 'text', name: 'Text & Banners', icon: Type, shortcut: 'T', desc: 'Add stylized fantasy kingdom labels and dungeon titles' },
   { id: 'grid', name: 'Grid & Alignment', icon: Grid, shortcut: 'G', desc: 'Configure square or hex grid, scale, and opacity' },
   { id: 'atmosphere', name: 'Atmosphere & Light', icon: SunMoon, shortcut: 'A', desc: 'Vignette, vintage parchment warmth, and grimdark lighting' },
+  { id: 'fog', name: 'Fog of War', icon: CloudFog, shortcut: 'F', desc: 'Reveal or hide parts of the map for the player view (plugin)', plugin: 'fog' },
   { id: 'eraser', name: 'Eraser', icon: Eraser, shortcut: 'E', desc: 'Rub out brush strokes, sculpted land strokes and paths' },
   { id: 'hand', name: 'Pan Canvas', icon: Hand, shortcut: 'H', desc: 'Pan around map (or hold Spacebar)' }
 ];
@@ -30,8 +33,9 @@ export const TOOLS = [
 const DRAW_IDS = ['mask', 'brush', 'stamp', 'path', 'text'];
 
 export default function ToolBar({ activeTool, setActiveTool, keymap }) {
+  const fogOn = useFeature('fog');
   const group = (tools) =>
-    tools.map((tool) => {
+    tools.filter((t) => t.plugin !== 'fog' || fogOn).map((tool) => {
       const Icon = tool.icon;
       const key = keymap ? shortcutOf(keymap, `tool.${tool.id}`) : tool.shortcut;
       return (

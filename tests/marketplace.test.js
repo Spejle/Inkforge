@@ -5,7 +5,8 @@ import { FEATURES, feature, install, uninstall, isInstalled, loadError } from '.
 // what the app calls on each plugin module; a missing export breaks only when that plugin is installed, so check here
 const API = {
   lighting: ['withLighting', 'drawLighting'], riverGen: ['generateRiver'], weather: ['drawWeather'], maskFill: ['maskFillStroke'],
-  vttExport: ['exportToUniversalVtt'], print: ['exportPrintPdf', 'PrintDialog'], layersZip: ['exportLayersZip']
+  vttExport: ['exportToUniversalVtt'], print: ['exportPrintPdf', 'PrintDialog'], layersZip: ['exportLayersZip'],
+  fog: ['drawFog', 'openPlayerLink', 'openPlayerWindow', 'PlayerView']
 };
 
 test('every marketplace plugin loads and exports what the app calls', async () => {

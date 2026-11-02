@@ -75,7 +75,9 @@ export function buildPlan({
   selectedTextId = null,
   selectedPathId = null,
   layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
-  layerStyle = {} // { [layerKey]: { opacity, blend } }
+  layerStyle = {}, // { [layerKey]: { opacity, blend } }
+  fog = null, // fog of war { enabled, strokes } (Fog of war plugin); never passed by exports
+  fogOpaque = false // player view: fog hides completely; the GM sees through it
 }) {
   const st = (k) => layerStyle[k];
   // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
@@ -148,6 +150,10 @@ export function buildPlan({
   if (layerVisibility.grid && grid.enabled) {
     layer('grid', raster([grid, width, height], (c) => renderGrid(c, width, height, grid)));
   }
+
+  // 8. FOG OF WAR over everything, labels and grid included
+  const fogPlugin = fog && fog.enabled ? feature('fog') : null;
+  if (fogPlugin) layer('fog', raster([fog, fogOpaque, width, height], (c) => fogPlugin.drawFog(c, width, height, fog, fogOpaque)));
   return { width, height, items };
 }
 

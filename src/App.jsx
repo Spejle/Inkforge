@@ -29,6 +29,7 @@ import {
 } from './utils/exportUtils';
 import './App.css';
 
+const NO_FOG = { enabled: false, strokes: [] };
 const MAX_HISTORY = 200; // undo steps kept; older snapshots are dropped
 
 const DEFAULT_COASTLINE = {
@@ -82,6 +83,7 @@ export default function App() {
   const featureVersion = useFeatureVersion();
   useEffect(() => { if (featureVersion) setAtmosphere((a) => ({ ...a })); }, [featureVersion]);
   const [coastline, setCoastline] = useState(defaultPreset.coastline || DEFAULT_COASTLINE);
+  const [fog, setFog] = useState(NO_FOG); // fog of war (plugin): what the player view hides
 
   // Layer panel: per-layer visibility / opacity / blend, and the user's stamp library
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
@@ -108,7 +110,8 @@ export default function App() {
         grid: defaultPreset.grid,
         atmosphere: defaultPreset.atmosphere,
         coastline: defaultPreset.coastline || DEFAULT_COASTLINE,
-        layers: DEFAULT_LAYERS
+        layers: DEFAULT_LAYERS,
+        fog: NO_FOG
       }
     ],
     index: 0
@@ -176,9 +179,9 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   // Latest document state, readable from timers and handlers without stale closures
-  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers });
+  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog });
   useEffect(() => {
-    docRef.current = { landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers };
+    docRef.current = { landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog };
   });
   const pendingRef = useRef(null);
 
@@ -214,6 +217,7 @@ export default function App() {
   const setAtmosphereH = withCommit(setAtmosphere);
   const setCoastlineH = withCommit(setCoastline);
   const setLayersH = withCommit(setLayers);
+  const setFogH = withCommit(setFog);
 
   // Atomic commit on mouse release
   const handleCommitAction = useCallback(() => {
@@ -237,6 +241,7 @@ export default function App() {
     setAtmosphere(snap.atmosphere);
     setCoastline(snap.coastline);
     setLayers(snap.layers);
+    setFog(snap.fog);
     setActiveLayer((k) => (k && !snap.layers[k] ? '' : k));
     setSelectedStampId(null);
     setSelectedTextId(null);
@@ -356,7 +361,7 @@ export default function App() {
 
   // Keyboard shortcut listener: keys come from the rebindable keymap (Settings), arrows always nudge
   useEffect(() => {
-    const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand' };
+    const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand', 'tool.fog': 'fog' };
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const combo = comboOf(e);
@@ -377,6 +382,7 @@ export default function App() {
       const hit = actionFor(keymap, combo);
       if (!hit) return;
       if (TOOL_OF[hit.id]) {
+        if (hit.id === 'tool.fog' && !feature('fog')) return;
         setActiveTool(TOOL_OF[hit.id]);
       } else if (hit.id === 'edit.undo') {
         e.preventDefault();
@@ -484,6 +490,13 @@ export default function App() {
       }
       return [...prev, stroke];
     });
+  };
+
+  // A finished fog-of-war stroke: one undo step
+  const handleCommitFog = (stroke) => {
+    const next = { ...docRef.current.fog, enabled: true, strokes: [...docRef.current.fog.strokes, stroke] };
+    setFog(next);
+    recordHistory({ fog: next });
   };
 
   // A finished mask/brush stroke: add it and record one undo step (docRef is not refreshed until the next render)
@@ -669,8 +682,29 @@ export default function App() {
     atmosphere,
     coastline,
     layers,
+    fog,
     customStamps: customStamps.map(({ img: _img, ...c }) => c)
   });
+
+  // Fog of war player window: the GM's map goes to it over a BroadcastChannel, a moment after each change
+  const [fogMode, setFogMode] = useState('reveal');
+  const [playerOn, setPlayerOn] = useState(false);
+  const projectRef = useRef(null);
+  projectRef.current = buildProject;
+  const playerLinkRef = useRef(null);
+  const openPlayer = () => {
+    const fogPlugin = feature('fog');
+    if (!fogPlugin) return;
+    if (!playerLinkRef.current) playerLinkRef.current = fogPlugin.openPlayerLink(() => projectRef.current());
+    fogPlugin.openPlayerWindow();
+    setPlayerOn(true);
+  };
+  useEffect(() => () => playerLinkRef.current?.close(), []);
+  useEffect(() => {
+    if (!playerOn || !playerLinkRef.current) return;
+    const t = setTimeout(() => playerLinkRef.current?.send(projectRef.current()), 250);
+    return () => clearTimeout(t);
+  }, [playerOn, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog, mapWidth, mapHeight, mapType]);
 
   const handleExportJson = () => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
@@ -699,12 +733,14 @@ export default function App() {
       grid: data.grid || docRef.current.grid,
       atmosphere: data.atmosphere || docRef.current.atmosphere,
       coastline: data.coastline || DEFAULT_COASTLINE,
-      layers: { ...DEFAULT_LAYERS, ...(data.layers || {}) }
+      layers: { ...DEFAULT_LAYERS, ...(data.layers || {}) },
+      fog: data.fog || NO_FOG
     };
     setGrid(loaded.grid);
     setAtmosphere(loaded.atmosphere);
     setCoastline(loaded.coastline);
     setLayers(loaded.layers);
+    setFog(loaded.fog);
     setCustomStamps(
       (data.customStamps || []).map((c) => {
         const img = new Image();
@@ -926,6 +962,9 @@ export default function App() {
             pathColor={pathColor}
             onAddBrushStroke={handleAddBrushStroke}
             onCommitStroke={handleCommitStroke}
+            fog={fog}
+            fogMode={fogMode}
+            onCommitFog={handleCommitFog}
             onAddStamp={handleAddStamp}
             onUpdateStamp={handleUpdateStamp}
             onAddPath={handleAddPath}
@@ -965,6 +1004,12 @@ export default function App() {
           biomes={biomesFor(tpl)}
           allBiomes={tpl.biomes !== null}
             activeTool={activeTool}
+            fog={fog}
+            setFog={setFogH}
+            fogMode={fogMode}
+            setFogMode={setFogMode}
+            onOpenPlayer={openPlayer}
+            playerOn={playerOn}
             maskMode={maskMode}
             setMaskMode={setMaskMode}
             maskShape={maskShape}
