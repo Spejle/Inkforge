@@ -717,10 +717,10 @@ export default function App() {
 
   // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
-  const thumbRef = useRef({ at: 0, url: null });
+  const thumbRef = useRef({ id: null, at: 0, url: null }); // the last thumbnail drawn, reused for 10 s by that map only
   const persist = (project, id, withThumb) => {
-    if (withThumb || Date.now() - thumbRef.current.at > 10000) {
-      thumbRef.current = { at: Date.now(), url: makeThumb(project) };
+    if (withThumb || thumbRef.current.id !== id || Date.now() - thumbRef.current.at > 10000) {
+      thumbRef.current = { id, at: Date.now(), url: makeThumb(project) };
     }
     return saveMap(id, project, {
       title: project.title, template: project.template, width: project.width, height: project.height, thumb: thumbRef.current.url
