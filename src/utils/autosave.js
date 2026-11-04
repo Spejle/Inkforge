@@ -3,7 +3,24 @@
 const DB = 'inkforge';
 const OLD_KEY = 'autosave'; // single-map autosave from v1.5/1.6, migrated on first list
 
+// One connection, kept open: a save started while the page is being hidden or unloaded must reach its transaction
+// without waiting for a new connection, which never finishes once the page is gone.
+let conn = null; // promise of the connection
+let ready = null; // the connection once open, so a transaction can start in the same task as the save
 function open() {
+  if (!conn) {
+    const drop = () => { conn = null; ready = null; };
+    conn = connect().then((db) => {
+      db.onclose = drop;
+      db.onversionchange = () => { db.close(); drop(); };
+      ready = db;
+      return db;
+    }, (e) => { drop(); throw e; });
+  }
+  return conn;
+}
+
+function connect() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
@@ -16,10 +33,11 @@ function open() {
 }
 
 async function tx(stores, mode, fn) {
-  const db = await open();
+  const db = ready || (await open());
   return new Promise((resolve, reject) => {
     const t = db.transaction(stores, mode);
     const r = fn(...stores.map((s) => t.objectStore(s)));
+    t.commit?.(); // everything is queued: commit now rather than at the end of the task (the page may be unloading)
     t.oncomplete = () => resolve(r && r.result);
     t.onerror = () => reject(t.error);
     t.onabort = () => reject(t.error);

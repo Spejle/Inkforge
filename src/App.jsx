@@ -718,8 +718,11 @@ export default function App() {
   // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
   const thumbRef = useRef({ id: null, at: 0, url: null }); // the last thumbnail drawn, reused for 10 s by that map only
+  // withThumb: true draws a fresh thumbnail, false reuses this map's one for 10 s, 'cached' reuses it however old (no
+  // time to draw while the page is being hidden)
   const persist = (project, id, withThumb) => {
-    if (withThumb || thumbRef.current.id !== id || Date.now() - thumbRef.current.at > 10000) {
+    const stale = withThumb !== 'cached' && Date.now() - thumbRef.current.at > 10000;
+    if (withThumb === true || thumbRef.current.id !== id || stale) {
       thumbRef.current = { id, at: Date.now(), url: makeThumb(project) };
     }
     return saveMap(id, project, {
@@ -732,12 +735,25 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (view !== 'editor' || !currentMapId) return;
-    const t = setTimeout(() => {
-      persist(buildProject(), currentMapId, false)
+    let done = false;
+    const save = (e) => {
+      if (done) return;
+      done = true;
+      clearTimeout(t);
+      persist(buildProject(), currentMapId, e ? 'cached' : false)
         .then(() => setAutosaveStatus('Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
         .catch(() => setAutosaveStatus('Save failed (storage full?)'));
-    }, 1500);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(() => save(), 1500);
+    // a reload, a closed tab or a switch to another app inside the wait used to lose the last edits
+    const onHidden = () => { if (document.visibilityState === 'hidden') save('hidden'); };
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
 
