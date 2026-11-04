@@ -20,6 +20,7 @@ import Home from './components/Home';
 import NewMapDialog from './components/NewMapDialog';
 import { getTemplate, biomesFor, blankProject } from './engine/mapTemplates';
 import { makeThumb } from './utils/thumb';
+import { thumbDue } from './utils/thumbPolicy';
 import { getStampById } from './engine/stampsCatalog';
 import { PRESET_MAPS } from './engine/presetMaps';
 import {
@@ -785,12 +786,12 @@ export default function App() {
 
   // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
-  const thumbRef = useRef({ at: 0, url: null });
+  const thumbRef = useRef({ id: null, at: 0, url: null });
   const persist = (project, id, withThumb) => {
     // the thumbnail is a full map render on the main thread (about a second on the stress map), so autosave refreshes it
-    // at most every 30 s; leaving to the main menu always takes a fresh one
-    if (withThumb || Date.now() - thumbRef.current.at > 30000) {
-      thumbRef.current = { at: Date.now(), url: makeThumb(project) };
+    // at most every 30 s; leaving to the main menu always takes a fresh one, and so does the first save of another map
+    if (thumbDue(thumbRef.current, id, Date.now(), withThumb)) {
+      thumbRef.current = { id, at: Date.now(), url: makeThumb(project) };
     }
     return saveMap(id, project, {
       title: project.title, template: project.template, width: project.width, height: project.height, thumb: thumbRef.current.url
@@ -812,7 +813,7 @@ export default function App() {
     const t = setTimeout(() => { idle = whenIdle(save); }, 1500);
     return () => { clearTimeout(t); cancelIdle(idle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
+  }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog, customStamps]);
 
   const enterEditor = (id) => {
     setCurrentMapId(id);
@@ -850,7 +851,7 @@ export default function App() {
     setDialog(null);
     const project = blankProject(tpl, title, w, h);
     const worldGen = gen && feature('worldGen');
-    if (worldGen) Object.assign(project, worldGen.generateWorld({ ...gen, width: w, height: h, climate: tpl.id === 'region' ? 'region' : 'world' }));
+    if (worldGen) Object.assign(project, worldGen.generateWorld({ ...gen, width: w, height: h, climate: (tpl.base || tpl.id) === 'region' ? 'region' : 'world' }));
     adoptProject(project);
     if (tpl.pack) setActiveBiome(tpl.defaultBiome); // a pack template's starting brush
   };

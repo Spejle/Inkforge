@@ -82,7 +82,10 @@ export function PlayerView() {
     ch.postMessage({ type: 'hello' });
     const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
     window.addEventListener('resize', onResize);
-    return () => { ch.close(); window.removeEventListener('resize', onResize); };
+    // labels drawn before their web font arrived used the fallback face: redraw once fonts finish loading
+    const onFonts = () => setTick((t) => t + 1);
+    document.fonts?.addEventListener?.('loadingdone', onFonts);
+    return () => { ch.close(); window.removeEventListener('resize', onResize); document.fonts?.removeEventListener?.('loadingdone', onFonts); };
   }, []);
 
   useEffect(() => {

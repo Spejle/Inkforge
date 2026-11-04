@@ -53,11 +53,13 @@ There is no store library. `App.jsx` holds everything in `useState`:
   (`'home' | 'editor'`), `currentMapId`.
 - Everything is passed down as props (CanvasArea receives the document and handlers).
 
-Undo/redo: `hist = { list, index }` of snapshots `{landmasses, brushStrokes, stamps, paths, texts}`.
+Undo/redo: `hist = { list, index }` of snapshots `{landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere,
+coastline, layers, fog}`, capped at 200 steps (`MAX_HISTORY`).
 `recordHistory` skips a snapshot whose fields are all identical (by reference) to the current one;
 `scheduleCommit` folds slider edits into one step after 400 ms; `handleCommitAction` commits on mouse release.
 `docRef`/`histRef` mirror latest state so timers and handlers avoid stale closures. Undo with pending
-unrecorded edits drops them back to the last snapshot. Grid, atmosphere, coastline and layers are NOT in history.
+unrecorded edits drops them back to the last snapshot. Panel edits of grid, atmosphere, coastline, layers and fog go through
+`withCommit` (set, then `scheduleCommit`). Custom stamps are not in history.
 
 Small external stores use `useSyncExternalStore` with module state: `plugins/features.js`, `plugins/registry.js`.
 
@@ -100,7 +102,8 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 - **Library**: IndexedDB database `inkforge` v2, stores `projects` (full map, key = map id `map_<time><rand>`),
   `meta` (title, template, size, thumbnail, `updated`) and `kv` (legacy single-map autosave `autosave`, migrated
   into the library by `listMaps()`). Autosave runs 1.5 s after any document change while in the editor; leaving
-  to home saves with a fresh thumbnail (otherwise thumbnails refresh at most every 30 s). The save itself waits for an idle
+  to home saves with a fresh thumbnail (otherwise thumbnails refresh at most every 30 s, and always on the first save of a different map:
+  `utils/thumbPolicy.js`). The save itself waits for an idle
   moment (`requestIdleCallback`); a newly opened sample or new map is written after the editor's first paint.
 - **Project (`buildProject`)**: `title, type, template, width, height, landmasses, brushStrokes, stamps, paths,
   texts, grid, atmosphere, coastline, layers, customStamps` (custom stamp image sources as data URLs).
@@ -144,7 +147,8 @@ npm test | npm run typecheck | npm run lint
   entry's `load` must be a literal `import()` for Vite to split it.
 - Custom stamp images: `customImage` is an `Image` in memory but a data URL on disk/IndexedDB; `hydrateStamps`
   and `importFromJson` convert back. The Pixi view tracks an `epoch` that bumps when an image finishes loading.
-- Only landmasses, brushStrokes, stamps, paths and texts are undoable.
+- Every document field `buildProject` saves must also be in the autosave effect's dependency list
+  (`tests/appAutosave.test.js` checks this).
 - Layer ordering and caching are defined solely by `buildPlan`; adding a layer means changing it and `types.ts`,
   and both backends must handle the new part.
 - Stamps are 80 map units at scale 1 (`BASE` in pixiView.ts; keep equal to the Canvas 2D renderer).

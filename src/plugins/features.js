@@ -73,6 +73,8 @@ export const FEATURES = [
 
 const KEY = 'inkforge.plugins'; // installed ids
 const OLD_KEY = 'inkforge.features'; // 1.13: { id: on } with everything on by default
+// the features 1.13 had built in: an upgrade keeps these on, while plugins added since stay opt-in like for a new user
+export const LEGACY_FEATURES = ['lighting', 'riverGen', 'weather', 'maskFill', 'vttExport', 'print', 'layersZip'];
 
 const read = () => {
   try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : null; } catch { return null; }
@@ -132,7 +134,7 @@ export async function loadFeatures() {
     let existing = !!old;
     try { existing ||= Object.keys(localStorage).some((k) => k.startsWith('inkforge')); } catch { /* blocked */ }
     if (!existing) existing = (await listMaps().catch(() => [])).length > 0;
-    installed = existing ? FEATURES.map((f) => f.id).filter((id) => !old || old[id] !== false) : [];
+    installed = existing ? LEGACY_FEATURES.filter((id) => !old || old[id] !== false) : [];
     save();
   }
   await Promise.all(installed.map(load));
