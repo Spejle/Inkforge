@@ -130,7 +130,10 @@ export default function App() {
   const [layout, setLayout] = useState(loadLayout);
   useEffect(() => { applyLayout(layout); saveLayout(layout); }, [layout]);
   const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
-  const [maskShape, setMaskShape] = useState('rough');
+  const [maskShapeChoice, setMaskShape] = useState('rough');
+  // Fill needs the Mask fill plugin: once it is removed the sculptor goes back to Rough instead of laying down
+  // fill strokes with no fill in them (invisible, but saved and undoable). Re-installing brings Fill back.
+  const maskShape = maskShapeChoice === 'fill' && !feature('maskFill') ? 'rough' : maskShapeChoice;
   const [maskRoughness, setMaskRoughness] = useState(0.5);
 
   const [brushSize, setBrushSize] = useState(60);
