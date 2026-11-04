@@ -25,7 +25,7 @@ npm run preview  # serve dist/ locally
 
 - **Landmass Sculptor**: Add land or carve water with fractal jagged or smooth circular brushes, flow control, and dynamic coastline FX (shallow ripples, sand rims, ink outlines, elevation shadows).
 - **Biome & Texture Painting**: Procedural biome textures (grassland, desert, tundra, mire, lava, flagstone, cobblestone, planks) with live brush previews, feathering softness, and blend modes.
-- **Stamps & Props**: Catalog of 281 procedural vector stamps plus user image imports (PNG/SVG/WebP). Directional perspective views (side, top/plan, diag, front) and smart rotation policies (`fixed`, `tilt`, `free`) with spray and jitter modes.
+- **Stamps & Props**: Catalog of 283 procedural vector stamps plus user image imports (PNG/SVG/WebP). Directional perspective views (side, top/plan, diag, front) and smart rotation policies (`fixed`, `tilt`, `free`) with spray and jitter modes.
 - **Rivers, Roads & Walls**:
   - Editable spline vertices: drag points to reshape, double-click a point to delete, double-click the line to add a point. Dense freehand strokes automatically simplify to an editable spine (4px tolerance).
   - Procedural river generation (plugin): "Generate on click" meanders hydrologically plausible rivers from land to the nearest coast.
@@ -37,6 +37,8 @@ npm run preview  # serve dist/ locally
   - Area light emitters sampled across 8 jittered multi-ring positions cast soft-edged shadows whose penumbra widens naturally with distance.
   - True-shape sprite shadow casting: Occluders (dungeon walls, pillars, doors, furniture, mountains, trees) cast silhouettes based on their traced sprite outlines.
   - Ambient bounce illumination maintains ~50% visibility within lit areas, bounded by room walls.
+- **World Generator** (plugin): seeded continents with climate biomes, mountains, forests and rivers, generated as ordinary editable map data from the New Map dialog.
+- **Fog of War** (plugin): paint what the players may see, then open a player window for a second screen that hides the rest and updates live.
 - **Multiselect & Scene Organization**:
   - Rubber-band marquee drag or Shift+click to multiselect and transform objects as a unified group.
   - Objects tab: Hierarchical inspection of all stamps, labels, and paths grouped by layer with real-time filtering and drag-to-layer organization.
@@ -47,7 +49,7 @@ npm run preview  # serve dist/ locally
 - **Export & Print**:
   - Export dialog: PNG, WebP or JPG at 0.5× to 8× (capped by the browser's canvas limit, 16384 px on the long side).
   - Plugins: transparent per-layer PNGs in a ZIP; Universal VTT (`.dd2vtt`) with line-of-sight walls, door portals and lights; tiled multi-sheet table-scale PDF printing (A4, Letter, A3, Poster) with crop marks, overlap margins and assembly guides.
-- **Plugin marketplace** (puzzle button in the header): optional first-party features (dynamic lighting, river generation, weather, mask fill, VTT export, print, layers ZIP), each downloaded only when installed.
+- **Plugin marketplace** (puzzle button in the header): optional first-party features (dynamic lighting, world generator, river generation, weather, mask fill, fog of war, VTT export, print, layers ZIP), each downloaded only when installed.
 - **Content Packs**: Data-only JSON asset packs for stamps, biomes, and lighting presets.
 
 ## Shortcuts

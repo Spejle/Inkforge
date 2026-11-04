@@ -44,6 +44,13 @@ export default function ToolOptions({
   setCoastlineConfig,
   brushSize,
   setBrushSize,
+  // Fog of war (plugin)
+  fog,
+  setFog,
+  fogMode = 'reveal',
+  setFogMode,
+  onOpenPlayer,
+  playerOn = false,
   // Biome brush options
   biomes = BIOMES,
   allBiomes = false,
@@ -112,7 +119,7 @@ export default function ToolOptions({
   onSendToBack
 }) {
   usePluginVersion(); // plugin light presets
-  const fillOn = useFeature('maskFill'), riverGenOn = useFeature('riverGen'), lightingOn = useFeature('lighting'), weatherOn = useFeature('weather');
+  const fillOn = useFeature('maskFill'), riverGenOn = useFeature('riverGen'), lightingOn = useFeature('lighting'), weatherOn = useFeature('weather'), fogOn = useFeature('fog');
   const [isCoastlineOpen, setIsCoastlineOpen] = useState(false);
   const activeStampDef = getStampById(activeStampId);
 
@@ -383,6 +390,31 @@ export default function ToolOptions({
               />
             )}
           </div>
+        </div>
+      )}
+
+      {activeTool === 'fog' && fogOn && fog && (
+        <div className="options-segment">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={fog.enabled} onChange={(e) => setFog((f) => ({ ...f, enabled: e.target.checked }))} />
+            Fog of war on this map
+          </label>
+          <div className="btn-group">
+            <button className={`btn-toggle ${fogMode === 'reveal' ? 'active' : ''}`} onClick={() => setFogMode('reveal')}>Reveal</button>
+            <button className={`btn-toggle ${fogMode === 'hide' ? 'active' : ''}`} onClick={() => setFogMode('hide')}>Hide</button>
+          </div>
+          <label className="option-label">
+            Size: <span className="val-badge">{brushSize}px</span>
+            <input type="range" min="15" max="480" value={Math.min(480, brushSize)} onChange={(e) => setBrushSize(parseInt(e.target.value))} />
+          </label>
+          <div className="btn-group">
+            <button className="btn-toggle" onClick={() => setFog((f) => ({ enabled: true, strokes: [...f.strokes, { mode: 'reveal', all: true }] }))}>Reveal all</button>
+            <button className="btn-toggle" onClick={() => setFog((f) => ({ enabled: true, strokes: [...f.strokes, { mode: 'hide', all: true }] }))}>Hide all</button>
+          </div>
+          <button className="btn-primary" onClick={onOpenPlayer}>{playerOn ? 'Show player view again' : 'Open player view'}</button>
+          <span className="segment-label">
+            You see the fog dimmed; the player view (a second window for a TV or a shared screen) hides it completely and follows every change. Painting turns fog on. Undo works on fog strokes.
+          </span>
         </div>
       )}
 

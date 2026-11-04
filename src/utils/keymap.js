@@ -11,6 +11,7 @@ export const ACTIONS = [
   { id: 'tool.atmosphere', label: 'Atmosphere & Light', group: 'Tools', keys: ['A'] },
   { id: 'tool.eraser', label: 'Eraser', group: 'Tools', keys: ['E'] },
   { id: 'tool.hand', label: 'Pan Canvas', group: 'Tools', keys: ['H'] },
+  { id: 'tool.fog', label: 'Fog of War (plugin)', group: 'Tools', keys: ['F'] },
   { id: 'mask.swap', label: 'Swap Add Land / Carve Water', group: 'Painting', keys: ['X'] },
   // Shift turns these into 1 degree steps (fine: true); , and . are there because [ and ] need AltGr on many layouts
   { id: 'stamp.rotateCw', label: 'Rotate selected stamp clockwise', group: 'Selection', keys: [']', '.'], fine: true },

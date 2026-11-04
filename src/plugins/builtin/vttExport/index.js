@@ -2,63 +2,66 @@
 import { maxExportScale, renderExportCanvas, toBlob, download } from '../../../utils/exportUtils.js';
 // the light stamps and reach the Dynamic lighting plugin uses, so what you see is what the VTT gets (bundled in a shared
 // chunk: exporting lights does not need that plugin installed)
-import { isLightStamp, lightRange } from '../lighting/index.js';
+import { isLightStamp, lightRange, blockerOutline } from '../lighting/index.js';
+import { getStampById } from '../../../engine/stampsCatalog.js';
+import { stampAspect } from '../../../engine/renderer.js';
 
-export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 'png', quality = 0.92, filename = 'battlemap.dd2vtt' }) {
-  const { mapWidth, mapHeight, stamps, paths, grid, atmosphere } = mapState;
+// Wall-like stamps that become line-of-sight walls in the VTT (doors become portals; furniture and trees stay walkable).
+const VTT_WALL_GROUP = /^dungeon_(walls|pillars)$/;
 
+/**
+ * Walls, doors and lights in Universal VTT grid units. Coordinates are world grid units (grid lines on integers, so the
+ * VTT grid lines up with ours, offset included); `origin` is where the image's top-left corner sits in those units.
+ */
+export function buildVttGeometry({ stamps = [], paths = [], grid = {} }) {
   const gridSize = grid.size || 60;
+  const offX = grid.offsetX || 0, offY = grid.offsetY || 0;
+  const n = (v) => Number(v.toFixed(3));
+  const pt = (x, y) => ({ x: n((x - offX) / gridSize), y: n((y - offY) / gridSize) });
 
-  // Extract wall lines from paths
   const lineOfSight = [];
-  const wallPaths = paths.filter((p) => p.type === 'wall');
-  for (const w of wallPaths) {
-    if (!w.points || w.points.length < 2) continue;
-    const wallSegments = [];
-    for (const pt of w.points) {
-      wallSegments.push({
-        x: Number((pt[0] / gridSize).toFixed(3)),
-        y: Number((pt[1] / gridSize).toFixed(3))
-      });
-    }
-    lineOfSight.push(wallSegments);
+  for (const w of paths) {
+    if (w.type !== 'wall' || !w.points || w.points.length < 2) continue;
+    lineOfSight.push(w.points.map(([x, y]) => pt(x, y)));
+  }
+  // wall and pillar stamps (the Dungeon template's default brush): their traced footprint, the same one that casts shadows
+  for (const s of stamps) {
+    if (!VTT_WALL_GROUP.test(getStampById(s.stampId)?.group || '')) continue;
+    const ring = blockerOutline(s);
+    if (ring && ring.length > 1) lineOfSight.push(ring.map(([x, y]) => pt(x, y)));
   }
 
-  // Extract portals (doors)
+  // doors: a portal across the door leaf, turned with the stamp
   const portals = [];
-  const doorStamps = stamps.filter((s) => s.stampId.includes('door'));
-  for (const d of doorStamps) {
-    const half = (d.scale || 1.0) * 0.5;
+  for (const d of stamps) {
+    if (!(d.stampId || '').includes('door')) continue;
+    const half = (80 * (d.scale || 1) * stampAspect(d)) / 2;
+    const rot = d.rotation || 0;
+    const dx = Math.cos(rot) * half, dy = Math.sin(rot) * half;
     portals.push({
-      position: {
-        x: Number((d.x / gridSize).toFixed(3)),
-        y: Number((d.y / gridSize).toFixed(3))
-      },
-      bounds: [
-        { x: Number(((d.x - 30 * half) / gridSize).toFixed(3)), y: Number((d.y / gridSize).toFixed(3)) },
-        { x: Number(((d.x + 30 * half) / gridSize).toFixed(3)), y: Number((d.y / gridSize).toFixed(3)) }
-      ],
-      rotation: 0,
+      position: pt(d.x, d.y),
+      bounds: [pt(d.x - dx, d.y - dy), pt(d.x + dx, d.y + dy)],
+      rotation: n(rot),
       closed: true,
       freestanding: false
     });
   }
 
-  // Extract light sources (braziers, campfires)
-  const lights = [];
-  const lightStamps = stamps.filter(isLightStamp);
-  for (const l of lightStamps) {
-    lights.push({
-      position: {
-        x: Number((l.x / gridSize).toFixed(3)),
-        y: Number((l.y / gridSize).toFixed(3))
-      },
-      range: Number((lightRange(l, grid) / gridSize).toFixed(2)),
-      intensity: 0.8,
-      color: 'ffff9933',
-      shadows: true
-    });
-  }
+  const lights = stamps.filter(isLightStamp).map((l) => ({
+    position: pt(l.x, l.y),
+    range: Number((lightRange(l, grid) / gridSize).toFixed(2)),
+    intensity: 0.8,
+    color: 'ffff9933',
+    shadows: true
+  }));
+
+  return { lineOfSight, portals, lights, origin: { x: n(-offX / gridSize), y: n(-offY / gridSize) } };
+}
+
+export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 'png', quality = 0.92, filename = 'battlemap.dd2vtt' }) {
+  const { mapWidth, mapHeight, stamps, paths, grid, atmosphere } = mapState;
+  const gridSize = grid.size || 60;
+  const { lineOfSight, portals, lights, origin } = buildVttGeometry({ stamps, paths, grid });
 
   // clean ungridded base image; the VTT does the darkness itself, from the lights above
   scale = Math.min(scale, maxExportScale(mapWidth, mapHeight));
@@ -73,7 +76,7 @@ export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 
   const uvttData = {
     format: 0.3,
     resolution: {
-      map_origin: { x: 0, y: 0 },
+      map_origin: origin,
       map_size: {
         x: Math.round(mapWidth / gridSize),
         y: Math.round(mapHeight / gridSize)
