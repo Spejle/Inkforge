@@ -15,6 +15,17 @@ Performance. Measured on the 4000×2800 stress map in headless Chromium with sof
 - Opening a sample or new map no longer waits for the library thumbnail, a full map render that took about 1.3 s on the stress map. Autosave runs in an idle moment and refreshes the thumbnail at most every 30 s (was 10 s).
 - Labels drawn before their web font loaded stayed in the fallback font until the next edit. They now repaint when fonts finish loading.
 
+Live brush strokes (Landmass Sculptor and Biome brush). Same setup: headless Chromium, software rendering, Canvas 2D view, `tests/bench/runLiveBrush.mjs`:
+
+- **Live frame on the stress map: about 600 ms → 10 to 25 ms** (Biome brush 612 → 11 ms, Landmass Sculptor 586 → 24 ms, median over a 30-frame drag). The 1920×1080 sample: 91 → 6 ms (brush) and 92 → 12 ms (sculptor). Dragging in the real editor on the stress map went from about 760 ms to 85 ms per pointer move. Most of the 85 ms is the test harness and the browser showing a 4140×2900 canvas in software, not our code.
+- **Releasing a stroke on the stress map: about 2 s → 75 ms (Biome brush) and 240 ms (Landmass Sculptor).**
+- How: while you paint, the land layer is redrawn only in a window around the new part of the stroke. The window is rendered from the land mask and terrain that the last full pass kept, and only that rectangle of the screen is composited again. Before, every frame redrew the whole coast (shallow-water halo, shadow, beach and outline) and composited every layer of the map.
+- The live preview is now drawn at full quality, not half resolution, so what you see while dragging is what you get on release.
+- The final result looks the same as before. Released frames were compared pixel for pixel with the previous version on six sample maps, with four stroke kinds each (`tests/bench/diffPng.mjs`). 19 of the 24 cases are identical. The other 5 differ on at most 202 pixels (0.01%), by at most 8 of 255, along anti-aliased edges near the stroke (coast ripple rings, the shallow-water halo, the edge of a hard biome brush stroke).
+- Still slow: the first carve-water stroke on a map that has none switches the coast halo for the whole map, so that one stroke uses the old reduced-scale preview. A Landmass Sculptor stroke on a map with rivers still redraws the river layer once on release.
+- Memory: the live view keeps two extra full-size canvases for the land layer (about 45 MB each on the stress map).
+- Pixi view: uses the same patch, but still uploads the whole land texture every frame. It was only tried on software WebGL here (2400×1500 map: about 180 → 25 ms per frame). That says nothing about a real GPU.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

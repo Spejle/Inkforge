@@ -16,3 +16,14 @@ test('live stroke changes the land cache key per frame and restores the committe
   assert.equal(withLiveStroke(strokes, null), strokes);
   assert.equal(strokes.length, 1);
 });
+
+test('only the live view (memo given) can patch the land layer in place', () => {
+  const base = { width: 100, height: 100, brushStrokes: [{ id: 'a', type: 'mask', mode: 'land', points: [{ x: 1, y: 1 }] }] };
+  const land = (p) => buildPlan(p).items.find((i) => i.name === 'land').parts[0];
+  assert.equal(land(base).patch, undefined); // exports and thumbnails always run the full pass
+  const part = land({ ...base, memo: new Map(), landStroke: { id: 'b', type: 'mask', mode: 'land', points: [{ x: 5, y: 5 }] } });
+  assert.equal(typeof part.patch, 'function');
+  // nothing kept for this canvas yet (no full pass drawn on it): the caller must clear and draw
+  const g = { canvas: { width: 100, height: 100 }, getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) };
+  assert.equal(part.patch(g), null);
+});

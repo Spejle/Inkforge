@@ -35,6 +35,9 @@ export interface RasterPart {
   deps: unknown[];
   empty?: boolean; // nothing to draw: no canvas or texture is allocated for it
   draw: (c: Ctx2D) => void;
+  // updates the canvas c last drew or patched in place; returns the changed canvas-pixel rectangle, or null when it
+  // cannot (then the canvas is cleared and drawn)
+  patch?: (c: Ctx2D) => { x: number; y: number; w: number; h: number } | null;
 }
 export interface StampsPart {
   kind: 'stamps';
