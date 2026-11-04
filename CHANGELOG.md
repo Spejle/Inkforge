@@ -3,6 +3,18 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+### Fixed
+- A brush or Landmass Sculptor stroke released outside the canvas (or cancelled by the browser) was lost; a selection box finished outside the canvas used out-of-date stamps.
+- Removing the Mask fill plugin while Fill was the brush shape left the sculptor painting invisible strokes that were still saved and undoable. It now falls back to Rough.
+- Open in the editor replaced the map being edited in Your maps with the opened file. The file now opens as a new map and the current one is saved first, as from the main menu.
+- Autosave gave a map the previous map's thumbnail when you switched maps within 10 seconds.
+- Edits made in the second and a half before the tab was reloaded, closed or hidden were not autosaved.
+- Generating a river, double-clicking a river or road to add or remove a point, and finishing a drawn path did not record their own undo step: after generating a river, Undo also removed the edit before it and Redo never brought the river back.
+- Dismissing the missing-plugin bar hid it for every map opened afterwards until the page was reloaded.
+- New `npm run test:browser`: tests in `tests/browser/` drive the app in headless Chromium (needs Playwright).
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.
