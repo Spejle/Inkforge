@@ -702,10 +702,14 @@ export default function App() {
     });
   };
 
+  // Opening a file from the editor makes it a new map in the library, as from the main menu: loading it into the
+  // current map's id overwrote the map being edited with the file. The current map is saved first (autosave lags).
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
-      if (data) applyProject(data);
+      if (!data) return;
+      if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+      await adoptProject({ ...data, template: data.template || data.type });
     } catch {
       alert('Could not open file: invalid .inkforge JSON format.');
     }
