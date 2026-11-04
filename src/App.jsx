@@ -557,16 +557,21 @@ export default function App() {
     );
   };
 
+  // Adds or replaces a path. docRef gets the change at once: river generation, a finished stroke and a spine edit
+  // commit an undo step in the same event, and recordHistory reads docRef (it used to snapshot the map without it).
   const handleAddPath = (path) => {
-    setPaths((prev) => {
+    const tag = layerTag();
+    const upsert = (prev) => {
       const idx = prev.findIndex((p) => p.id === path.id);
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = { ...path, ...(prev[idx].layer ? { layer: prev[idx].layer } : {}) };
         return copy;
       }
-      return [...prev, { ...path, ...layerTag() }];
-    });
+      return [...prev, { ...path, ...tag }];
+    };
+    docRef.current = { ...docRef.current, paths: upsert(docRef.current.paths) };
+    setPaths(upsert);
   };
 
   const handleAddText = () => {
