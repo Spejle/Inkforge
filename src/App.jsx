@@ -698,6 +698,7 @@ export default function App() {
     setSelectedStampId(null);
     setSelectedTextId(null);
     setSelectedPathId(null);
+    setPluginHint(true); // dismissing the missing-plugin bar applies to the map it was shown for
     resetHistory({
       landmasses: data.landmasses || [],
       brushStrokes: data.brushStrokes || [],
