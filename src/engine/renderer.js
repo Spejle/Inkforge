@@ -30,6 +30,12 @@ let imageEpoch = 0; // bumps when any custom image finishes decoding, so cached 
 export function onImageLoad(fn) {
   imageLoadHandler = fn;
 }
+// Labels use web fonts. A text layer drawn before its font arrived is cached with the fallback face, so a finished font
+// load bumps the epoch in the text layers' cache key and asks for a repaint (through the same handler as images).
+let fontEpoch = 0;
+if (typeof document !== 'undefined' && document.fonts?.addEventListener) {
+  document.fonts.addEventListener('loadingdone', () => { fontEpoch++; imageLoadHandler?.(); });
+}
 export function stampImage(src) {
   if (typeof src === 'string' && !safeImageSrc(src)) return null; // never fetch a remote URL for a stamp
   let img = typeof src === 'string' ? imageCache.get(src) : src;
@@ -77,24 +83,35 @@ export function buildPlan({
   layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
   layerStyle = {}, // { [layerKey]: { opacity, blend } }
   fog = null, // fog of war { enabled, strokes } (Fog of war plugin); never passed by exports
-  fogOpaque = false // player view: fog hides completely; the GM sees through it
+  fogOpaque = false, // player view: fog hides completely; the GM sees through it
+  memo = null // the live view passes one Map across frames so per-layer object lists keep their identity (see stableList)
 }) {
+  const stableList = (slot, src, pred) => filterStable(memo, slot, src, pred);
   const st = (k) => layerStyle[k];
   // objects belong to a custom layer when `layer` names one that still exists; otherwise to their built-in layer
   const onLayer = (key) => (o) => o.layer === key;
   const onBase = (o) => !o.layer || !layerStyle[o.layer];
   const customKeys = Object.keys(layerStyle).filter((k) => k.startsWith('c_'));
-  const customSig = customKeys.join(',');
 
   const raster = (deps, draw, empty = false) => ({ kind: 'raster', deps, draw, empty });
-  const stampPart = (list, selectedId, extra) => ({
-    kind: 'stamps',
-    deps: [stamps, selectedId, imageEpoch, ...extra],
-    stamps: list,
-    selectedId,
-    epoch: imageEpoch,
-    draw: (c) => renderStamps(c, list, selectedId)
-  });
+  // A layer's cache key is its own objects (the same array while none of them changed, see stableList) and the selection
+  // only when it is on that layer: moving a stamp must not repaint every other layer that also holds stamps or paths.
+  const selIn = (list, id) => (id && list.some((o) => o.id === id) ? id : null);
+  const stampPart = (list, selectedId) => {
+    const sel = selIn(list, selectedId);
+    return {
+      kind: 'stamps',
+      deps: [list, sel, imageEpoch],
+      stamps: list,
+      selectedId: sel,
+      epoch: imageEpoch,
+      draw: (c) => renderStamps(c, list, sel)
+    };
+  };
+  // rivers are clipped to the land mask (renderPaths), so a path list with rivers also depends on the land shape; biome
+  // brush strokes never change the mask, so they don't repaint paths
+  const maskStrokes = stableList('mask:strokes', brushStrokes, (b) => b.type === 'mask');
+  const landDeps = (list) => (list.some((p) => p.type === 'river') ? [landmasses, maskStrokes] : []);
   const items = [];
   const layer = (name, ...parts) => items.push({ kind: 'layer', name, style: st(name), parts });
 
@@ -118,23 +135,25 @@ export function buildPlan({
 
   // 3. PATHS, RIVERS & WALLS
   if (layerVisibility.paths) {
-    const list = paths.filter(onBase);
-    layer('paths', raster([paths, selectedPathId, customSig, landmasses, brushStrokes], (c) => renderPaths(c, list, selectedPathId, { width, height, landmasses, brushStrokes }), list.length === 0));
+    const list = stableList('paths:paths', paths, onBase);
+    const sel = selIn(list, selectedPathId);
+    layer('paths', raster([list, sel, ...landDeps(list)], (c) => renderPaths(c, list, sel, { width, height, landmasses, brushStrokes: maskStrokes }), list.length === 0));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
   if (layerVisibility.stamps) {
-    layer('stamps', stampPart(stamps.filter(onBase), selectedStampId, [customSig]));
+    layer('stamps', stampPart(stableList('stamps:stamps', stamps, onBase), selectedStampId));
   }
 
   // 4b. CUSTOM LAYERS, bottom to top: each draws its own paths, stamps and labels
   for (const key of customKeys) {
     if (layerVisibility[key] === false) continue;
-    const pl = paths.filter(onLayer(key)), tl = texts.filter(onLayer(key));
+    const pl = stableList(key + ':paths', paths, onLayer(key)), tl = stableList(key + ':texts', texts, onLayer(key));
+    const psel = selIn(pl, selectedPathId), tsel = selIn(tl, selectedTextId);
     layer(key,
-      raster([paths, selectedPathId, landmasses, brushStrokes], (c) => renderPaths(c, pl, selectedPathId, { width, height, landmasses, brushStrokes }), pl.length === 0),
-      stampPart(stamps.filter(onLayer(key)), selectedStampId, []),
-      raster([texts, selectedTextId], (c) => renderTexts(c, tl, selectedTextId), tl.length === 0));
+      raster([pl, psel, ...landDeps(pl)], (c) => renderPaths(c, pl, psel, { width, height, landmasses, brushStrokes: maskStrokes }), pl.length === 0),
+      stampPart(stableList(key + ':stamps', stamps, onLayer(key)), selectedStampId),
+      raster([tl, tsel, fontEpoch], (c) => renderTexts(c, tl, tsel), tl.length === 0));
   }
 
   // 5. ATMOSPHERE POST-PROCESSING (Applies to world art before text/grid overlays)
@@ -142,8 +161,9 @@ export function buildPlan({
 
   // 6. TEXT LABELS & BANNERS (With curved arc projection)
   if (layerVisibility.text) {
-    const list = texts.filter(onBase);
-    layer('text', raster([texts, selectedTextId, customSig], (c) => renderTexts(c, list, selectedTextId), list.length === 0));
+    const list = stableList('text:texts', texts, onBase);
+    const sel = selIn(list, selectedTextId);
+    layer('text', raster([list, sel, fontEpoch], (c) => renderTexts(c, list, sel), list.length === 0));
   }
 
   // 7. GRID OVERLAY (Square, Hex, Isometric)
@@ -155,6 +175,21 @@ export function buildPlan({
   const fogPlugin = fog && fog.enabled ? feature('fog') : null;
   if (fogPlugin) layer('fog', raster([fog, fogOpaque, width, height], (c) => fogPlugin.drawFog(c, width, height, fog, fogOpaque)));
   return { width, height, items };
+}
+
+// Filtered object lists, kept per slot in `memo`: when the filter picks exactly the same objects as last time, the previous array is
+// returned, so it works as a cache key (a fresh filter() result never compares equal). The whole source list when nothing
+// is filtered out, so a map without custom layers keys on the document arrays themselves.
+export function filterStable(memo, slot, src, pred) {
+  const next = src.filter(pred);
+  if (next.length === src.length) {
+    memo?.set(slot, src);
+    return src;
+  }
+  const prev = memo?.get(slot);
+  if (prev && prev.length === next.length && prev.every((o, i) => o === next[i])) return prev;
+  memo?.set(slot, next);
+  return next;
 }
 
 // half resolution, less on big maps so a live frame stays near 1.5 megapixels of mask
@@ -966,15 +1001,31 @@ function drawPaths(ctx, paths, selectedPathId) {
 
 // Stamps are vector code; drawing them once into a small sprite makes repaints cheap, gives each stamp
 // ONE soft shadow (not one per sub-path) and keeps per-stamp tone/hue filters off the big canvas.
-const spriteCache = new Map();
+// The cache is LRU with a soft pixel budget. A sprite used within the last SPRITE_KEEP_MS is never evicted, so a frame that
+// needs more sprites than the budget grows the cache instead of thrashing it: a fixed 700-entry LRU missed on every
+// stamp of a 1,400-stamp map, re-baking (blur shadow included) every sprite on every repaint.
+const spriteCache = new Map(); // key -> { canvas, pad, k, px, used }
+const SPRITE_BUDGET_PX = 24e6; // ~96 MB of sprite pixels before idle sprites are dropped
+const SPRITE_KEEP_MS = 3000;
+let spritePx = 0;
+function trimSprites(now) {
+  for (const [key, sp] of spriteCache) {
+    if (spritePx <= SPRITE_BUDGET_PX || now - sp.used < SPRITE_KEEP_MS) break; // oldest first: the rest are newer
+    spriteCache.delete(key);
+    spritePx -= sp.px;
+  }
+}
 export function stampSprite(ctx, def, s, size, w, h) {
-  const a = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
+  const t = ctx.getTransform();
+  const a = Math.hypot(t.a, t.b) || 1;
   const k = Math.min(4, Math.max(0.25, 2 ** Math.ceil(Math.log2(a))));
-  const key = [s.stampId, Math.round(size), k, s.color, s.fill, s.seed, s.tone, s.hue, !!s.flipX, !!s.flipY].join('|');
+  const key = s.stampId + '|' + Math.round(size) + '|' + k + '|' + s.color + '|' + s.fill + '|' + s.seed + '|' + s.tone + '|' + s.hue + '|' + !!s.flipX + '|' + !!s.flipY;
+  const now = performance.now();
   let sp = spriteCache.get(key);
   if (sp) {
     spriteCache.delete(key); // refresh LRU order
     spriteCache.set(key, sp);
+    sp.used = now;
     return sp;
   }
   const sc = s.scale || 1.0;
@@ -1000,9 +1051,10 @@ export function stampSprite(ctx, def, s, size, w, h) {
   sg.shadowOffsetX = 2 * sc * k * (s.flipX ? -1 : 1);
   sg.shadowOffsetY = 4 * sc * k * (s.flipY ? -1 : 1);
   sg.drawImage(raw, 0, 0);
-  sp = { canvas: c, pad, k };
+  sp = { canvas: c, pad, k, px: cw * ch, used: now };
   spriteCache.set(key, sp);
-  if (spriteCache.size > 700) spriteCache.delete(spriteCache.keys().next().value);
+  spritePx += sp.px;
+  if (spritePx > SPRITE_BUDGET_PX) trimSprites(now);
   return sp;
 }
 

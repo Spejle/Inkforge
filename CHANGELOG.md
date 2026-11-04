@@ -5,12 +5,26 @@ All notable changes to **InkForge** will be documented in this file.
 
 ## Unreleased
 
+### Added and changed
+
 - **Undo covers map settings**: grid, atmosphere (light presets, sliders), coastline and layer changes are now undo steps; deleting a custom layer can be undone. History keeps the last 200 steps.
 - **VTT export fixes**: dungeon wall and pillar stamps (the Dungeon template's default brush) export as line-of-sight walls; before, a stamp-built dungeon reached Foundry with no walls. Doors follow the stamp's rotation and width, and the grid offset is honoured so the VTT grid lines up. Hex grids still export as square (the format has no hex grid).
 - **Content-pack map templates** appear in the New Map dialog, built on a built-in template (new optional `base` field). Pack template sizes now use the dialog's 600-8000 px limits.
 - **World generator** (new marketplace plugin): **Generate land** in the New Map dialog for World and Region maps, with seed (and Re-roll), land %, mountains, forests and rivers. A seeded height field becomes ordinary map data: smoothed landmass outlines, climate biome strokes (snow, tundra, forest, grassland, savanna, desert, jungle by latitude, height and moisture), spaced mountain and hill stamps, trees by biome, and rivers routed to the sea with the river generator. Everything can be edited and undone, the same seed makes the same world, and the map opens without the plugin. About 30 ms plus rivers on a 3200×2000 map.
 - **Fog of war** (new marketplace plugin): a Fog of War tool (F) paints Reveal / Hide strokes, with Reveal all / Hide all. The GM sees the fog dimmed; **Open player view** opens a second window (for a TV or a shared screen) that shows the map with the fog fully opaque and follows every change, including undo. The windows talk over a BroadcastChannel in the same browser: no server. Fog is saved with the map and never appears in exports.
 - **New stamps**: Title Cartouche (scroll) and Scale Bar, under World: Nautical next to the compass rose. Put a text label on top for the title or distances.
+
+### Performance
+
+Performance. Measured on the 4000×2800 stress map in headless Chromium with software rendering (Canvas 2D view), so real GPUs are faster overall:
+
+- **Dragging a stamp: 2.8 s → 0.45 s per frame.** The stamp sprite cache held 700 entries, but the stress map needs about 1,200, so every repaint missed it and re-baked every sprite (blur shadow included). The cache now has a soft pixel budget, and a sprite used in the last 3 s is never evicted.
+- Moving one stamp repainted every custom layer, because each layer's cache key was the whole stamp list and the global selection. Each layer now keys on its own objects, and on the selection only when it is on that layer.
+- Moving a stamp also rebuilt the label list (and moving a label rebuilt the stamp list), which repainted that layer as well. A multiselection drag now updates all its stamps in one pass instead of one pass per stamp.
+- Path layers repainted on every biome brush stroke. They now depend on the land only when they contain rivers, and then only on mask strokes.
+- Pixi view: every atmosphere change (each vignette, weather or darkness slider tick) leaked a full-map canvas and GPU texture, about 45 MB each on big maps. These canvases are now reused, and the vignette and weather layers are redrawn only when their own values change.
+- Opening a sample or new map no longer waits for the library thumbnail, a full map render that took about 1.3 s on the stress map. Autosave runs in an idle moment and refreshes the thumbnail at most every 30 s (was 10 s).
+- Labels drawn before their web font loaded stayed in the fallback font until the next edit. They now repaint when fonts finish loading.
 
 ## 1.14.0 (2026-10-24)
 

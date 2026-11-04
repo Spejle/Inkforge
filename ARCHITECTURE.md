@@ -68,7 +68,10 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 ## Render pipeline
 
 1. `CanvasArea` collects props and, once per animation frame, calls `buildPlan(props)` (`engine/renderer.js`).
-2. `buildPlan` returns `{width, height, items}`. Items, bottom to top: `layer` (name, style, `parts`),
+2. `buildPlan` returns `{width, height, items}`. Each layer's cache key is its own object list (`filterStable` keeps the
+   same array while the same objects pass the filter, using the `memo` Map the live view passes) and the selection only
+   when it is on that layer, so moving a stamp repaints just its layer. Paths depend on the land mask only when they
+   include rivers; text layers also key on a font epoch that bumps when web fonts finish loading. Items, bottom to top: `layer` (name, style, `parts`),
    `live` (stroke in progress), `atmosphere`. A part is `raster` or `stamps`, each with `deps` (inputs that
    decide when to redraw) and `draw(ctx)`. Layer order and cache keys therefore live in one place for both backends.
 3. Backends:
@@ -97,7 +100,8 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 - **Library**: IndexedDB database `inkforge` v2, stores `projects` (full map, key = map id `map_<time><rand>`),
   `meta` (title, template, size, thumbnail, `updated`) and `kv` (legacy single-map autosave `autosave`, migrated
   into the library by `listMaps()`). Autosave runs 1.5 s after any document change while in the editor; leaving
-  to home saves with a fresh thumbnail (otherwise thumbnails refresh at most every 10 s).
+  to home saves with a fresh thumbnail (otherwise thumbnails refresh at most every 30 s). The save itself waits for an idle
+  moment (`requestIdleCallback`); a newly opened sample or new map is written after the editor's first paint.
 - **Project (`buildProject`)**: `title, type, template, width, height, landmasses, brushStrokes, stamps, paths,
   texts, grid, atmosphere, coastline, layers, customStamps` (custom stamp image sources as data URLs).
 - **`.inkforge` file**: pretty JSON from `exportToJson`: `{version:'1.1.0', app:'InkForge', savedAt, ...project}`.
