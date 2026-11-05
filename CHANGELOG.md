@@ -13,6 +13,9 @@ All notable changes to **InkForge** will be documented in this file.
 - Edits made in the second and a half before the tab was reloaded, closed or hidden were not autosaved.
 - Generating a river, double-clicking a river or road to add or remove a point, and finishing a drawn path did not record their own undo step: after generating a river, Undo also removed the edit before it and Redo never brought the river back.
 - Dismissing the missing-plugin bar hid it for every map opened afterwards until the page was reloaded.
+- Delete, Backspace, Ctrl+Z and tool shortcuts still acted on the map behind an open dialog (Settings, Export, Print...): Delete in Settings removed the selected stamp.
+- Undo and Redo left a multi-stamp selection behind (still highlighted in the Objects tab, and able to name stamps the undo removed).
+- Touch: putting a second finger down while panning with one made the view jump between the fingers, and lifting either one stopped the pan.
 - New `npm run test:browser`: tests in `tests/browser/` drive the app in headless Chromium (needs Playwright).
 
 ## 1.14.0 (2026-10-24)
