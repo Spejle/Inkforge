@@ -31,6 +31,11 @@ function sanitizeGrid(g) {
   };
 }
 
+// The renderer and the editing tools index these directly, so one bad entry would crash the whole editor.
+const isPair = (pt) => Array.isArray(pt) && Number.isFinite(pt[0]) && Number.isFinite(pt[1]); // landmasses, paths
+const isXY = (pt) => !!pt && typeof pt === 'object' && Number.isFinite(pt.x) && Number.isFinite(pt.y); // brush strokes
+const withPoints = (o, ok) => (o.points === undefined ? o : { ...o, points: Array.isArray(o.points) ? o.points.filter(ok) : [] });
+
 const isLoadedImage = (v) => typeof HTMLImageElement !== 'undefined' && v instanceof HTMLImageElement && !v.src.startsWith('http');
 
 /** Shallow copy of a parsed project with the dangerous parts normalised. */
@@ -42,9 +47,12 @@ export function sanitizeProject(d) {
     width: clampDim(p.width, 1920),
     grid: sanitizeGrid(p.grid),
     height: clampDim(p.height, 1080),
-    landmasses: list(p.landmasses),
-    brushStrokes: list(p.brushStrokes),
-    paths: list(p.paths),
+    landmasses: list(p.landmasses).map((l) => withPoints(l, isPair)),
+    brushStrokes: list(p.brushStrokes).map((b) => {
+      const out = withPoints(b, isXY);
+      return out.runs === undefined || Array.isArray(out.runs) ? out : { ...out, runs: [] };
+    }),
+    paths: list(p.paths).map((x) => withPoints(x, isPair)),
     texts: list(p.texts),
     stamps: list(p.stamps).map((s) => ({ ...s, customImage: safeImageSrc(s.customImage) || (isLoadedImage(s.customImage) ? s.customImage : null) })),
     customStamps: list(p.customStamps).filter((c) => safeImageSrc(c.dataUrl))
