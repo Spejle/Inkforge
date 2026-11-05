@@ -25,8 +25,8 @@ export async function startApp() {
 }
 
 /** A fresh page (empty storage) on the app's main menu. `init` runs before the app's own scripts. */
-export async function openPage(app, { init, query = '' } = {}) {
-  const context = await app.browser.newContext({ acceptDownloads: true, viewport: { width: 1400, height: 900 } });
+export async function openPage(app, { init, query = '', hasTouch = false } = {}) {
+  const context = await app.browser.newContext({ acceptDownloads: true, viewport: { width: 1400, height: 900 }, hasTouch });
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   page.errors = [];

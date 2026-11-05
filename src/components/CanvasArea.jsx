@@ -376,9 +376,10 @@ export default function CanvasArea({
   // Mouse Down handler
   const handleMouseDown = (e) => {
     // Tablet: pencil/mouse draw, a finger pans
+    if (isPanningRef.current) return; // a second finger while one is panning: follow the first only
     if (e.button === 1 || spacePressed || activeTool === 'hand' || e.pointerType === 'touch') {
       isPanningRef.current = true;
-      panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+      panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y, id: e.pointerId };
       return;
     }
 
@@ -599,6 +600,7 @@ export default function CanvasArea({
     setMousePos({ x: e.clientX, y: e.clientY, canvasX: Math.round(x), canvasY: Math.round(y), inside: true });
 
     // Handle Viewport Pan
+    if (isPanningRef.current && e.pointerId !== panStartRef.current.id) return;
     if (isPanningRef.current) {
       setPanOffset({
         x: e.clientX - panStartRef.current.x,
@@ -813,7 +815,8 @@ export default function CanvasArea({
     mouseUpRef.current = handleMouseUp;
   });
   useEffect(() => {
-    const onWindowMouseUp = () => {
+    const onWindowMouseUp = (e) => {
+      if (isPanningRef.current && e.pointerId !== panStartRef.current?.id) return; // another finger lifted
       if (isInteractingRef.current || isPanningRef.current) {
         mouseUpRef.current();
       }
@@ -832,7 +835,7 @@ export default function CanvasArea({
       className={`canvas-viewport ${spacePressed || activeTool === 'hand' ? 'grab-cursor' : ''}`}
       onPointerDown={handleMouseDown}
       onPointerMove={handleMouseMove}
-      onPointerUp={handleMouseUp}
+      onPointerUp={(e) => { if (!isPanningRef.current || e.pointerId === panStartRef.current?.id) handleMouseUp(); }}
       onDoubleClick={(e) => {
         // Double-click a spine point to delete it, or a spot on the line to add one there
         if (activeTool !== 'select' || !selectedPath || !pickable(selectedPath, 'paths')) return;
