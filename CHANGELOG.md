@@ -25,6 +25,7 @@ Live brush strokes (Landmass Sculptor and Biome brush). Same setup: headless Chr
 - Still slow: the first carve-water stroke on a map that has none switches the coast halo for the whole map, so that one stroke uses the old reduced-scale preview. A Landmass Sculptor stroke on a map with rivers still redraws the river layer once on release.
 - Memory: the live view keeps two extra full-size canvases for the land layer (about 45 MB each on the stress map).
 - Pixi view: uses the same patch, but still uploads the whole land texture every frame. It was only tried on software WebGL here (2400×1500 map: about 180 → 25 ms per frame). That says nothing about a real GPU.
+- Tried and not kept: rendering the release on a full-size scratch canvas (the kept mask and terrain, composed over the whole map) makes released frames identical to the previous version (9 of 9 cases checked, 0 pixels differ), but the release on the stress map goes from about 190 ms back to about 1.4 to 1.6 s. A window 3× wider than the coast reach removes every difference above 2/255 and fixes the hard-brush case, but 3 of 9 cases still differ by 1 to 2/255, at 250 ms. Neither is exact and fast, so the box patch stays. Re-measured at 20 frames per drag: 4 of 24 cases differ (at most 202 pixels, by at most 8/255).
 
 ## 1.14.0 (2026-10-24)
 
