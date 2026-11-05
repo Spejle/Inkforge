@@ -89,8 +89,20 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 5. Quality: `utils/quality.js` `pickQuality(zoom x DPR)` over levels 1, 1.5, 2, 3, 4; cap = min(4, sqrt(36e6/(w*h)),
    8192/w, 8192/h); rises early (95%), falls only below half. Pixi raster layers use a lower cap (12e6 pixels).
    Zoom range 0.1 to 8.
-6. Live painting: `liveStroke` (cheap outline) or `landStroke` (real land layer at reduced scale, `liveScale`
-   <= 0.5 / ~1.5M px) depending on the Live preview / Stroke outline toggles.
+6. Live painting: `liveStroke` (cheap outline) or `landStroke` (real land layer) depending on the Live preview / Stroke
+   outline toggles. In the live view (`memo` given) the land raster part has `patch(c)`: the last full land pass kept
+   its mask and unclipped terrain per layer canvas (`landKept`), and `patchLand` re-runs the land pass (`composeLand`) on
+   a window around the new part of the stroke at full quality, then copies it back and returns the changed rectangle.
+   Releasing the stroke patches its whole box once more and folds it into the kept buffers, so the result equals a full
+   pass. Both backends call `patch` before falling back to clear + `draw`; the Canvas 2D view then composites only that
+   rectangle of the canvas (`renderCached`; Pixi still uploads the whole layer texture). No patch (undo, erase,
+   coastline change, zoom, the first carved-water stroke on a map, which switches the halo for the whole map): the old
+   reduced-scale pass (`liveScale` <= 0.5 / ~1.5M px) while stroking, a full pass on release.
+   Paths with rivers (clipped to the mask) redraw whole on a Landmass Sculptor release but report only the stroke's box
+   (`patchPaths`). `buildPlan`'s default arguments are shared constants, since they are part of cache keys.
+   Benchmarks (headless Chromium, Canvas 2D): `node tests/bench/runLiveBrush.mjs` replays drags through `renderMap`,
+   `--png <dir>` saves frames that `tests/bench/diffPng.mjs <dirA> <dirB>` compares between two builds;
+   `node tests/bench/runAppStroke.mjs` drags in the real editor.
 7. Atmosphere: `atmosphereOps()` turns settings into ops (`grain`, `solid`, `lighting`, `weather`, `vignette`);
    lighting and weather ops are only emitted while their plugin is loaded (`feature('lighting')`). Mask-fill
    strokes always draw (`drawFillRuns` is core), so removing the Mask fill plugin never breaks a map.
@@ -152,5 +164,6 @@ npm test | npm run typecheck | npm run lint
 - Layer ordering and caching are defined solely by `buildPlan`; adding a layer means changing it and `types.ts`,
   and both backends must handle the new part.
 - Stamps are 80 map units at scale 1 (`BASE` in pixiView.ts; keep equal to the Canvas 2D renderer).
-- Large maps (4000x2800 stress map) make live land preview choppy (CHANGELOG 1.12.0).
+- The live land patch keeps two extra full-size canvases per land layer canvas (mask and terrain, ~45 MB each at
+  4000x2800). A river path layer still redraws whole when a Landmass Sculptor stroke is released (it clips to the mask).
 - The Vite dev watcher ignores `**/.claude/**` because agent worktrees inside the project exhaust file watches.

@@ -56,6 +56,14 @@ export function stampAspect(s) {
   return s.aspect || getStampById(s.stampId)?.aspect || 1.0;
 }
 
+// buildPlan's defaults: shared objects, because they are part of layer cache keys (a fresh default object per call would
+// repaint the layer every frame and keep the land layer from being patched)
+const PLAN_GRID = { enabled: true, type: 'hex_flat', size: 60, opacity: 0.15, color: '#1e293b', offsetX: 0, offsetY: 0 };
+const PLAN_ATMOSPHERE = { vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1.0 };
+const PLAN_COASTLINE = { ripplesEnabled: true, rippleCount: 4, rippleSpacing: 11, rippleColor: '#bae6fd', rippleOpacity: 0.35, sandEnabled: true, sandWidth: 14, sandColor: '#d4be8d', outlineColor: '#3d2b1f', outlineWidth: 2.5, shadowEnabled: true, shadowBlur: 10 };
+const PLAN_VISIBILITY = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true };
+const PLAN_STYLE = {};
+
 /**
  * The map as an ordered list of layers, each made of parts, with the inputs that decide when a part must be redrawn.
  * Both the Canvas 2D path (renderMap) and the Pixi live view consume it, so layer order and cache keys live in one place.
@@ -74,14 +82,14 @@ export function buildPlan({
   stamps = [],
   paths = [],
   texts = [],
-  grid = { enabled: true, type: 'hex_flat', size: 60, opacity: 0.15, color: '#1e293b', offsetX: 0, offsetY: 0 },
-  atmosphere = { vignette: 0.4, parchmentGrain: 0.35, sepia: 0.2, brightness: 1.0 },
-  coastline = { ripplesEnabled: true, rippleCount: 4, rippleSpacing: 11, rippleColor: '#bae6fd', rippleOpacity: 0.35, sandEnabled: true, sandWidth: 14, sandColor: '#d4be8d', outlineColor: '#3d2b1f', outlineWidth: 2.5, shadowEnabled: true, shadowBlur: 10 },
+  grid = PLAN_GRID,
+  atmosphere = PLAN_ATMOSPHERE,
+  coastline = PLAN_COASTLINE,
   selectedStampId = null,
   selectedTextId = null,
   selectedPathId = null,
-  layerVisibility = { background: true, land: true, paths: true, stamps: true, text: true, grid: true, atmosphere: true },
-  layerStyle = {}, // { [layerKey]: { opacity, blend } }
+  layerVisibility = PLAN_VISIBILITY,
+  layerStyle = PLAN_STYLE, // { [layerKey]: { opacity, blend } }
   fog = null, // fog of war { enabled, strokes } (Fog of war plugin); never passed by exports
   fogOpaque = false, // player view: fog hides completely; the GM sees through it
   memo = null // the live view passes one Map across frames so per-layer object lists keep their identity (see stableList)
@@ -127,9 +135,18 @@ export function buildPlan({
   if (layerVisibility.land) {
     // while stroking, the in-progress stroke is a new input every frame (so the cache key changes) and the pass runs at
     // liveScale; on release landStroke is null again, the key returns to the committed arrays and one full-quality pass runs
+    // The live view (memo given) patches only the area around the brush instead (patchLand), and the reduced-scale pass
+    // is its fallback when a patch is not possible.
     const strokes = withLiveStroke(brushStrokes, landStroke);
-    layer('land', raster([landmasses, strokes, coastline, mapType, width, height],
-      (c) => renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, landStroke ? liveScale(width, height) : 1)));
+    const land = raster([landmasses, strokes, coastline, mapType, width, height], (c) => {
+      if (memo && !landStroke) renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, 1, keepLand(c, { landmasses, brushStrokes, mapType, coastline, width, height }));
+      else {
+        if (memo) landKept.delete(c.canvas);
+        renderLandmasses(c, width, height, landmasses, strokes, mapType, coastline, landStroke ? liveScale(width, height) : 1);
+      }
+    });
+    if (memo) land.patch = (c) => patchLand(c, { width, height, landmasses, brushStrokes, stroke: landStroke, mapType, coastline });
+    layer('land', land);
     if (liveStroke) items.push({ kind: 'live', style: st('land'), stroke: liveStroke });
   }
 
@@ -137,7 +154,7 @@ export function buildPlan({
   if (layerVisibility.paths) {
     const list = stableList('paths:paths', paths, onBase);
     const sel = selIn(list, selectedPathId);
-    layer('paths', raster([list, sel, ...landDeps(list)], (c) => renderPaths(c, list, sel, { width, height, landmasses, brushStrokes: maskStrokes }), list.length === 0));
+    layer('paths', pathsRaster(list, sel, { width, height, landmasses, brushStrokes: maskStrokes }, landDeps(list), !!memo));
   }
 
   // 4. STAMPS (Y-Sorted for proper isometric depth)
@@ -151,7 +168,7 @@ export function buildPlan({
     const pl = stableList(key + ':paths', paths, onLayer(key)), tl = stableList(key + ':texts', texts, onLayer(key));
     const psel = selIn(pl, selectedPathId), tsel = selIn(tl, selectedTextId);
     layer(key,
-      raster([pl, psel, ...landDeps(pl)], (c) => renderPaths(c, pl, psel, { width, height, landmasses, brushStrokes: maskStrokes }), pl.length === 0),
+      pathsRaster(pl, psel, { width, height, landmasses, brushStrokes: maskStrokes }, landDeps(pl), !!memo),
       stampPart(stableList(key + ':stamps', stamps, onLayer(key)), selectedStampId),
       raster([tl, tsel, fontEpoch], (c) => renderTexts(c, tl, tsel), tl.length === 0));
   }
@@ -205,18 +222,58 @@ export function withLiveStroke(brushStrokes, stroke) {
  */
 export function renderMap({ ctx, cache = false, ...props }) {
   const { width, height, items } = buildPlan(props);
+  const t = ctx.getTransform();
+  if (cache && !t.b && !t.c && t.a === t.d) return renderCached(ctx, t, width, height, items);
   ctx.save();
   ctx.clearRect(0, 0, width, height);
   for (const it of items) {
-    if (it.kind === 'layer') {
-      const { name, style, parts } = it;
-      cachedPass(cache, ctx, name, parts.flatMap((p) => p.deps), style, (c) => parts.forEach((p) => p.draw(c)));
-    } else if (it.kind === 'live') {
-      layerPass(ctx, it.style, (c) => drawLiveStroke(c, it.stroke));
-    } else {
-      renderAtmosphere(ctx, width, height, it.atmosphere);
-    }
+    if (it.kind === 'layer') layerPass(ctx, it.style, (c) => it.parts.forEach((p) => p.draw(c)));
+    else if (it.kind === 'live') layerPass(ctx, it.style, (c) => drawLiveStroke(c, it.stroke));
+    else renderAtmosphere(ctx, width, height, it.atmosphere);
   }
+  ctx.restore();
+}
+
+// The live canvas: each layer is kept in its own canvas (cachedLayer). When the only change since the last frame is a
+// patched rectangle of some layers (a brush stroke in progress), just that rectangle of the canvas is composited again.
+const shown = new WeakMap(); // live canvas -> what it shows: size, transform, layer order, styles, atmosphere
+function renderCached(ctx, t, width, height, items) {
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const sig = [W, H, t.a, t.e, t.f];
+  let full = false;
+  let box = null;
+  const caches = items.map((it) => {
+    if (it.kind === 'live') { full = true; sig.push('live'); return null; }
+    if (it.kind !== 'layer') { sig.push('atmosphere', it.atmosphere); return null; }
+    sig.push(it.name, it.style?.opacity ?? 1, it.style?.blend || 'source-over');
+    const { e, dirty } = cachedLayer(it.name, it.parts, t, W, H);
+    if (dirty === 'all') full = true;
+    else if (dirty && dirty.w > 0 && dirty.h > 0) {
+      box = box ? { x0: Math.min(box.x0, dirty.x), y0: Math.min(box.y0, dirty.y), x1: Math.max(box.x1, dirty.x + dirty.w), y1: Math.max(box.y1, dirty.y + dirty.h) }
+        : { x0: dirty.x, y0: dirty.y, x1: dirty.x + dirty.w, y1: dirty.y + dirty.h };
+    }
+    return e;
+  });
+  const prev = shown.get(ctx.canvas);
+  if (!prev || prev.length !== sig.length || prev.some((v, i) => !Object.is(v, sig[i]))) full = true;
+  shown.set(ctx.canvas, sig);
+  if (!full && !box) return; // the canvas already shows this frame
+  ctx.save();
+  if (!full) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.beginPath();
+    ctx.rect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0);
+    ctx.clip();
+    ctx.clearRect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0);
+    ctx.setTransform(t);
+  } else {
+    ctx.clearRect(0, 0, width, height);
+  }
+  items.forEach((it, i) => {
+    if (it.kind === 'layer') drawCached(ctx, caches[i], it.style);
+    else if (it.kind === 'live') layerPass(ctx, it.style, (c) => drawLiveStroke(c, it.stroke));
+    else renderAtmosphere(ctx, width, height, it.atmosphere);
+  });
   ctx.restore();
 }
 
@@ -278,15 +335,12 @@ export function makeLayer(width, height, s) {
 }
 
 // Each layer is rasterised into its own canvas and only redrawn when its inputs change (compared by identity),
-// so dragging a stamp or drawing a path repaints one layer and composites the rest. Only the 1:1 preview is
-// cached when it is a uniform scale; exports render directly.
+// so dragging a stamp or drawing a path repaints one layer and composites the rest. Only the live canvas is cached, and
+// only at a uniform scale (keyed by the transform, so a zoom change redraws); exports render directly. A layer made of
+// one part that can patch itself (the land while a stroke is painted) updates just the patched rectangle.
 // ponytail: one full-size canvas per layer (~45 MB each at 4000x2800); merge into below/above bitmaps if memory bites.
 const layerCache = new Map();
-function cachedPass(cache, ctx, name, deps, style, draw) {
-  const t = ctx.getTransform();
-  // a uniform scale (the zoomed live view) is cached too, keyed by the transform so a zoom change redraws
-  if (!cache || t.b || t.c || t.a !== t.d) return layerPass(ctx, style, draw);
-  const { width: w, height: h } = ctx.canvas;
+function cachedLayer(name, parts, t, w, h) {
   let e = layerCache.get(name);
   if (!e || e.canvas.width !== w || e.canvas.height !== h) {
     const canvas = document.createElement('canvas');
@@ -295,15 +349,20 @@ function cachedPass(cache, ctx, name, deps, style, draw) {
     e = { canvas, deps: null };
     layerCache.set(name, e);
   }
-  const key = [...deps, t.a, t.e, t.f];
-  if (!e.deps || e.deps.length !== key.length || e.deps.some((d, i) => !Object.is(d, key[i]))) {
-    const g = e.canvas.getContext('2d');
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, w, h);
-    g.setTransform(t);
-    draw(g);
-    e.deps = key;
-  }
+  const key = [...parts.flatMap((p) => p.deps), t.a, t.e, t.f];
+  if (e.deps && e.deps.length === key.length && e.deps.every((d, i) => Object.is(d, key[i]))) return { e, dirty: null };
+  const g = e.canvas.getContext('2d');
+  g.setTransform(t);
+  const patched = e.deps && parts.length === 1 && parts[0].patch ? parts[0].patch(g) : null;
+  e.deps = key;
+  if (patched) return { e, dirty: patched };
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, w, h);
+  g.setTransform(t);
+  parts.forEach((p) => p.draw(g));
+  return { e, dirty: 'all' };
+}
+function drawCached(ctx, e, style) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = style?.opacity ?? 1;
@@ -426,12 +485,12 @@ function renderDungeonVoid(ctx, width, height) {
 /**
  * Shallow-water halo as a distance field from the finished land mask: ring i covers water within 5 + i * spacing px of
  * land with alpha rippleOpacity * e^(-0.55 i), the same bands the geometric rings draw. Works at half resolution
- * (chamfer 5-7 distance, two passes) and is scaled up smoothly.
+ * (chamfer 5-7 distance, two passes) and is scaled up smoothly. `F` is the frame the pass covers (see landFrame).
  */
-function drawMaskHalo(ctx, maskCanvas, width, height, cl, strength) {
+function drawMaskHalo(ctx, maskCanvas, F, cl, strength) {
   const S = 0.5;
-  const w = Math.max(1, Math.round(width * S));
-  const h = Math.max(1, Math.round(height * S));
+  const w = F.hw;
+  const h = F.hh;
   const small = document.createElement('canvas');
   small.width = w;
   small.height = h;
@@ -504,7 +563,7 @@ function drawMaskHalo(ctx, maskCanvas, width, height, cl, strength) {
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(small, 0, 0, width, height);
+  ctx.drawImage(small, F.x, F.y, F.w, F.h);
   ctx.restore();
 }
 
@@ -574,13 +633,123 @@ export function drawLandMask(mctx, landmasses, brushStrokes) {
   }
 }
 
+const COAST_DEFAULTS = {
+  ripplesEnabled: true,
+  rippleCount: 4,
+  rippleSpacing: 11,
+  rippleColor: '#bae6fd',
+  rippleOpacity: 0.35,
+  sandEnabled: true,
+  sandWidth: 14,
+  sandColor: '#d4be8d',
+  outlineColor: '#3d2b1f',
+  outlineWidth: 2.5,
+  shadowEnabled: true,
+  shadowBlur: 10
+};
+// fills (plugins/builtin/maskFill) have no brush outline to echo, so they also take the finished-mask halo
+const carvesWater = (st) => st.type === 'mask' && (st.shape === 'fill' || (st.mode === 'water' && st.points && st.points.length > 0));
+const isTerrainStroke = (s) => s.type === 'brush' && s.target !== 'background';
+
+/** One foreground biome stroke onto the terrain buffer. `ls` is the buffer's canvas pixels per map unit. */
+function paintTerrainStroke(tctx, stroke, ls) {
+  if (!stroke.points || stroke.points.length === 0) return;
+
+  tctx.save();
+  tctx.globalAlpha = stroke.opacity || 0.85;
+  tctx.globalCompositeOperation = stroke.blendMode || 'source-over';
+
+  if (stroke.softness && stroke.softness > 0.1) {
+    // Soft-falloff feathered airbrush dabs: build the alpha mask in a bbox-sized buffer,
+    // then fill it with the biome texture (a gradient can't carry a pattern directly).
+    const r = (stroke.size || 40) / 2;
+    const xs = stroke.points.map((pt) => pt.x);
+    const ys = stroke.points.map((pt) => pt.y);
+    const minX = Math.floor(Math.min(...xs) - r);
+    const minY = Math.floor(Math.min(...ys) - r);
+    const bw = Math.ceil(Math.max(...xs) + r) - minX;
+    const bh = Math.ceil(Math.max(...ys) + r) - minY;
+    const { c: sc, g: sctx } = makeLayer(bw, bh, ls);
+    sctx.translate(-minX, -minY);
+    for (const pt of stroke.points) {
+      const grad = sctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      sctx.fillStyle = grad;
+      sctx.beginPath();
+      sctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+      sctx.fill();
+    }
+    sctx.globalCompositeOperation = 'source-in';
+    sctx.fillStyle = getBiomePattern(sctx, stroke.biome || 'grassland');
+    sctx.fillRect(minX, minY, bw, bh);
+    tctx.drawImage(sc, minX, minY, bw, bh);
+  } else {
+    tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
+    tctx.fillStyle = tctx.strokeStyle;
+    tctx.lineWidth = stroke.size || 40;
+    tctx.lineCap = 'round';
+    tctx.lineJoin = 'round';
+
+    if (stroke.points.length === 1) {
+      tctx.beginPath();
+      tctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
+      tctx.fill();
+    } else {
+      tctx.beginPath();
+      drawSmoothPolyline(tctx, stroke.points.map(p => [p.x, p.y]));
+      tctx.stroke();
+    }
+  }
+  tctx.restore();
+}
+
+/** Base terrain wash, landmass biomes and the foreground biome strokes, unclipped (the land mask cuts it later). */
+function paintTerrain(tctx, width, height, landmasses, brushStrokes, ls) {
+  // Default base terrain wash
+  tctx.fillStyle = getBiomePattern(tctx, 'grassland');
+  tctx.fillRect(0, 0, width, height);
+
+  // Paint landmass-specific base biomes
+  for (const land of landmasses) {
+    if (!land.points || land.points.length < 3) continue;
+    tctx.save();
+    tctx.beginPath();
+    drawSmoothPolygon(tctx, land.points);
+    tctx.fillStyle = getBiomePattern(tctx, land.biome || 'grassland');
+    tctx.fill();
+    tctx.restore();
+  }
+
+  // Paint Freehand Foreground Biome Brush Strokes
+  for (const stroke of (brushStrokes || []).filter(isTerrainStroke)) paintTerrainStroke(tctx, stroke, ls);
+}
+
+/**
+ * The part of the map a land pass covers, in map units, and how to make an offscreen buffer for it. A normal pass covers
+ * the whole map; a live patch (patchLand) covers a window around the brush, on the same pixel grid as the whole layer.
+ */
+function fullFrame(width, height, ls) {
+  return { x: 0, y: 0, w: width, h: height, hw: Math.max(1, Math.round(width * 0.5)), hh: Math.max(1, Math.round(height * 0.5)), layer: () => makeLayer(width, height, ls) };
+}
+
 /**
  * Render landmasses with true dual-layer sculpting, coastlines, and beach fringes.
  * Uses an offscreen Land Mask Buffer and an offscreen Terrain Buffer for authentic
  * Inkarnate clipping and non-destructive water carving.
+ * `keep(mask, terrain, ls)`, when given, receives the finished mask and the unclipped terrain (see patchLand).
  */
-function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline, quality = 1) {
-  if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) return;
+function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType, coastline, quality = 1, keep = null) {
+  if ((!landmasses || landmasses.length === 0) && (!brushStrokes || brushStrokes.length === 0)) {
+    if (keep) {
+      // nothing to draw, but the first stroke on an empty map can still be patched: no land, plain terrain wash
+      const ls = layerScale(ctx, width, height);
+      const terrain = makeLayer(width, height, ls);
+      paintTerrain(terrain.g, width, height, [], [], ls);
+      keep(makeLayer(width, height, ls).c, terrain, ls);
+    }
+    return;
+  }
   if (quality < 1) {
     // live preview: the whole pipeline runs on a small buffer and is upscaled once, so the many full-size
     // blits (shadow, sand, outline) are not paid at the destination's resolution
@@ -590,36 +759,34 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     return;
   }
 
-  const cl = {
-    ripplesEnabled: true,
-    rippleCount: 4,
-    rippleSpacing: 11,
-    rippleColor: '#bae6fd',
-    rippleOpacity: 0.35,
-    sandEnabled: true,
-    sandWidth: 14,
-    sandColor: '#d4be8d',
-    outlineColor: '#3d2b1f',
-    outlineWidth: 2.5,
-    shadowEnabled: true,
-    shadowBlur: 10,
-    ...(coastline || {})
-  };
-
   // 1. Build the Offscreen Land Mask Canvas (at the scale this pass is drawn at, so the coast stays sharp when zoomed)
   const ls = layerScale(ctx, width, height);
   const { c: maskCanvas, g: mctx } = makeLayer(width, height, ls);
-
   drawLandMask(mctx, landmasses, brushStrokes);
 
-  // 2. Coastal Ripple Rings (Water-lining) & Shallows Halo
+  // 2. Build the Offscreen Terrain Buffer (Base Biomes + FG Brush Strokes)
+  const terrain = makeLayer(width, height, ls);
+  paintTerrain(terrain.g, width, height, landmasses, brushStrokes, ls);
+  if (keep) {
+    const copy = makeLayer(width, height, ls);
+    copy.g.setTransform(1, 0, 0, 1, 0, 0);
+    copy.g.drawImage(terrain.c, 0, 0);
+    copy.g.setTransform(terrain.g.getTransform());
+    keep(maskCanvas, copy, ls);
+  }
+
+  composeLand(ctx, fullFrame(width, height, ls), maskCanvas, terrain, landmasses, brushStrokes, mapType, { ...COAST_DEFAULTS, ...(coastline || {}) });
+}
+
+/** Coast effects, water strokes and the clipped terrain onto ctx, for frame F. The terrain buffer is clipped in place. */
+function composeLand(ctx, F, maskCanvas, terrain, landmasses, brushStrokes, mapType, cl) {
+  // 3. Coastal Ripple Rings (Water-lining) & Shallows Halo
   // The rings below follow the land shapes as they were drawn, so once water has been carved out of land they would
   // keep haloing land that is gone. With carving present the halo is measured from the finished mask instead.
-  // fills (plugins/builtin/maskFill) have no brush outline to echo, so they also take the finished-mask halo
-  const carved = (brushStrokes || []).some((st) => st.type === 'mask' && (st.shape === 'fill' || (st.mode === 'water' && st.points && st.points.length > 0)));
+  const carved = (brushStrokes || []).some(carvesWater);
   if (mapType === 'world' && cl.ripplesEnabled && carved) {
     const hasPolygons = landmasses.some((l) => l.points && l.points.length >= 3);
-    drawMaskHalo(ctx, maskCanvas, width, height, cl, hasPolygons ? 1 : 0.7); // brush land halos are drawn 30% lighter
+    drawMaskHalo(ctx, maskCanvas, F, cl, hasPolygons ? 1 : 0.7); // brush land halos are drawn 30% lighter
   } else if (mapType === 'world' && cl.ripplesEnabled) {
     ctx.save();
     const count = Math.min(6, Math.max(1, cl.rippleCount || 4));
@@ -663,21 +830,21 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     ctx.restore();
   }
 
-  // 3. 3D Land Elevation Drop Shadow
+  // 4. 3D Land Elevation Drop Shadow
   if (cl.shadowEnabled) {
     ctx.save();
     ctx.shadowColor = mapType === 'world' ? 'rgba(15, 23, 42, 0.45)' : 'rgba(0, 0, 0, 0.6)';
     ctx.shadowBlur = cl.shadowBlur || 10;
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 5;
-    ctx.drawImage(maskCanvas, 0, 0, width, height);
+    ctx.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
     ctx.restore();
   }
 
-  // 4a. Draw Background / Water Brush Strokes (Clipped outside land)
+  // 5. Draw Background / Water Brush Strokes (Clipped outside land)
   const waterBrushStrokes = (brushStrokes || []).filter(s => s.type === 'brush' && s.target === 'background');
   if (waterBrushStrokes.length > 0) {
-    const { c: waterCanvas, g: wctx } = makeLayer(width, height, ls);
+    const { c: waterCanvas, g: wctx } = F.layer();
 
     for (const stroke of waterBrushStrokes) {
       if (!stroke.points || stroke.points.length === 0) continue;
@@ -704,131 +871,253 @@ function renderLandmasses(ctx, width, height, landmasses, brushStrokes, mapType,
     // Clip to outside land
     wctx.save();
     wctx.globalCompositeOperation = 'destination-out';
-    wctx.drawImage(maskCanvas, 0, 0, width, height);
+    wctx.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
     wctx.restore();
 
-    ctx.drawImage(waterCanvas, 0, 0, width, height);
+    ctx.drawImage(waterCanvas, F.x, F.y, F.w, F.h);
   }
 
-  // 4b. Build the Offscreen Terrain Buffer (Base Biomes + FG Brush Strokes)
-  const { c: terrainCanvas, g: tctx } = makeLayer(width, height, ls);
-
-  // Default base terrain wash
-  tctx.fillStyle = getBiomePattern(tctx, 'grassland');
-  tctx.fillRect(0, 0, width, height);
-
-  // Paint landmass-specific base biomes
-  for (const land of landmasses) {
-    if (!land.points || land.points.length < 3) continue;
-    tctx.save();
-    tctx.beginPath();
-    drawSmoothPolygon(tctx, land.points);
-    tctx.fillStyle = getBiomePattern(tctx, land.biome || 'grassland');
-    tctx.fill();
-    tctx.restore();
-  }
-
-  // Paint Freehand Foreground Biome Brush Strokes
-  const fgBrushStrokes = (brushStrokes || []).filter(s => s.type === 'brush' && s.target !== 'background');
-  for (const stroke of fgBrushStrokes) {
-    if (!stroke.points || stroke.points.length === 0) continue;
-
-    tctx.save();
-    tctx.globalAlpha = stroke.opacity || 0.85;
-    tctx.globalCompositeOperation = stroke.blendMode || 'source-over';
-
-    if (stroke.softness && stroke.softness > 0.1) {
-      // Soft-falloff feathered airbrush dabs: build the alpha mask in a bbox-sized buffer,
-      // then fill it with the biome texture (a gradient can't carry a pattern directly).
-      const r = (stroke.size || 40) / 2;
-      const xs = stroke.points.map((pt) => pt.x);
-      const ys = stroke.points.map((pt) => pt.y);
-      const minX = Math.floor(Math.min(...xs) - r);
-      const minY = Math.floor(Math.min(...ys) - r);
-      const bw = Math.ceil(Math.max(...xs) + r) - minX;
-      const bh = Math.ceil(Math.max(...ys) + r) - minY;
-      const { c: sc, g: sctx } = makeLayer(bw, bh, ls);
-      sctx.translate(-minX, -minY);
-      for (const pt of stroke.points) {
-        const grad = sctx.createRadialGradient(pt.x, pt.y, r * (1 - stroke.softness), pt.x, pt.y, r);
-        grad.addColorStop(0, 'rgba(255,255,255,1)');
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        sctx.fillStyle = grad;
-        sctx.beginPath();
-        sctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-        sctx.fill();
-      }
-      sctx.globalCompositeOperation = 'source-in';
-      sctx.fillStyle = getBiomePattern(sctx, stroke.biome || 'grassland');
-      sctx.fillRect(minX, minY, bw, bh);
-      tctx.drawImage(sc, minX, minY, bw, bh);
-    } else {
-      tctx.strokeStyle = getBiomePattern(tctx, stroke.biome || 'grassland');
-      tctx.fillStyle = tctx.strokeStyle;
-      tctx.lineWidth = stroke.size || 40;
-      tctx.lineCap = 'round';
-      tctx.lineJoin = 'round';
-
-      if (stroke.points.length === 1) {
-        tctx.beginPath();
-        tctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.size || 40) / 2, 0, Math.PI * 2);
-        tctx.fill();
-      } else {
-        tctx.beginPath();
-        drawSmoothPolyline(tctx, stroke.points.map(p => [p.x, p.y]));
-        tctx.stroke();
-      }
-    }
-    tctx.restore();
-  }
-
-  // 5. CLIP Terrain Buffer to Land Mask Buffer (True Masking!)
+  // 6. CLIP Terrain Buffer to Land Mask Buffer (True Masking!)
+  const { c: terrainCanvas, g: tctx } = terrain;
   tctx.save();
   tctx.globalCompositeOperation = 'destination-in';
-  tctx.drawImage(maskCanvas, 0, 0, width, height);
+  tctx.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
   tctx.restore();
 
   // Draw the clipped terrain onto the destination canvas
-  ctx.drawImage(terrainCanvas, 0, 0, width, height);
+  ctx.drawImage(terrainCanvas, F.x, F.y, F.w, F.h);
 
-  // 6. Beach / Sand Fringe along the inner coastline of ALL land (presets, added land, carved bays):
+  // 7. Beach / Sand Fringe along the inner coastline of ALL land (presets, added land, carved bays):
   // dilate the water (inverse mask) inward by half the beach width, keep the part that lies on land.
   if (mapType === 'world' && cl.sandEnabled && cl.sandWidth > 0) {
-    const { c: water, g: wc } = makeLayer(width, height, ls);
+    const { c: water, g: wc } = F.layer();
     wc.fillStyle = '#fff';
-    wc.fillRect(0, 0, width, height);
+    wc.fillRect(F.x, F.y, F.w, F.h);
     wc.globalCompositeOperation = 'destination-out';
-    wc.drawImage(maskCanvas, 0, 0, width, height);
-    const { c: sand, g: sc } = makeLayer(width, height, ls);
+    wc.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
+    const { c: sand, g: sc } = F.layer();
     const reach = cl.sandWidth / 2;
-    sc.drawImage(water, 0, 0, width, height);
+    sc.drawImage(water, F.x, F.y, F.w, F.h);
     for (let i = 0; i < 12; i++) {
       const ang = (i / 12) * Math.PI * 2;
-      sc.drawImage(water, Math.cos(ang) * reach, Math.sin(ang) * reach, width, height);
+      sc.drawImage(water, F.x + Math.cos(ang) * reach, F.y + Math.sin(ang) * reach, F.w, F.h);
     }
     sc.globalCompositeOperation = 'source-in';
     sc.fillStyle = cl.sandColor || '#d4be8d';
-    sc.fillRect(0, 0, width, height);
+    sc.fillRect(F.x, F.y, F.w, F.h);
     sc.globalCompositeOperation = 'destination-in';
-    sc.drawImage(maskCanvas, 0, 0, width, height);
-    ctx.drawImage(sand, 0, 0, width, height);
+    sc.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
+    ctx.drawImage(sand, F.x, F.y, F.w, F.h);
   }
 
-  // 7. Crisp Ink Coastline Contour: the true edge of the land mask (presets, added land and carved water)
+  // 8. Crisp Ink Coastline Contour: the true edge of the land mask (presets, added land and carved water)
   if (cl.outlineWidth > 0) {
-    const { c: ring, g: rctx } = makeLayer(width, height, ls);
+    const { c: ring, g: rctx } = F.layer();
     const reach = cl.outlineWidth;
     for (let i = 0; i < 12; i++) {
       const ang = (i / 12) * Math.PI * 2;
-      rctx.drawImage(maskCanvas, Math.cos(ang) * reach, Math.sin(ang) * reach, width, height);
+      rctx.drawImage(maskCanvas, F.x + Math.cos(ang) * reach, F.y + Math.sin(ang) * reach, F.w, F.h);
     }
     rctx.globalCompositeOperation = 'source-in';
     rctx.fillStyle = cl.outlineColor || (mapType === 'world' ? '#3d2b1f' : '#1e293b');
-    rctx.fillRect(0, 0, width, height);
+    rctx.fillRect(F.x, F.y, F.w, F.h);
     rctx.globalCompositeOperation = 'destination-out';
-    rctx.drawImage(maskCanvas, 0, 0, width, height);
-    ctx.drawImage(ring, 0, 0, width, height);
+    rctx.drawImage(maskCanvas, F.x, F.y, F.w, F.h);
+    ctx.drawImage(ring, F.x, F.y, F.w, F.h);
   }
+}
+
+// ---- Live land patches ---------------------------------------------------------------------------------------------
+// A full land pass on the 4000x2800 stress map takes seconds in software (halo distance field, shadow blur, 13-tap sand
+// and outline dilations over the whole map), but a brush only changes the land near itself. The live view therefore
+// keeps, per layer canvas, the finished mask and the unclipped terrain of its last full pass, and while a stroke is
+// painted re-runs the pass (composeLand) on a small window around the new part of the stroke, copying the window back.
+// The stroke is the last in the list, so drawing it over the kept mask / terrain gives what a full pass would draw.
+// Committing the stroke patches its whole box once more and folds it into the kept buffers. Anything else that changes
+// the land (undo, erase, coastline settings, zoom, a stroke that turns on the carved-water halo) runs a full pass.
+const landKept = new WeakMap(); // layer canvas -> what it shows and the buffers to patch it with
+
+/** Records the full pass just drawn on ctx's canvas (live view only), with its mask and unclipped terrain. */
+function keepLand(ctx, base) {
+  return (mask, terrain, ls) => {
+    const t = ctx.getTransform();
+    landKept.set(ctx.canvas, { ...base, mask, terrain, ls, t: [t.a, t.b, t.c, t.d, t.e, t.f], live: null });
+  };
+}
+
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+
+/** Map units around a changed mask pixel that the coast effects reach; `sx` = canvas pixels per map unit. */
+function coastReach(cl, sx) {
+  const halo = cl.ripplesEnabled ? 5 + (Math.min(6, Math.max(1, cl.rippleCount || 4)) - 1) * (cl.rippleSpacing || 11) + 8 : 0;
+  const shadow = cl.shadowEnabled ? ((cl.shadowBlur || 10) * 2 + 8) / sx : 0; // blur and offset are in canvas pixels
+  const sand = cl.sandEnabled ? (cl.sandWidth || 0) / 2 + 2 : 0;
+  return Math.ceil(Math.max(halo, shadow, sand, (cl.outlineWidth || 0) + 2)) + 4;
+}
+
+/** Map-unit box of a stroke's marks from point `from` on (inclusive). */
+function strokeBox(s, from) {
+  const r = (s.size || 40) / 2 * (s.type === 'mask' && s.shape === 'rough' ? 1.5 : 1) + 2;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = Math.max(0, from); i < s.points.length; i++) {
+    const p = s.points[i];
+    if (p.x < x0) x0 = p.x;
+    if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y;
+    if (p.y > y1) y1 = p.y;
+  }
+  return { x0: x0 - r, y0: y0 - r, x1: x1 + r, y1: y1 + r };
+}
+
+/**
+ * Updates the land layer on g's canvas for a stroke in progress (`stroke`, painted over `brushStrokes`) or one just
+ * committed (`stroke` null, last of `brushStrokes`). Returns the changed canvas-pixel rectangle {x, y, w, h}, or null
+ * when the canvas cannot be patched and needs a full pass.
+ */
+function patchLand(g, { width, height, landmasses, brushStrokes, stroke, mapType, coastline }) {
+  const k = landKept.get(g.canvas);
+  if (!k || k.landmasses !== landmasses || k.mapType !== mapType || k.coastline !== coastline || k.width !== width || k.height !== height) return null;
+  const t = g.getTransform();
+  const W = g.canvas.width, H = g.canvas.height;
+  const sx = W / width, sy = H / height;
+  // the kept buffers must be on this canvas's pixel grid, drawn with the same transform
+  if (k.mask.width !== W || k.mask.height !== H || t.a !== sx || t.d !== sy || t.b || t.c || t.e || t.f) return null;
+  if (t.a !== k.t[0] || t.d !== k.t[3] || k.t[4] || k.t[5]) return null;
+  let s = stroke, all;
+  if (stroke) {
+    if (brushStrokes !== k.brushStrokes) return null;
+    all = withLiveStroke(brushStrokes, stroke);
+  } else {
+    // committed: the kept list plus one stroke, the one being previewed (if any)
+    const n = k.brushStrokes.length;
+    if (brushStrokes.length !== n + 1 || k.brushStrokes.some((b, i) => b !== brushStrokes[i])) return null;
+    s = brushStrokes[n];
+    all = brushStrokes;
+  }
+  if (!s || !s.points || !s.points.length || s.shape === 'fill' || (s.type !== 'mask' && s.type !== 'brush')) return null;
+  if (k.live && (k.live.id !== s.id || k.live.n > s.points.length)) return null; // the canvas shows another preview
+  const carved = k.brushStrokes.some(carvesWater);
+  if (carved !== (carved || carvesWater(s))) return null; // the halo switches to the distance field over the whole map
+
+  const cl = { ...COAST_DEFAULTS, ...(coastline || {}) };
+  const E = coastReach(cl, Math.min(sx, sy));
+  // smooth strokes re-curve the segment before the newest point, so a live patch starts two points back
+  const box = strokeBox(s, stroke && k.live ? k.live.n - 2 : 0);
+  // a mask change moves the coast, whose effects reach E further; a biome stroke only changes the terrain under it
+  const m = s.type === 'mask' ? E : 0;
+  const clampX = (v) => Math.max(0, Math.min(W, v)), clampY = (v) => Math.max(0, Math.min(H, v));
+  const ox0 = clampX(Math.floor((box.x0 - m) * sx)), oy0 = clampY(Math.floor((box.y0 - m) * sy));
+  const ox1 = clampX(Math.ceil((box.x1 + m) * sx)), oy1 = clampY(Math.ceil((box.y1 + m) * sy));
+  if (ox1 <= ox0 || oy1 <= oy0) return { x: 0, y: 0, w: 0, h: 0 };
+  // the window computed: the output box plus E of input around it. The halo works on a half-resolution grid; snapping
+  // the window to whole cells of that grid keeps its samples where the full pass takes them.
+  const hw = Math.max(1, Math.round(width * 0.5)), hh = Math.max(1, Math.round(height * 0.5));
+  const halo = mapType === 'world' && cl.ripplesEnabled && carved;
+  const qx = halo ? W / gcd(W, hw) : 1, qy = halo ? H / gcd(H, hh) : 1;
+  const snapLo = (v, q, max) => (q > max ? 0 : Math.max(0, Math.floor(v / q) * q));
+  const snapHi = (v, q, max) => (q > max ? max : Math.min(max, Math.ceil(v / q) * q));
+  const fx0 = snapLo(ox0 - E * sx, qx, W), fy0 = snapLo(oy0 - E * sy, qy, H);
+  const fx1 = snapHi(ox1 + E * sx, qx, W), fy1 = snapHi(oy1 + E * sy, qy, H);
+  const F = windowFrame(sx, sy, fx0, fy0, fx1 - fx0, fy1 - fy0);
+  F.hw = Math.max(1, Math.round((fx1 - fx0) * hw / W));
+  F.hh = Math.max(1, Math.round((fy1 - fy0) * hh / H));
+  const copyOf = (src) => {
+    const l = F.layer();
+    l.g.setTransform(1, 0, 0, 1, 0, 0);
+    l.g.drawImage(src, fx0, fy0, F.pw, F.ph, 0, 0, F.pw, F.ph);
+    l.g.setTransform(sx, 0, 0, sy, -fx0, -fy0);
+    return l;
+  };
+  const mask = copyOf(k.mask);
+  if (s.type === 'mask') drawLandMask(mask.g, [], [s]);
+  const terrain = copyOf(k.terrain.c);
+  if (isTerrainStroke(s)) paintTerrainStroke(terrain.g, s, k.ls);
+  const out = F.layer();
+  composeLand(out.g, F, mask.c, terrain, landmasses, all, mapType, cl);
+  const rect = copyBack(g, out.c, F, ox0, oy0, ox1 - ox0, oy1 - oy0);
+
+  if (stroke) {
+    k.live = { id: s.id, n: s.points.length };
+  } else {
+    // fold the stroke into the kept buffers: the next stroke starts from this one
+    if (s.type === 'mask') drawLandMask(k.mask.getContext('2d'), [], [s]);
+    if (isTerrainStroke(s)) paintTerrainStroke(k.terrain.g, s, k.ls);
+    k.brushStrokes = brushStrokes;
+    k.live = null;
+  }
+  return rect;
+}
+
+/** A window of the canvas, canvas pixels (px, py, pw, ph), as a frame for composeLand / renderPaths (see fullFrame). */
+function windowFrame(sx, sy, px, py, pw, ph) {
+  const layer = () => {
+    const c = document.createElement('canvas');
+    c.width = pw;
+    c.height = ph;
+    const g = c.getContext('2d');
+    g.setTransform(sx, 0, 0, sy, -px, -py); // map units, on the full layer's pixel grid
+    return { c, g };
+  };
+  return { x: px / sx, y: py / sy, w: pw / sx, h: ph / sy, px, py, pw, ph, layer };
+}
+
+/** Replaces the canvas-pixel rectangle (x, y, w, h) of g's canvas with the same pixels of `src`, a window F of it. */
+function copyBack(g, src, F, x, y, w, h) {
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(x, y, w, h);
+  g.drawImage(src, x - F.px, y - F.py, w, h, x, y, w, h);
+  g.restore();
+  return { x, y, w, h };
+}
+
+// Paths with rivers are cut to the land mask, so a Landmass Sculptor stroke changes them too, but only under the stroke.
+// On release the paths layer is still drawn whole (redrawing paths in a window anti-aliases their edges slightly
+// differently), but it reports just the stroke's box as changed, so the live canvas composites only that box again.
+const pathsKept = new WeakMap(); // paths layer canvas -> the inputs it was drawn with
+
+function pathsRaster(list, sel, world, landDeps, live) {
+  const part = {
+    kind: 'raster',
+    deps: [list, sel, ...landDeps],
+    empty: list.length === 0,
+    draw: (c) => {
+      renderPaths(c, list, sel, world);
+      if (live) {
+        const t = c.getTransform();
+        pathsKept.set(c.canvas, { list, sel, world, t: [t.a, t.b, t.c, t.d, t.e, t.f] });
+      }
+    }
+  };
+  if (live && landDeps.length) part.patch = (c) => patchPaths(c, list, sel, world);
+  return part;
+}
+
+function patchPaths(g, list, sel, world) {
+  const k = pathsKept.get(g.canvas);
+  const { width, height, landmasses, brushStrokes: next } = world;
+  if (!k || k.list !== list || k.sel !== sel || k.world.landmasses !== landmasses || k.world.width !== width || k.world.height !== height) return null;
+  const prev = k.world.brushStrokes;
+  if (next.length !== prev.length + 1 || prev.some((b, i) => b !== next[i])) return null;
+  const s = next[next.length - 1];
+  if (!s.points || !s.points.length || s.shape === 'fill' || hasLand(landmasses, prev) !== hasLand(landmasses, next)) return null;
+  const t = g.getTransform();
+  const W = g.canvas.width, H = g.canvas.height;
+  const sx = W / width, sy = H / height;
+  const ls = layerScale(g, width, height);
+  // renderPaths' buffers must be on the canvas's own pixel grid
+  if (Math.round(width * ls) !== W || Math.round(height * ls) !== H || t.a !== sx || t.d !== sy || t.b || t.c || t.e || t.f) return null;
+  if (k.t.some((v, i) => v !== [t.a, t.b, t.c, t.d, t.e, t.f][i])) return null;
+  const box = strokeBox(s, 0);
+  const x0 = Math.max(0, Math.floor(box.x0 * sx) - 2), y0 = Math.max(0, Math.floor(box.y0 * sy) - 2);
+  const x1 = Math.min(W, Math.ceil(box.x1 * sx) + 2), y1 = Math.min(H, Math.ceil(box.y1 * sy) + 2);
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+  g.restore();
+  renderPaths(g, list, sel, world);
+  k.world = world;
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : { x: 0, y: 0, w: 0, h: 0 };
 }
 
 /**
@@ -885,9 +1174,10 @@ function renderPaths(ctx, paths, selectedPathId, world) {
   if (!paths || paths.length === 0) return;
   if (world && hasLand(world.landmasses, world.brushStrokes) && paths.some((p) => p.type === 'river')) {
     const ls = layerScale(ctx, world.width, world.height);
-    const { c: rc, g: rg } = makeLayer(world.width, world.height, ls);
+    const f = fullFrame(world.width, world.height, ls);
+    const { c: rc, g: rg } = f.layer();
     drawPaths(rg, paths.filter((p) => p.type === 'river'), selectedPathId);
-    const { c: mc, g: mg } = makeLayer(world.width, world.height, ls);
+    const { c: mc, g: mg } = f.layer();
     drawLandMask(mg, world.landmasses, world.brushStrokes);
     rg.save();
     rg.setTransform(1, 0, 0, 1, 0, 0);
@@ -895,7 +1185,7 @@ function renderPaths(ctx, paths, selectedPathId, world) {
     rg.drawImage(mc, 0, 0);
     rg.restore();
     // river first, then roads and walls on top: same order as before only when rivers were listed first, so keep list order for the rest
-    ctx.drawImage(rc, 0, 0, world.width, world.height);
+    ctx.drawImage(rc, f.x, f.y, f.w, f.h);
     drawPaths(ctx, paths.filter((p) => p.type !== 'river'), selectedPathId);
     return;
   }

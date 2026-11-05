@@ -235,10 +235,15 @@ export class PixiMapView {
     pn.sprite.visible = true;
     if (!sameDeps(pn.deps, part.deps)) {
       const g = pn.canvas.getContext('2d') as Ctx2D;
-      g.setTransform(1, 0, 0, 1, 0, 0);
-      g.clearRect(0, 0, pn.canvas.width, pn.canvas.height);
       g.setTransform(pn.canvas.width / plan.width, 0, 0, pn.canvas.height / plan.height, 0, 0); // draw in map units
-      part.draw(g);
+      // a part that can patch the canvas in place (the land while a stroke is painted) skips the full redraw; the texture
+      // is still uploaded whole
+      if (!(pn.deps && part.patch && part.patch(g))) {
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.clearRect(0, 0, pn.canvas.width, pn.canvas.height);
+        g.setTransform(pn.canvas.width / plan.width, 0, 0, pn.canvas.height / plan.height, 0, 0);
+        part.draw(g);
+      }
       pn.sprite.texture.source.update();
       pn.deps = part.deps;
       changed = true;
