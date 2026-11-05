@@ -14,6 +14,13 @@ export const FEATURES = [
     load: () => import('./builtin/lighting/index.js')
   },
   {
+    id: 'worldGen',
+    name: 'World generator',
+    kind: 'Tool',
+    description: '"Generate land" in New Map for world and region maps: continents, climate biomes, mountains, forests and rivers from a seed, all editable.',
+    load: () => import('./builtin/worldGen/index.js')
+  },
+  {
     id: 'riverGen',
     name: 'River generation',
     kind: 'Tool',
@@ -33,6 +40,13 @@ export const FEATURES = [
     kind: 'Tool',
     description: 'Bucket fill in the Landmass Sculptor: fill an enclosed sea with land, or a landmass with water.',
     load: () => import('./builtin/maskFill/index.js')
+  },
+  {
+    id: 'fog',
+    name: 'Fog of war',
+    kind: 'Tool',
+    description: 'Paint what the players may see, then open a player window (a second screen or a shared tab) that shows only that.',
+    load: () => import('./builtin/fog/index.js')
   },
   {
     id: 'vttExport',

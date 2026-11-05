@@ -12,7 +12,7 @@ const SCALES = [0.5, 1, 2, 4, 8];
 const PREFS = 'inkforge.export';
 
 // onLayers / onPrint are null and `vtt` false while their plugins are not installed
-export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, onClose, onExport, onLayers, onPrint, vtt, onPlugins }) {
+export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, gridType = 'square', onClose, onExport, onLayers, onPrint, vtt, onPlugins }) {
   const [o, setO] = useState(() => {
     const d = { format: 'png', quality: 90, scale: 2, includeGrid: true, vttImage: 'webp' };
     let v = d;
@@ -70,6 +70,11 @@ export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, onClose
                   <button key={k} className={`chip ${o.vttImage === k ? 'active' : ''}`} onClick={() => set({ vttImage: k })}>{k.toUpperCase()}</button>
                 ))}
               </div>
+              {gridType !== 'square' && (
+                <p className="mute mt-2">
+                  Universal VTT only knows square grids: this map's {gridType === 'isometric' ? 'isometric' : 'hex'} grid will import as squares of the same size. Set the hex grid in your VTT after import.
+                </p>
+              )}
             </>
           )}
 

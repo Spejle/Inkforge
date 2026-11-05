@@ -68,10 +68,23 @@ export function getTemplate(id) {
 
 export const biomesFor = (tpl) => (tpl.biomes ? BIOMES.filter((b) => tpl.biomes.includes(b.id)) : BIOMES);
 
+/**
+ * A content pack's map template as a New Map card: a built-in template (`base`, default Free Canvas) with the pack's
+ * name, size and starting biome. Maps record the base id, so they still open after the pack is removed.
+ */
+export function packTemplate(t) {
+  const base = TEMPLATES.find((b) => b.id === t.base) || TEMPLATES.find((b) => b.id === 'free');
+  const biome = t.biome && (!base.biomes || base.biomes.includes(t.biome)) ? t.biome : base.defaultBiome;
+  return {
+    ...base, id: t.id, base: base.id, name: t.name, desc: t.description || base.desc, pack: true,
+    sizes: [{ name: 'Pack size', w: t.width, h: t.height }], defaultSize: 0, defaultBiome: biome
+  };
+}
+
 /** The empty project a template starts from. */
 export function blankProject(tpl, title, w, h) {
   return {
-    title, type: tpl.mode, template: tpl.id, width: w, height: h,
+    title, type: tpl.mode, template: tpl.base || tpl.id, width: w, height: h,
     landmasses: [], brushStrokes: [], stamps: [], paths: [], texts: [],
     grid: tpl.grid, atmosphere: tpl.atmosphere, layers: {}, customStamps: []
   };

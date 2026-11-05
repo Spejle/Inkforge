@@ -68,3 +68,20 @@ test('inkforgeVersion range is enforced', () => {
   assert.equal(validatePack(p, { appVersion: '1.12.0' }).ok, false);
   assert.ok(satisfies('1.12.0', '^1.2.0') && satisfies('1.12.0', '1.x') && !satisfies('2.0.0', '^1.2.0') && satisfies('1.5.0', '>=1.0.0 <2.0.0'));
 });
+
+test('pack map templates build on a built-in template and keep its id on the map', async () => {
+  const { packTemplate, blankProject } = await import('../src/engine/mapTemplates.js');
+  const p = clone();
+  p.contributes = { mapTemplates: [{ id: 'crypt', name: 'Crypt', width: 100, height: 9999, base: 'dungeon', biome: 'snow' }, { id: 'odd', name: 'Odd', base: 'nope' }] };
+  const r = validatePack(p);
+  assert.ok(r.ok, r.errors.join('; '));
+  const [crypt, odd] = r.pack.contributes.mapTemplates;
+  assert.equal(crypt.width, 600, 'clamped to the New Map minimum');
+  assert.equal(crypt.height, 8000);
+  assert.equal(odd.base, 'free', 'unknown base falls back to Free Canvas');
+  const tpl = packTemplate(crypt);
+  assert.equal(tpl.mode, 'battle');
+  assert.equal(tpl.defaultBiome, 'dungeon_flagstone', 'a biome the base does not offer is ignored');
+  assert.deepEqual(tpl.sizes, [{ name: 'Pack size', w: 600, h: 8000 }]);
+  assert.equal(blankProject(tpl, 't', 600, 8000).template, 'dungeon');
+});

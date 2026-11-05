@@ -82,6 +82,9 @@ export default function CanvasArea({
   pathColor,
   // Mutation callbacks
   onCommitStroke,
+  fog = null,
+  fogMode = 'reveal',
+  onCommitFog,
   onAddStamp,
   onUpdateStamp,
   onAddPath,
@@ -116,6 +119,8 @@ export default function CanvasArea({
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const activeStrokeRef = useRef(null);
+  const [liveFog, setLiveFog] = useState(null); // fog stroke being painted
+  const activeFogRef = useRef(null);
   const [liveStroke, setLiveStroke] = useState(null); // stroke being painted: drawn as a cheap preview, committed on release
   const activePathRef = useRef(null);
   const pathStabRef = useRef(null); // lazy-rope cursor so drawn rivers don't wobble
@@ -232,7 +237,8 @@ export default function CanvasArea({
       selectedTextId,
       selectedPathId,
       layerVisibility,
-      layerStyle
+      layerStyle,
+      fog: fog && liveFog ? { ...fog, enabled: true, strokes: [...fog.strokes, liveFog] } : fog
     };
     // one repaint per frame, however many state updates landed in it
     const raf = requestAnimationFrame(() => {
@@ -270,6 +276,8 @@ export default function CanvasArea({
     selectedPathId,
     layerVisibility,
     layerStyle,
+    fog,
+    liveFog,
     imageTick
   ]);
 
@@ -519,6 +527,13 @@ export default function CanvasArea({
       draggedObjectRef.current = { type: 'marquee', x0: x, y0: y };
     }
 
+    // FOG OF WAR (plugin): reveal or hide strokes
+    if (activeTool === 'fog' && onCommitFog && feature('fog')) {
+      activeFogRef.current = { mode: fogMode, size: brushSize, points: [[Math.round(x), Math.round(y)]] };
+      setLiveFog({ ...activeFogRef.current });
+      return;
+    }
+
     // 2. MASK TOOL (Landmass & Coastline Sculptor)
     if (activeTool === 'mask' && maskShape === 'fill' && feature('maskFill')) {
       isInteractingRef.current = false;
@@ -695,6 +710,16 @@ export default function CanvasArea({
       return;
     }
 
+    if (activeTool === 'fog' && activeFogRef.current) {
+      const f = activeFogRef.current;
+      const [lx, ly] = f.points[f.points.length - 1];
+      if (Math.hypot(x - lx, y - ly) > Math.max(3, f.size / 8)) {
+        f.points = [...f.points, [Math.round(x), Math.round(y)]];
+        setLiveFog({ ...f });
+      }
+      return;
+    }
+
     // Handle Brush / Mask freehand sculpting with distance interpolation
     if ((activeTool === 'mask' || activeTool === 'brush') && activeStrokeRef.current) {
       const pts = activeStrokeRef.current.points;
@@ -787,6 +812,14 @@ export default function CanvasArea({
       const all = raw ? [...activePathRef.current.points, [Math.round(raw[0]), Math.round(raw[1])]] : activePathRef.current.points;
       const done = { ...activePathRef.current, points: simplifyPath(all, 2.5) };
       onAddPath(done);
+    }
+    if (activeFogRef.current) {
+      const f = activeFogRef.current;
+      activeFogRef.current = null;
+      setLiveFog(null);
+      onCommitFog?.({ ...f, points: f.points.length > 2 ? simplifyPath(f.points, 1.5) : f.points });
+      isInteractingRef.current = false;
+      return;
     }
     if (isInteractingRef.current) {
       const done = activeStrokeRef.current;
@@ -894,7 +927,7 @@ export default function CanvasArea({
           })}
 
         {/* Brush Radius Preview Ring */}
-        {brushRing && mousePos.inside && (activeTool === 'mask' || activeTool === 'brush') && (
+        {brushRing && mousePos.inside && (activeTool === 'mask' || activeTool === 'brush' || activeTool === 'fog') && (
           <div
             className="brush-cursor-circle"
             style={{
@@ -902,7 +935,7 @@ export default function CanvasArea({
               top: `${mousePos.canvasY}px`,
               width: `${brushSize}px`,
               height: `${brushSize}px`,
-              borderColor: activeTool === 'mask' ? (maskMode === 'land' ? '#22c55e' : '#38bdf8') : '#f59e0b'
+              borderColor: activeTool === 'fog' ? (fogMode === 'reveal' ? '#e5e7eb' : '#6b7280') : activeTool === 'mask' ? (maskMode === 'land' ? '#22c55e' : '#38bdf8') : '#f59e0b'
             }}
           />
         )}

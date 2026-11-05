@@ -29,6 +29,9 @@ import {
 } from './utils/exportUtils';
 import './App.css';
 
+const NO_FOG = { enabled: false, strokes: [] };
+const MAX_HISTORY = 200; // undo steps kept; older snapshots are dropped
+
 const DEFAULT_COASTLINE = {
   ripplesEnabled: true,
   rippleCount: 3,
@@ -80,6 +83,7 @@ export default function App() {
   const featureVersion = useFeatureVersion();
   useEffect(() => { if (featureVersion) setAtmosphere((a) => ({ ...a })); }, [featureVersion]);
   const [coastline, setCoastline] = useState(defaultPreset.coastline || DEFAULT_COASTLINE);
+  const [fog, setFog] = useState(NO_FOG); // fog of war (plugin): what the player view hides
 
   // Layer panel: per-layer visibility / opacity / blend, and the user's stamp library
   const [layers, setLayers] = useState(DEFAULT_LAYERS);
@@ -102,7 +106,12 @@ export default function App() {
         brushStrokes: [],
         stamps: defaultPreset.stamps || [],
         paths: defaultPreset.paths || [],
-        texts: defaultPreset.texts || []
+        texts: defaultPreset.texts || [],
+        grid: defaultPreset.grid,
+        atmosphere: defaultPreset.atmosphere,
+        coastline: defaultPreset.coastline || DEFAULT_COASTLINE,
+        layers: DEFAULT_LAYERS,
+        fog: NO_FOG
       }
     ],
     index: 0
@@ -170,9 +179,9 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   // Latest document state, readable from timers and handlers without stale closures
-  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts });
+  const docRef = useRef({ landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog });
   useEffect(() => {
-    docRef.current = { landmasses, brushStrokes, stamps, paths, texts };
+    docRef.current = { landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog };
   });
   const pendingRef = useRef(null);
 
@@ -182,7 +191,7 @@ export default function App() {
     setHist((h) => {
       const cur = h.list[h.index];
       if (Object.keys(snapshot).every((k) => snapshot[k] === cur[k])) return h;
-      const list = [...h.list.slice(0, h.index + 1), snapshot];
+      const list = [...h.list.slice(0, h.index + 1), snapshot].slice(-MAX_HISTORY);
       return { list, index: list.length - 1 };
     });
   }, []);
@@ -202,6 +211,14 @@ export default function App() {
     }, 400);
   }, [recordHistory]);
 
+  // Map settings edited from panels (grid, atmosphere, coastline, layers): set, then fold into one undo step
+  const withCommit = (set) => (v) => { set(v); scheduleCommit(); };
+  const setGridH = withCommit(setGrid);
+  const setAtmosphereH = withCommit(setAtmosphere);
+  const setCoastlineH = withCommit(setCoastline);
+  const setLayersH = withCommit(setLayers);
+  const setFogH = withCommit(setFog);
+
   // Atomic commit on mouse release
   const handleCommitAction = useCallback(() => {
     flushPending();
@@ -220,6 +237,12 @@ export default function App() {
     setStamps(snap.stamps);
     setPaths(snap.paths);
     setTexts(snap.texts);
+    setGrid(snap.grid);
+    setAtmosphere(snap.atmosphere);
+    setCoastline(snap.coastline);
+    setLayers(snap.layers);
+    setFog(snap.fog);
+    setActiveLayer((k) => (k && !snap.layers[k] ? '' : k));
     setSelectedStampId(null);
     setSelectedTextId(null);
     setSelectedPathId(null);
@@ -338,7 +361,7 @@ export default function App() {
 
   // Keyboard shortcut listener: keys come from the rebindable keymap (Settings), arrows always nudge
   useEffect(() => {
-    const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand' };
+    const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand', 'tool.fog': 'fog' };
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const combo = comboOf(e);
@@ -359,6 +382,7 @@ export default function App() {
       const hit = actionFor(keymap, combo);
       if (!hit) return;
       if (TOOL_OF[hit.id]) {
+        if (hit.id === 'tool.fog' && !feature('fog')) return;
         setActiveTool(TOOL_OF[hit.id]);
       } else if (hit.id === 'edit.undo') {
         e.preventDefault();
@@ -468,6 +492,13 @@ export default function App() {
     });
   };
 
+  // A finished fog-of-war stroke: one undo step
+  const handleCommitFog = (stroke) => {
+    const next = { ...docRef.current.fog, enabled: true, strokes: [...docRef.current.fog.strokes, stroke] };
+    setFog(next);
+    recordHistory({ fog: next });
+  };
+
   // A finished mask/brush stroke: add it and record one undo step (docRef is not refreshed until the next render)
   const handleCommitStroke = (stroke) => {
     const next = [...docRef.current.brushStrokes.filter((b) => b.id !== stroke.id), stroke];
@@ -482,7 +513,8 @@ export default function App() {
     setStamps(next.stamps);
     setPaths(next.paths);
     setTexts(next.texts);
-    setLayers((p) => Object.fromEntries(Object.entries(p).filter(([k]) => k !== key)));
+    next.layers = Object.fromEntries(Object.entries(layers).filter(([k]) => k !== key));
+    setLayers(next.layers);
     if (activeLayer === key) setActiveLayer('');
     recordHistory(next);
   };
@@ -650,8 +682,29 @@ export default function App() {
     atmosphere,
     coastline,
     layers,
+    fog,
     customStamps: customStamps.map(({ img: _img, ...c }) => c)
   });
+
+  // Fog of war player window: the GM's map goes to it over a BroadcastChannel, a moment after each change
+  const [fogMode, setFogMode] = useState('reveal');
+  const [playerOn, setPlayerOn] = useState(false);
+  const projectRef = useRef(null);
+  projectRef.current = buildProject;
+  const playerLinkRef = useRef(null);
+  const openPlayer = () => {
+    const fogPlugin = feature('fog');
+    if (!fogPlugin) return;
+    if (!playerLinkRef.current) playerLinkRef.current = fogPlugin.openPlayerLink(() => projectRef.current());
+    fogPlugin.openPlayerWindow();
+    setPlayerOn(true);
+  };
+  useEffect(() => () => playerLinkRef.current?.close(), []);
+  useEffect(() => {
+    if (!playerOn || !playerLinkRef.current) return;
+    const t = setTimeout(() => playerLinkRef.current?.send(projectRef.current()), 250);
+    return () => clearTimeout(t);
+  }, [playerOn, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog, mapWidth, mapHeight, mapType]);
 
   const handleExportJson = () => {
     const safeTitle = mapTitle.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
@@ -676,10 +729,18 @@ export default function App() {
     setStamps(loadedStamps);
     setPaths(data.paths || []);
     setTexts(data.texts || []);
-    if (data.grid) setGrid(data.grid);
-    if (data.atmosphere) setAtmosphere(data.atmosphere);
-    setCoastline(data.coastline || DEFAULT_COASTLINE);
-    setLayers({ ...DEFAULT_LAYERS, ...(data.layers || {}) });
+    const loaded = {
+      grid: data.grid || docRef.current.grid,
+      atmosphere: data.atmosphere || docRef.current.atmosphere,
+      coastline: data.coastline || DEFAULT_COASTLINE,
+      layers: { ...DEFAULT_LAYERS, ...(data.layers || {}) },
+      fog: data.fog || NO_FOG
+    };
+    setGrid(loaded.grid);
+    setAtmosphere(loaded.atmosphere);
+    setCoastline(loaded.coastline);
+    setLayers(loaded.layers);
+    setFog(loaded.fog);
     setCustomStamps(
       (data.customStamps || []).map((c) => {
         const img = new Image();
@@ -695,7 +756,8 @@ export default function App() {
       brushStrokes: data.brushStrokes || [],
       stamps: loadedStamps,
       paths: data.paths || [],
-      texts: data.texts || []
+      texts: data.texts || [],
+      ...loaded
     });
   };
 
@@ -758,9 +820,13 @@ export default function App() {
     await persist(project, id, true).catch(() => {});
     enterEditor(id);
   };
-  const createMap = (templateId, title, w, h) => {
+  const createMap = (tpl, title, w, h, gen = null) => {
     setDialog(null);
-    adoptProject(blankProject(getTemplate(templateId), title, w, h));
+    const project = blankProject(tpl, title, w, h);
+    const worldGen = gen && feature('worldGen');
+    if (worldGen) Object.assign(project, worldGen.generateWorld({ ...gen, width: w, height: h, climate: tpl.id === 'region' ? 'region' : 'world' }));
+    adoptProject(project);
+    if (tpl.pack) setActiveBiome(tpl.defaultBiome); // a pack template's starting brush
   };
   const openSample = (presetId) => {
     const found = PRESET_MAPS.find((p) => p.id === presetId);
@@ -838,7 +904,7 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         gridEnabled={grid.enabled}
-        setGridEnabled={(val) => setGrid((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
+        setGridEnabled={(val) => setGridH((prev) => ({ ...prev, enabled: typeof val === 'function' ? val(prev.enabled) : val }))}
         onExport={() => setDialog('export')}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
@@ -899,6 +965,9 @@ export default function App() {
             pathColor={pathColor}
             onAddBrushStroke={handleAddBrushStroke}
             onCommitStroke={handleCommitStroke}
+            fog={fog}
+            fogMode={fogMode}
+            onCommitFog={handleCommitFog}
             onAddStamp={handleAddStamp}
             onUpdateStamp={handleUpdateStamp}
             onAddPath={handleAddPath}
@@ -938,6 +1007,12 @@ export default function App() {
           biomes={biomesFor(tpl)}
           allBiomes={tpl.biomes !== null}
             activeTool={activeTool}
+            fog={fog}
+            setFog={setFogH}
+            fogMode={fogMode}
+            setFogMode={setFogMode}
+            onOpenPlayer={openPlayer}
+            playerOn={playerOn}
             maskMode={maskMode}
             setMaskMode={setMaskMode}
             maskShape={maskShape}
@@ -945,7 +1020,7 @@ export default function App() {
             maskRoughness={maskRoughness}
             setMaskRoughness={setMaskRoughness}
             coastlineConfig={coastline}
-            setCoastlineConfig={setCoastline}
+            setCoastlineConfig={setCoastlineH}
             brushSize={brushSize}
             setBrushSize={setBrushSize}
             activeBiome={activeBiome}
@@ -992,9 +1067,9 @@ export default function App() {
             setTextStroke={setTextStroke}
             onAddText={handleAddText}
             gridConfig={grid}
-            setGridConfig={setGrid}
+            setGridConfig={setGridH}
             atmosphereConfig={atmosphere}
-            setAtmosphereConfig={setAtmosphere}
+            setAtmosphereConfig={setAtmosphereH}
             selectedStamp={selectedStamp}
             selectedText={selectedText}
             selectedPath={selectedPath}
@@ -1016,7 +1091,7 @@ export default function App() {
           customStamps={customStamps}
           onOpenImport={() => setDialog('stamps')}
           layers={layers}
-          setLayers={setLayers}
+          setLayers={setLayersH}
           activeLayer={activeLayer}
           setActiveLayer={setActiveLayer}
           onDeleteLayer={handleDeleteLayer}
@@ -1024,11 +1099,11 @@ export default function App() {
           hasSelection={!!(selectedStampId || selectedTextId || selectedPathId)}
           objects={{ stamps, texts, paths, selectedStampId, groupIds, selectedTextId, selectedPathId, onSelect: handleSelectObject, onMove: handleMoveObjectsTo }}
           gridConfig={grid}
-          setGridConfig={setGrid}
+          setGridConfig={setGridH}
           atmosphereConfig={atmosphere}
-          setAtmosphereConfig={setAtmosphere}
+          setAtmosphereConfig={setAtmosphereH}
           coastlineConfig={coastline}
-          setCoastlineConfig={setCoastline}
+          setCoastlineConfig={setCoastlineH}
         />
       </div>
       {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
@@ -1039,6 +1114,7 @@ export default function App() {
           mapWidth={mapWidth}
           mapHeight={mapHeight}
           gridEnabled={grid.enabled}
+          gridType={grid.type}
           onClose={() => setDialog(null)}
           onExport={handleExport}
           onLayers={feature('layersZip') ? handleExportLayers : null}

@@ -529,6 +529,92 @@ export const STAMPS = [
     }
   },
   {
+    id: 'map_cartouche',
+    name: 'Title Cartouche (scroll)',
+    category: 'world_nautical',
+    rotate: 'fixed',
+    defaultScale: 2,
+    aspect: 3.2,
+    // an unrolled scroll with curled ends; put a text label on top for the map's title
+    render: (ctx, size, color = '#2c221e', fill = '#efe2bf') => {
+      const h = size, w = size * 3.2;
+      const top = h * 0.2, bot = h * 0.8, curl = h * 0.22, inset = w * 0.07;
+      ctx.save();
+      ctx.lineWidth = Math.max(1, h * 0.03);
+      ctx.strokeStyle = color;
+      ctx.lineJoin = 'round';
+      // banner body: gently waving top and bottom edges
+      ctx.beginPath();
+      ctx.moveTo(inset, top);
+      ctx.bezierCurveTo(w * 0.35, top - h * 0.08, w * 0.65, top + h * 0.08, w - inset, top);
+      ctx.lineTo(w - inset, bot);
+      ctx.bezierCurveTo(w * 0.65, bot + h * 0.08, w * 0.35, bot - h * 0.08, inset, bot);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.stroke();
+      // rolled ends: a cylinder at each side, darker underside
+      for (const x of [inset, w - inset]) {
+        ctx.beginPath();
+        ctx.ellipse(x, (top + bot) / 2, curl * 0.55, (bot - top) / 2 + h * 0.06, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(x, (top + bot) / 2, curl * 0.22, (bot - top) / 2 - h * 0.04, 0, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.stroke();
+      }
+      // inner rule
+      ctx.lineWidth = Math.max(0.5, h * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(inset + curl * 0.9, top + h * 0.09);
+      ctx.bezierCurveTo(w * 0.35, top + h * 0.01, w * 0.65, top + h * 0.17, w - inset - curl * 0.9, top + h * 0.09);
+      ctx.moveTo(inset + curl * 0.9, bot - h * 0.09);
+      ctx.bezierCurveTo(w * 0.35, bot - h * 0.01, w * 0.65, bot - h * 0.17, w - inset - curl * 0.9, bot - h * 0.09);
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+  {
+    id: 'map_scale_bar',
+    name: 'Scale Bar',
+    category: 'world_nautical',
+    rotate: 'fixed',
+    defaultScale: 1.5,
+    aspect: 5,
+    // four alternating segments with ticks; add a text label (e.g. "0  50  100 miles") under it
+    render: (ctx, size, color = '#2c221e', fill = '#efe2bf') => {
+      const h = size, w = size * 5;
+      const x0 = w * 0.04, x1 = w * 0.96, y = h * 0.42, bh = h * 0.16, seg = (x1 - x0) / 4;
+      ctx.save();
+      ctx.lineWidth = Math.max(1, h * 0.03);
+      ctx.strokeStyle = color;
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = i % 2 ? fill : color;
+        ctx.fillRect(x0 + i * seg, y, seg, bh);
+      }
+      ctx.strokeRect(x0, y, x1 - x0, bh);
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++) {
+        const x = x0 + i * seg;
+        ctx.moveTo(x, y - h * 0.12);
+        ctx.lineTo(x, y + bh + h * 0.12);
+      }
+      // half-segment subdivisions on the first segment, as on old survey maps
+      for (let i = 1; i < 4; i++) {
+        const x = x0 + (seg * i) / 4;
+        ctx.moveTo(x, y - h * 0.06);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+  {
     id: 'ship_caravel',
     name: 'Merchant Caravel',
     category: 'world_nautical',
