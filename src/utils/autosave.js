@@ -28,13 +28,60 @@ async function tx(stores, mode, fn) {
 
 export const newMapId = () => 'map_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-export const saveMap = (id, project, meta) =>
-  tx(['projects', 'meta'], 'readwrite', (p, m) => {
-    p.put(project, id);
-    return m.put({ ...meta, id, updated: Date.now() }, id);
+/** Thrown by saveMap when the stored map is not at the revision the caller expected (another tab saved it). */
+export class SaveConflictError extends Error {
+  constructor(rev) {
+    super('This map was saved from another tab');
+    this.name = 'SaveConflictError';
+    this.rev = rev; // the revision now stored
+  }
+}
+
+/**
+ * Saves a map and its meta record in one transaction and resolves to the new revision.
+ * With `expectRev` the save only happens when the stored revision is still that one (0 = not stored yet); otherwise it
+ * rejects with SaveConflictError and nothing is written. Without it the map is written unconditionally.
+ */
+export async function saveMap(id, project, meta, expectRev) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(['projects', 'meta'], 'readwrite');
+    const m = t.objectStore('meta');
+    let rev, conflict = null;
+    const cur = m.get(id);
+    cur.onsuccess = () => {
+      const stored = (cur.result && cur.result.rev) || 0;
+      if (expectRev !== undefined && stored !== expectRev) {
+        conflict = new SaveConflictError(stored);
+        t.abort();
+        return;
+      }
+      rev = stored + 1;
+      t.objectStore('projects').put(project, id);
+      m.put({ ...meta, id, updated: Date.now(), rev }, id);
+    };
+    t.oncomplete = () => resolve(rev);
+    t.onabort = () => reject(conflict || t.error || new Error('Save failed'));
   });
+}
 
 export const loadMap = (id) => tx(['projects'], 'readonly', (p) => p.get(id)).catch(() => null);
+
+/** The stored map with the revision it is at, or null. */
+export async function loadMapRecord(id) {
+  try {
+    const db = await open();
+    return await new Promise((resolve, reject) => {
+      const t = db.transaction(['projects', 'meta']);
+      const p = t.objectStore('projects').get(id);
+      const m = t.objectStore('meta').get(id);
+      t.oncomplete = () => resolve(p.result ? { project: p.result, rev: (m.result && m.result.rev) || 0 } : null);
+      t.onabort = () => reject(t.error);
+    });
+  } catch {
+    return null;
+  }
+}
 
 export const deleteMap = (id) =>
   tx(['projects', 'meta'], 'readwrite', (p, m) => {

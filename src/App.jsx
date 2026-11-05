@@ -15,7 +15,7 @@ import { actionFor, comboOf, loadKeymap, saveKeymap } from './utils/keymap';
 import { stepAngle, stepScale } from './utils/adjust';
 import { applyTheme, loadTheme } from './utils/theme';
 import SettingsDialog from './components/SettingsDialog';
-import { saveMap, loadMap, deleteMap, listMaps, newMapId, hydrateStamps } from './utils/autosave';
+import { saveMap, loadMap, loadMapRecord, deleteMap, listMaps, newMapId, hydrateStamps } from './utils/autosave';
 import Home from './components/Home';
 import NewMapDialog from './components/NewMapDialog';
 import { getTemplate, biomesFor, blankProject } from './engine/mapTemplates';
@@ -713,13 +713,52 @@ export default function App() {
   // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
   const thumbRef = useRef({ at: 0, url: null });
-  const persist = (project, id, withThumb) => {
+  const persist = (project, id, withThumb, expectRev) => {
     if (withThumb || Date.now() - thumbRef.current.at > 10000) {
       thumbRef.current = { at: Date.now(), url: makeThumb(project) };
     }
     return saveMap(id, project, {
       title: project.title, template: project.template, width: project.width, height: project.height, thumb: thumbRef.current.url
+    }, expectRev);
+  };
+  // The same map can be open in two tabs. Each tab remembers the revision it last loaded or saved (per map id) and only
+  // overwrites that revision; saves run one at a time so a tab never conflicts with itself.
+  const savedRef = useRef(new Map()); // id -> { rev, project }
+  const saveChain = useRef(Promise.resolve());
+  /** Saves the open map. Resolves 'saved', or 'copied' when another tab had changed it and this version became a copy. */
+  const saveOpenMap = (withThumb) => {
+    const id = currentMapId;
+    const project = buildProject();
+    const job = saveChain.current.catch(() => {}).then(async () => {
+      const known = savedRef.current.get(id);
+      try {
+        savedRef.current.set(id, { rev: await persist(project, id, withThumb, known ? known.rev : undefined), project });
+        return 'saved';
+      } catch (e) {
+        if (!e || e.name !== 'SaveConflictError') throw e;
+        // Often the other tab only re-saved the same content (opening a map saves it). Then nothing would be lost.
+        const stored = await loadMapRecord(id);
+        const same = (a) => stored && stored.rev === e.rev && a && JSON.stringify(stored.project) === JSON.stringify(a);
+        if (same(project)) {
+          savedRef.current.set(id, { rev: e.rev, project });
+          return 'saved';
+        }
+        if (same(known && known.project)) {
+          savedRef.current.set(id, { rev: await persist(project, id, withThumb, e.rev), project });
+          return 'saved';
+        }
+        // It really was changed there: keep both versions
+        const copyId = newMapId();
+        const copy = { ...project, title: `${project.title} (copy from another tab)` };
+        savedRef.current.set(copyId, { rev: await persist(copy, copyId, true, 0), project: copy });
+        setCurrentMapId(copyId);
+        setMapTitle(copy.title);
+        alert(`"${project.title}" was changed in another tab. To keep both, this tab's version was saved as a separate map, "${copy.title}", and you are now editing that copy.`);
+        return 'copied';
+      }
     });
+    saveChain.current = job;
+    return job;
   };
   const refreshLibrary = () => listMaps().then(setLibrary).catch(() => setLibrary([]));
   useEffect(() => {
@@ -728,8 +767,8 @@ export default function App() {
   useEffect(() => {
     if (view !== 'editor' || !currentMapId) return;
     const t = setTimeout(() => {
-      persist(buildProject(), currentMapId, false)
-        .then(() => setAutosaveStatus('Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
+      saveOpenMap(false)
+        .then((r) => setAutosaveStatus(r === 'copied' ? 'Changed in another tab: saved as a copy' : 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
         .catch(() => setAutosaveStatus('Save failed (storage full?)'));
     }, 1500);
     return () => clearTimeout(t);
@@ -747,7 +786,7 @@ export default function App() {
   const saveNow = async () => {
     if (!currentMapId) return true;
     try {
-      await persist(buildProject(), currentMapId, true);
+      await saveOpenMap(true);
       return true;
     } catch {
       setAutosaveStatus('Save failed (storage full?)');
@@ -761,15 +800,17 @@ export default function App() {
     setView('home');
   };
   const openMap = async (id) => {
-    const data = await loadMap(id);
-    if (!data) return;
-    applyProject(data);
+    const rec = await loadMapRecord(id);
+    if (!rec) return;
+    savedRef.current.set(id, { rev: rec.rev, project: rec.project });
+    applyProject(rec.project);
     enterEditor(id);
   };
   const adoptProject = async (project) => {
     const id = newMapId();
     applyProject(project);
-    await persist(project, id, true).catch(() => {});
+    savedRef.current.set(id, { rev: 0, project: null }); // not stored yet
+    await persist(project, id, true, 0).then((rev) => savedRef.current.set(id, { rev, project: null }), () => {});
     enterEditor(id);
   };
   const createMap = (templateId, title, w, h) => {
