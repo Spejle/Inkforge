@@ -840,11 +840,17 @@ export default function CanvasArea({
     draggedObjectRef.current = null;
   };
 
-  // Global window listeners to catch pointer releases outside canvas boundary
+  // Global window listeners to catch pointer releases outside canvas boundary. handleMouseUp reads props (the active
+  // tool, onCommitStroke, stamps...), so the listener calls the latest one through a ref: a listener bound to an old
+  // render finished a brush stroke with the tool that was active back then and dropped it.
+  const mouseUpRef = useRef(handleMouseUp);
+  useEffect(() => {
+    mouseUpRef.current = handleMouseUp;
+  });
   useEffect(() => {
     const onWindowMouseUp = () => {
       if (isInteractingRef.current || isPanningRef.current) {
-        handleMouseUp();
+        mouseUpRef.current();
       }
     };
     window.addEventListener('pointerup', onWindowMouseUp);
@@ -853,9 +859,7 @@ export default function CanvasArea({
       window.removeEventListener('pointerup', onWindowMouseUp);
       window.removeEventListener('pointercancel', onWindowMouseUp);
     };
-    // handleMouseUp only reads refs and the latest onCommitAction
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onCommitAction]);
+  }, []);
 
   return (
     <div

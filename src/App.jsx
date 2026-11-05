@@ -144,7 +144,10 @@ export default function App() {
   const [layout, setLayout] = useState(loadLayout);
   useEffect(() => { applyLayout(layout); saveLayout(layout); }, [layout]);
   const [brushRing, setBrushRing] = usePref('inkforge-brushRing', true); // dashed ring that follows the cursor
-  const [maskShape, setMaskShape] = useState('rough');
+  const [maskShapeChoice, setMaskShape] = useState('rough');
+  // Fill needs the Mask fill plugin: once it is removed the sculptor goes back to Rough instead of laying down
+  // fill strokes with no fill in them (invisible, but saved and undoable). Re-installing brings Fill back.
+  const maskShape = maskShapeChoice === 'fill' && !feature('maskFill') ? 'rough' : maskShapeChoice;
   const [maskRoughness, setMaskRoughness] = useState(0.5);
 
   const [brushSize, setBrushSize] = useState(60);
@@ -600,16 +603,21 @@ export default function App() {
     setTexts(apply);
   };
 
+  // Adds or replaces a path. docRef gets the change at once: river generation, a finished stroke and a spine edit
+  // commit an undo step in the same event, and recordHistory reads docRef (it used to snapshot the map without it).
   const handleAddPath = (path) => {
-    setPaths((prev) => {
+    const tag = layerTag();
+    const upsert = (prev) => {
       const idx = prev.findIndex((p) => p.id === path.id);
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = { ...path, ...(prev[idx].layer ? { layer: prev[idx].layer } : {}) };
         return copy;
       }
-      return [...prev, { ...path, ...layerTag() }];
-    });
+      return [...prev, { ...path, ...tag }];
+    };
+    docRef.current = { ...docRef.current, paths: upsert(docRef.current.paths) };
+    setPaths(upsert);
   };
 
   const handleAddText = () => {
@@ -765,6 +773,7 @@ export default function App() {
     setSelectedStampId(null);
     setSelectedTextId(null);
     setSelectedPathId(null);
+    setPluginHint(true); // dismissing the missing-plugin bar applies to the map it was shown for
     resetHistory({
       landmasses: data.landmasses || [],
       brushStrokes: data.brushStrokes || [],
@@ -775,10 +784,14 @@ export default function App() {
     });
   };
 
+  // Opening a file from the editor makes it a new map in the library, as from the main menu: loading it into the
+  // current map's id overwrote the map being edited with the file. The current map is saved first (autosave lags).
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
-      if (data) applyProject(data);
+      if (!data) return;
+      if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+      await adoptProject({ ...data, template: data.template || data.type });
     } catch {
       alert('Could not open file: invalid .inkforge JSON format.');
     }
@@ -787,9 +800,10 @@ export default function App() {
   // Library: every map is saved under its own id; the main menu lists them
   const [autosaveStatus, setAutosaveStatus] = useState('');
   const thumbRef = useRef({ id: null, at: 0, url: null });
+  // withThumb: true draws a fresh thumbnail, false reuses this map's one for 30 s, 'cached' reuses it however old (no time
+  // to draw while the page is being hidden). The thumbnail is a full map render on the main thread (about a second on the
+  // stress map); leaving to the main menu always takes a fresh one, and so does the first save of another map.
   const persist = (project, id, withThumb) => {
-    // the thumbnail is a full map render on the main thread (about a second on the stress map), so autosave refreshes it
-    // at most every 30 s; leaving to the main menu always takes a fresh one, and so does the first save of another map
     if (thumbDue(thumbRef.current, id, Date.now(), withThumb)) {
       thumbRef.current = { id, at: Date.now(), url: makeThumb(project) };
     }
@@ -803,15 +817,29 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (view !== 'editor' || !currentMapId) return;
+    let done = false;
     let idle = 0;
-    const save = () => {
-      persist(buildProject(), currentMapId, false)
+    const save = (e) => {
+      if (done) return;
+      done = true;
+      clearTimeout(t);
+      cancelIdle(idle);
+      persist(buildProject(), currentMapId, e ? 'cached' : false)
         .then(() => setAutosaveStatus('Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
         .catch(() => setAutosaveStatus('Save failed (storage full?)'));
     };
     // after 1.5 s without edits, then in an idle moment so a save does not land in the middle of a drag
-    const t = setTimeout(() => { idle = whenIdle(save); }, 1500);
-    return () => { clearTimeout(t); cancelIdle(idle); };
+    const t = setTimeout(() => { idle = whenIdle(() => save()); }, 1500);
+    // a reload, a closed tab or a switch to another app inside the wait used to lose the last edits
+    const onHidden = () => { if (document.visibilityState === 'hidden') save('hidden'); };
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      clearTimeout(t);
+      cancelIdle(idle);
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, fog, customStamps]);
 

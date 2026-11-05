@@ -11,3 +11,9 @@ test('autosave reuses a recent thumbnail of the same map only', () => {
   assert.equal(thumbDue({ id: null, at: 0 }, 'map_a', 5), true, 'first save');
   assert.equal(thumbDue(prev, 'map_a', 1001, true), true, 'forced');
 });
+
+test("'cached' (page being hidden) reuses this map's thumbnail however old, never another map's", () => {
+  const prev = { id: 'map_a', at: 1000 };
+  assert.equal(thumbDue(prev, 'map_a', 1000 + 10 * THUMB_EVERY_MS, 'cached'), false);
+  assert.equal(thumbDue(prev, 'map_b', 1001, 'cached'), true);
+});

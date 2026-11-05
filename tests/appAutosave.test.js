@@ -9,7 +9,7 @@ test('autosave runs when any saved document field changes', () => {
   const src = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
   const body = src.match(/const buildProject = \(\) => \(\{([\s\S]*?)\n {2}\}\);/)[1];
   const fields = [...body.matchAll(/^\s{4}(\w+)(?=[,:\n])/gm)].map((m) => m[1]);
-  const effect = src.match(/const save = \(\) => \{\s*persist\(buildProject\(\), currentMapId, false\)[\s\S]*?\}, \[([^\]]*)\]\);/)[1];
+  const effect = src.match(/const save = \(e\) => \{[\s\S]*?persist\(buildProject\(\), currentMapId,[\s\S]*?\}, \[([^\]]*)\]\);/)[1];
   const deps = effect.split(',').map((s) => s.trim());
   const stateOf = { title: 'mapTitle', type: 'mapType', width: 'mapWidth', height: 'mapHeight' };
   assert.ok(fields.includes('fog') && fields.length > 10, `parsed ${fields}`);
