@@ -35,9 +35,9 @@ export default function ObjectsPanel({ stamps, texts, paths, layers, selectedSta
 
   return (
     <div className="fx-card">
-      <div className="fx-card-header"><h4>Objects ({all.length})</h4></div>
+      <div className="fx-card-header"><h3>Objects ({all.length})</h3></div>
       <div className="fx-card-content">
-        <input style={{ width: '100%', marginBottom: 6, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(0,0,0,.25)', color: 'inherit' }} placeholder="Filter…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input style={{ width: '100%', marginBottom: 6, boxSizing: 'border-box', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(0,0,0,.25)', color: 'inherit' }} type="search" aria-label="Filter objects" placeholder="Filter…" value={q} onChange={(e) => setQ(e.target.value)} />
         {groups.map((g) => (
           <div key={g.key || 'default'}>
             <div
@@ -49,9 +49,12 @@ export default function ObjectsPanel({ stamps, texts, paths, layers, selectedSta
               {g.name} <small>({g.items.length})</small>
             </div>
             {g.items.slice(0, CAP).map(({ o, name, kind: k }) => (
-              <div
+              <button
+                type="button"
                 key={o.id}
                 className={`obj-row ${chosen(o) ? 'on' : ''}`}
+                aria-pressed={chosen(o)}
+                aria-label={`${k === 'text' ? 'Label' : k === 'path' ? 'Path' : 'Stamp'}: ${name}`}
                 draggable
                 onDragStart={(e) => {
                   const ids = chosen(o) && groupIds.length ? groupIds : [o.id];
@@ -59,8 +62,8 @@ export default function ObjectsPanel({ stamps, texts, paths, layers, selectedSta
                 }}
                 onClick={(e) => onSelect(o.id, k, e.shiftKey || e.ctrlKey || e.metaKey)}
               >
-                <span className="obj-kind">{k === 'text' ? 'T' : k === 'path' ? '〰' : '◆'}</span> {name}
-              </div>
+                <span className="obj-kind" aria-hidden="true">{k === 'text' ? 'T' : k === 'path' ? '〰' : '◆'}</span> {name}
+              </button>
             ))}
             {g.items.length > CAP && <div className="obj-more">+{g.items.length - CAP} more: use the filter</div>}
           </div>

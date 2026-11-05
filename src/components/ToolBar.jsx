@@ -38,19 +38,22 @@ export default function ToolBar({ activeTool, setActiveTool, keymap }) {
         <button
           key={tool.id}
           className={`tool-button ${activeTool === tool.id ? 'active' : ''}`}
+          aria-label={tool.name}
+          aria-pressed={activeTool === tool.id}
+          aria-keyshortcuts={key || undefined}
           onClick={() => setActiveTool(tool.id)}
           title={`${tool.name}${key ? ` (${key})` : ''}\n${tool.desc}`}
         >
           <Icon size={20} className="tool-icon" />
-          <span className="tool-shortcut-badge">{key}</span>
+          <span className="tool-shortcut-badge" aria-hidden="true">{key}</span>
         </button>
       );
     });
   return (
     <aside className="tool-bar" aria-label="Tools">
-      <div className="tool-list">{group(TOOLS.filter((t) => DRAW_IDS.includes(t.id)))}</div>
+      <div className="tool-list" role="group" aria-label="Draw">{group(TOOLS.filter((t) => DRAW_IDS.includes(t.id)))}</div>
       <div className="tool-rail-divider" />
-      <div className="tool-list">{group(TOOLS.filter((t) => !DRAW_IDS.includes(t.id)))}</div>
+      <div className="tool-list" role="group" aria-label="Navigate and adjust">{group(TOOLS.filter((t) => !DRAW_IDS.includes(t.id)))}</div>
     </aside>
   );
 }

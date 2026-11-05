@@ -135,7 +135,8 @@ export default function CanvasArea({
   // Key listeners for spacebar pan & shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.code === 'Space' && !e.repeat && e.target.tagName !== 'INPUT') {
+      // Space on a focused control presses it; only Space over the page arms panning
+      if (e.code === 'Space' && !e.repeat && !e.target.closest?.('input, textarea, select, button, [role="button"], [role="tab"], [role="radio"], [role="separator"], [contenteditable="true"]')) {
         setSpacePressed(true);
       }
     };

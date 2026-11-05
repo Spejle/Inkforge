@@ -24,7 +24,7 @@ export default function PluginsSettings() {
   const packs = listPacks();
   return (
     <div className="plugins-settings">
-      <h4>Marketplace</h4>
+      <h3>Marketplace</h3>
       <p className="mute">Optional features by the InkForge project. Each one downloads only when you install it, from this site; maps that use a removed plugin keep their settings and draw without it.</p>
       {FEATURES.map((f) => {
         const err = loadError(f.id), busy = isPending(f.id);
@@ -50,7 +50,7 @@ export default function PluginsSettings() {
         <div className="plugin-info"><b>Built-in stamps</b><div className="mute">The procedural stamp catalog, written with generative AI. Off: only your imported images and content packs are offered. Maps that already use them still draw them.</div></div>
         <label className="plugin-toggle"><input type="checkbox" checked={stampPrefs.builtin} onChange={(e) => setStampPref('builtin', e.target.checked)} /> Enabled</label>
       </div>
-      <h4>Content packs</h4>
+      <h3>Content packs</h3>
       <p className="mute">A content pack is a <b>.json data file</b> that adds stamps, light presets or biomes. It contains no code and cannot run anything. Only install packs from people you trust to have drawn what they say they drew.</p>
       <label className="btn-ghost plugin-import">
         <Upload size={14} /> Import a pack (.json)

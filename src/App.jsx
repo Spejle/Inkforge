@@ -341,6 +341,7 @@ export default function App() {
     const TOOL_OF = { 'tool.select': 'select', 'tool.mask': 'mask', 'tool.brush': 'brush', 'tool.stamp': 'stamp', 'tool.path': 'path', 'tool.text': 'text', 'tool.grid': 'grid', 'tool.atmosphere': 'atmosphere', 'tool.eraser': 'eraser', 'tool.hand': 'hand' };
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (document.querySelector('[aria-modal="true"]')) return; // a dialog is open: its keys are its own
       const combo = comboOf(e);
       if (!combo) return;
 
@@ -792,6 +793,15 @@ export default function App() {
     setPanOffset({ x: 0, y: 0 });
   };
 
+  // Switching between the main menu and the editor replaces the whole screen: start keyboard and screen-reader users at
+  // the new screen's heading instead of leaving focus on a button that no longer exists
+  const headingRef = useRef(null);
+  const firstView = useRef(true);
+  useEffect(() => {
+    if (firstView.current) { firstView.current = false; return; }
+    headingRef.current?.focus();
+  }, [view]);
+
   useEffect(() => {
     if (view === 'editor') fitToScreen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -810,7 +820,7 @@ export default function App() {
   if (view === 'home') {
     return (
       <div className="inkforge-app">
-        <Home maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} onSettings={() => setDialog('settings')} />
+        <Home headingRef={headingRef} maps={library} onOpen={openMap} onNew={() => setDialog('newmap')} onDelete={removeMap} onDuplicate={duplicateMap} onImport={importFromHome} onOpenSample={openSample} onSettings={() => setDialog('settings')} />
         {dialog === 'newmap' && <NewMapDialog onClose={() => setDialog(null)} onCreate={createMap} />}
         {(dialog === 'settings' || dialog === 'plugins') && <SettingsDialog initialTab={dialog === 'plugins' ? 'plugins' : 'appearance'} layout={layout} setLayout={setLayout} onClose={() => setDialog(null)} theme={theme} setTheme={setTheme} keymap={keymap} setKeymap={setKeymap} />}
       </div>
@@ -852,7 +862,8 @@ export default function App() {
         <ToolBar activeTool={activeTool} setActiveTool={setActiveTool} keymap={keymap} />
 
 
-        <div className="center-stage">
+        <main className="center-stage" aria-label="Map canvas">
+          <h1 className="sr-only" tabIndex={-1} ref={headingRef}>InkForge editor: {mapTitle || 'Untitled map'}</h1>
           {missingPlugins.length > 0 && (
             <div className="plugin-banner" role="status">
               <span>This map uses {missingPlugins.map((f) => f.name).join(' and ')}, which {missingPlugins.length > 1 ? 'are' : 'is'} not installed, so {missingPlugins.length > 1 ? 'they are' : 'it is'} not drawn.</span>
@@ -921,7 +932,7 @@ export default function App() {
             customStamps={customStamps}
             statusNote={autosaveStatus}
           />
-        </div>
+        </main>
 
         <StampDrawer
           layout={layout}

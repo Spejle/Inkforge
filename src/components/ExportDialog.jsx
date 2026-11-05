@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Printer, Layers, Puzzle } from 'lucide-react';
 import { maxExportScale } from '../utils/exportUtils';
+import Modal from './Modal';
 
 const FORMATS = [
   ['png', 'PNG', 'Lossless, largest file'],
@@ -22,11 +23,6 @@ export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, onClose
   const formats = FORMATS.filter(([k]) => k !== 'vtt' || vtt);
   const set = (patch) => setO((p) => ({ ...p, ...patch }));
   useEffect(() => { try { localStorage.setItem(PREFS, JSON.stringify(o)); } catch { /* private mode */ } }, [o]);
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const cap = maxExportScale(mapWidth, mapHeight);
   const scale = Math.min(o.scale, cap);
@@ -47,47 +43,46 @@ export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, onClose
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Export" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose}>{(titleId) => (<>
         <div className="dialog-head">
-          <h3>Export <span className="val-badge">{w} × {h} px</span></h3>
+          <h2 id={titleId}>Export <span className="val-badge">{w} × {h} px</span></h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <div className="dialog-body">
-          <label className="fx-slider-label"><span>Format</span></label>
-          <div className="style-chips">
+          <span className="fx-slider-label" id="export-format"><span>Format</span></span>
+          <div className="style-chips" role="group" aria-labelledby="export-format">
             {formats.map(([k, label, tip]) => (
-              <button key={k} title={tip} className={`chip ${o.format === k ? 'active' : ''}`} onClick={() => set({ format: k })}>{label}</button>
+              <button key={k} title={tip} className={`chip ${o.format === k ? 'active' : ''}`} aria-pressed={o.format === k} onClick={() => set({ format: k })}>{label}</button>
             ))}
           </div>
           <p className="mute">{FORMATS.find((f) => f[0] === o.format)[2]}</p>
 
           {o.format === 'vtt' && (
             <>
-              <label className="fx-slider-label mt-2"><span>Embedded image</span></label>
-              <div className="style-chips">
+              <span className="fx-slider-label mt-2" id="export-vtt-image"><span>Embedded image</span></span>
+              <div className="style-chips" role="group" aria-labelledby="export-vtt-image">
                 {['webp', 'png'].map((k) => (
-                  <button key={k} className={`chip ${o.vttImage === k ? 'active' : ''}`} onClick={() => set({ vttImage: k })}>{k.toUpperCase()}</button>
+                  <button key={k} className={`chip ${o.vttImage === k ? 'active' : ''}`} aria-pressed={o.vttImage === k} onClick={() => set({ vttImage: k })}>{k.toUpperCase()}</button>
                 ))}
               </div>
             </>
           )}
 
-          <label className="fx-slider-label mt-2"><span>Resolution</span></label>
-          <div className="style-chips">
+          <span className="fx-slider-label mt-2" id="export-scale"><span>Resolution</span></span>
+          <div className="style-chips" role="group" aria-labelledby="export-scale">
             {SCALES.map((s) => (
-              <button key={s} disabled={s > cap * 1.001 && s !== 1} className={`chip ${o.scale === s ? 'active' : ''}`} onClick={() => set({ scale: s })}>
+              <button key={s} disabled={s > cap * 1.001 && s !== 1} className={`chip ${o.scale === s ? 'active' : ''}`} aria-pressed={o.scale === s} onClick={() => set({ scale: s })}>
                 {s}× · {Math.round(Math.max(mapWidth, mapHeight) * Math.min(s, cap))} px
               </button>
             ))}
           </div>
           {o.scale > cap && <p className="mute">Capped at {Math.floor(cap * 100) / 100}× by the browser's canvas limit.</p>}
 
-          <label className="fx-slider-label mt-2">
+          <label className="fx-slider-label mt-2" htmlFor="export-quality">
             <span>Quality</span>
             <span className="val-badge">{lossy ? `${o.quality}%` : 'lossless'}</span>
           </label>
-          <input type="range" min="40" max="100" value={o.quality} disabled={!lossy} onChange={(e) => set({ quality: parseInt(e.target.value) })} />
+          <input id="export-quality" type="range" min="40" max="100" value={o.quality} aria-valuetext={lossy ? `${o.quality}%` : 'lossless'} disabled={!lossy} onChange={(e) => set({ quality: parseInt(e.target.value) })} />
 
           {o.format !== 'vtt' && gridEnabled && (
             <label className="checkbox-label mt-2">
@@ -113,7 +108,6 @@ export default function ExportDialog({ mapWidth, mapHeight, gridEnabled, onClose
           )}
           <button className="btn-primary" disabled={busy} onClick={go}>{busy ? 'Rendering…' : 'Download'}</button>
         </div>
-      </div>
-    </div>
+    </>)}</Modal>
   );
 }

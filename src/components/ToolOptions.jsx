@@ -187,6 +187,7 @@ export default function ToolOptions({
               <input
                 type="text"
                 className="text-input"
+                aria-label="Label text"
                 style={{ width: '160px' }}
                 value={selectedText.text || ''}
                 onChange={(e) => onUpdateSelectedText?.({ text: e.target.value })}
@@ -220,6 +221,7 @@ export default function ToolOptions({
               <label className="color-picker-label" title="Text Fill Color">
                 <input
                   type="color"
+                  aria-label="Text Fill Color"
                   value={selectedText.color || '#271b12'}
                   onChange={(e) => onUpdateSelectedText?.({ color: e.target.value })}
                 />
@@ -228,6 +230,7 @@ export default function ToolOptions({
               <label className="color-picker-label" title="Text Outline Stroke">
                 <input
                   type="color"
+                  aria-label="Text Outline Stroke"
                   value={selectedText.stroke || '#ffffff'}
                   onChange={(e) => onUpdateSelectedText?.({ stroke: e.target.value })}
                 />
@@ -255,6 +258,7 @@ export default function ToolOptions({
               <label className="color-picker-label" title="Path Color">
                 <input
                   type="color"
+                  aria-label="Path Color"
                   value={selectedPath.color || '#3b82f6'}
                   onChange={(e) => onUpdateSelectedPath?.({ color: e.target.value })}
                 />
@@ -277,14 +281,14 @@ export default function ToolOptions({
           <span className="segment-label">Sculpt Mode:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${maskMode === 'land' ? 'active green' : ''}`}
+              className={`btn-toggle ${maskMode === 'land' ? 'active green' : ''}`} aria-pressed={!!(maskMode === 'land')}
               onClick={() => setMaskMode('land')}
               title="Paint continents and islands (X swaps Add / Carve)"
             >
               Add Land
             </button>
             <button
-              className={`btn-toggle ${maskMode === 'water' ? 'active blue' : ''}`}
+              className={`btn-toggle ${maskMode === 'water' ? 'active blue' : ''}`} aria-pressed={!!(maskMode === 'water')}
               onClick={() => setMaskMode('water')}
               title="Carve ocean, lakes, and fjords (X swaps Add / Carve)"
             >
@@ -297,21 +301,21 @@ export default function ToolOptions({
           <span className="segment-label">Brush Shape:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${maskShape === 'circle' ? 'active' : ''}`}
+              className={`btn-toggle ${maskShape === 'circle' ? 'active' : ''}`} aria-pressed={!!(maskShape === 'circle')}
               onClick={() => setMaskShape?.('circle')}
               title="Smooth Circular Stroke"
             >
               <CircleDot size={13} /> Circle
             </button>
             <button
-              className={`btn-toggle ${maskShape === 'rough' ? 'active amber' : ''}`}
+              className={`btn-toggle ${maskShape === 'rough' ? 'active amber' : ''}`} aria-pressed={!!(maskShape === 'rough')}
               onClick={() => setMaskShape?.('rough')}
               title="Fractal Jagged Coastline (Natural Fjords & Cliffs)"
             >
               <SlidersHorizontal size={13} /> Rough Edgy
             </button>
             <button
-              className={`btn-toggle ${maskShape === 'block' ? 'active' : ''}`}
+              className={`btn-toggle ${maskShape === 'block' ? 'active' : ''}`} aria-pressed={!!(maskShape === 'block')}
               onClick={() => setMaskShape?.('block')}
               title="Blocky Regional Stroke"
             >
@@ -319,7 +323,7 @@ export default function ToolOptions({
             </button>
             {fillOn && (
               <button
-                className={`btn-toggle ${maskShape === 'fill' ? 'active' : ''}`}
+                className={`btn-toggle ${maskShape === 'fill' ? 'active' : ''}`} aria-pressed={!!(maskShape === 'fill')}
                 onClick={() => setMaskShape?.('fill')}
                 title="Bucket fill: click enclosed water to fill it with land (Carve Water: click land to flood it)"
               >
@@ -369,7 +373,7 @@ export default function ToolOptions({
 
           <div className="popover-anchor">
             <button
-              className={`btn-toggle ${isCoastlineOpen ? 'active cyan' : ''}`}
+              className={`btn-toggle ${isCoastlineOpen ? 'active cyan' : ''}`} aria-pressed={!!(isCoastlineOpen)}
               onClick={() => setIsCoastlineOpen((v) => !v)}
               title="Configure coastal ripples, shallow sand border, and ocean depth shadow"
             >
@@ -413,21 +417,21 @@ export default function ToolOptions({
           <span className="segment-label">Target:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${brushTarget === 'foreground' ? 'active green' : ''}`}
+              className={`btn-toggle ${brushTarget === 'foreground' ? 'active green' : ''}`} aria-pressed={!!(brushTarget === 'foreground')}
               onClick={() => setBrushTarget?.('foreground')}
               title="Paint strictly onto landmasses (Mask Foreground)"
             >
               Land (FG)
             </button>
             <button
-              className={`btn-toggle ${brushTarget === 'background' ? 'active blue' : ''}`}
+              className={`btn-toggle ${brushTarget === 'background' ? 'active blue' : ''}`} aria-pressed={!!(brushTarget === 'background')}
               onClick={() => setBrushTarget?.('background')}
               title="Paint strictly in oceans and water (Mask Background)"
             >
               Water (BG)
             </button>
             <button
-              className={`btn-toggle ${brushTarget === 'both' ? 'active' : ''}`}
+              className={`btn-toggle ${brushTarget === 'both' ? 'active' : ''}`} aria-pressed={!!(brushTarget === 'both')}
               onClick={() => setBrushTarget?.('both')}
               title="Paint across entire canvas"
             >
@@ -480,21 +484,21 @@ export default function ToolOptions({
           <span className="segment-label">Preview:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${livePreview ? 'active' : ''}`}
+              className={`btn-toggle ${livePreview ? 'active' : ''}`} aria-pressed={!!(livePreview)}
               onClick={() => setLivePreview?.(!livePreview)}
               title="Render the real coastline, sand and biome fill while you drag (at half resolution). Off on a slow machine."
             >
               Live preview
             </button>
             <button
-              className={`btn-toggle ${strokeOutline ? 'active' : ''}`}
+              className={`btn-toggle ${strokeOutline ? 'active' : ''}`} aria-pressed={!!(strokeOutline)}
               onClick={() => setStrokeOutline?.(!strokeOutline)}
               title="Cheap outline of the stroke while you drag (used when Live preview is off)."
             >
               Stroke outline
             </button>
             <button
-              className={`btn-toggle ${brushRing ? 'active' : ''}`}
+              className={`btn-toggle ${brushRing ? 'active' : ''}`} aria-pressed={!!(brushRing)}
               onClick={() => setBrushRing?.(!brushRing)}
               title="Show the dashed brush-size ring that follows the cursor"
             >
@@ -549,7 +553,7 @@ export default function ToolOptions({
           </button>
 
           <button
-            className={`btn-toggle ${stampJitter ? 'active' : ''}`}
+            className={`btn-toggle ${stampJitter ? 'active' : ''}`} aria-pressed={!!(stampJitter)}
             onClick={() => setStampJitter(!stampJitter)}
             title="Randomize size and rotation for natural organic clusters (upright stamps such as castles and trees keep their angle; top-down props spin freely)"
           >
@@ -557,7 +561,7 @@ export default function ToolOptions({
           </button>
 
           <button
-            className={`btn-toggle ${stampSpray ? 'active amber' : ''}`}
+            className={`btn-toggle ${stampSpray ? 'active amber' : ''}`} aria-pressed={!!(stampSpray)}
             onClick={() => setStampSpray(!stampSpray)}
             title="Continuous drag painting for dense mountain chains and forests"
           >
@@ -581,7 +585,7 @@ export default function ToolOptions({
           <span className="segment-label">Path Type:</span>
           <div className="btn-group">
             <button
-              className={`btn-toggle ${pathType === 'river' ? 'active' : ''}`}
+              className={`btn-toggle ${pathType === 'river' ? 'active' : ''}`} aria-pressed={!!(pathType === 'river')}
               onClick={() => {
                 setPathType('river');
                 setPathColor('#2563eb');
@@ -591,7 +595,7 @@ export default function ToolOptions({
               River
             </button>
             <button
-              className={`btn-toggle ${pathType === 'road' ? 'active' : ''}`}
+              className={`btn-toggle ${pathType === 'road' ? 'active' : ''}`} aria-pressed={!!(pathType === 'road')}
               onClick={() => {
                 setPathType('road');
                 setPathColor('#78350f');
@@ -601,7 +605,7 @@ export default function ToolOptions({
               Road
             </button>
             <button
-              className={`btn-toggle ${pathType === 'wall' ? 'active' : ''}`}
+              className={`btn-toggle ${pathType === 'wall' ? 'active' : ''}`} aria-pressed={!!(pathType === 'wall')}
               onClick={() => {
                 setPathType('wall');
                 setPathColor('#475569');
@@ -614,7 +618,7 @@ export default function ToolOptions({
 
           {pathType === 'river' && riverGenOn && (
             <button
-              className={`btn-toggle ${riverGen ? 'active' : ''}`}
+              className={`btn-toggle ${riverGen ? 'active' : ''}`} aria-pressed={!!(riverGen)}
               title="Click on land: a river is generated from that spot to the nearest coast. Each click gives a different course."
               onClick={() => setRiverGen(!riverGen)}
             >
@@ -647,6 +651,7 @@ export default function ToolOptions({
           <label className="color-picker-label" title="Path Color">
             <input
               type="color"
+              aria-label="Path Color"
               value={pathColor}
               onChange={(e) => setPathColor(e.target.value)}
             />
@@ -660,9 +665,11 @@ export default function ToolOptions({
           <input
             type="text"
             className="text-input"
+            aria-label="New label text"
             placeholder="Kingdom, Sea, or Dungeon Title..."
             value={newTextContent}
             onChange={(e) => setNewTextContent(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onAddText(); }}
           />
 
           <FontPicker value={textFont} onChange={setTextFont} />
@@ -693,6 +700,7 @@ export default function ToolOptions({
           <label className="color-picker-label" title="Fill Color">
             <input
               type="color"
+              aria-label="Fill Color"
               value={textColor}
               onChange={(e) => setTextColor(e.target.value)}
             />
@@ -701,6 +709,7 @@ export default function ToolOptions({
           <label className="color-picker-label" title="Stroke Outline">
             <input
               type="color"
+              aria-label="Stroke Outline"
               value={textStroke}
               onChange={(e) => setTextStroke(e.target.value)}
             />
@@ -750,7 +759,7 @@ export default function ToolOptions({
           </label>
 
           <button
-            className={`btn-toggle ${gridConfig.snap ? 'active' : ''}`}
+            className={`btn-toggle ${gridConfig.snap ? 'active' : ''}`} aria-pressed={!!(gridConfig.snap)}
             onClick={() => setGridConfig((prev) => ({ ...prev, snap: !prev.snap }))}
             title="Snap placed stamps and battle tokens to grid cells"
           >
@@ -760,6 +769,7 @@ export default function ToolOptions({
           <label className="color-picker-label" title="Grid Line Color">
             <input
               type="color"
+              aria-label="Grid Line Color"
               value={gridConfig.color}
               onChange={(e) => setGridConfig((prev) => ({ ...prev, color: e.target.value }))}
             />
@@ -859,7 +869,7 @@ function CoastlinePopover({ config, setConfig, onClose }) {
       <div className="popover-header">
         <div className="flex-row items-center gap-2">
           <Waves size={16} className="text-cyan-400" />
-          <h4>Coastline & Shore Effects</h4>
+          <h3>Coastline & Shore Effects</h3>
         </div>
         <button className="btn-icon-tiny" onClick={onClose} title="Close">
           <X size={14} />
@@ -881,6 +891,7 @@ function CoastlinePopover({ config, setConfig, onClose }) {
             <label className="color-picker-label" title="Ripple Wave Color">
               <input
                 type="color"
+                aria-label="Ripple Wave Color"
                 value={config.rippleColor || '#38bdf8'}
                 onChange={(e) => setConfig((prev) => ({ ...prev, rippleColor: e.target.value }))}
               />
@@ -938,6 +949,7 @@ function CoastlinePopover({ config, setConfig, onClose }) {
             <label className="color-picker-label" title="Beach Sand Color">
               <input
                 type="color"
+                aria-label="Beach Sand Color"
                 value={config.sandColor || '#d4b276'}
                 onChange={(e) => setConfig((prev) => ({ ...prev, sandColor: e.target.value }))}
               />
@@ -964,6 +976,7 @@ function CoastlinePopover({ config, setConfig, onClose }) {
             <label className="color-picker-label" title="Outline Color">
               <input
                 type="color"
+                aria-label="Outline Color"
                 value={config.outlineColor || '#2b2318'}
                 onChange={(e) => setConfig((prev) => ({ ...prev, outlineColor: e.target.value }))}
               />

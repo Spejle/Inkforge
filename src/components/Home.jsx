@@ -14,7 +14,7 @@ function ago(t) {
   return new Date(t).toLocaleDateString();
 }
 
-export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImport, onOpenSample, onSettings }) {
+export default function Home({ headingRef, maps, onOpen, onNew, onDelete, onDuplicate, onImport, onOpenSample, onSettings }) {
   const fileRef = useRef(null);
   const [, bump] = useState(0);
 
@@ -34,7 +34,8 @@ export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImp
   }, []);
 
   return (
-    <div className="home">
+    <main className="home">
+      <h1 className="sr-only" tabIndex={-1} ref={headingRef}>InkForge: your maps</h1>
       <div className="home-inner">
         <div className="home-hero">
           <div className="logo-badge">
@@ -64,15 +65,17 @@ export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImp
           <div className="map-grid">
             <button className="map-card new" onClick={onNew}><FilePlus size={28} /><b>New map</b></button>
             {maps.map((m) => (
-              <div key={m.id} className="map-card" onClick={() => onOpen(m.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpen(m.id)}>
+              <div key={m.id} className="map-card" onClick={() => onOpen(m.id)}>
+                {/* the card's own button; Duplicate and Delete sit beside it rather than inside a role="button" */}
+                <button className="map-open" onClick={(e) => { e.stopPropagation(); onOpen(m.id); }} aria-label={`Open ${m.title}`} />
                 <div className="map-thumb">{m.thumb ? <img src={m.thumb} alt="" /> : <span>No preview</span>}</div>
                 <div className="map-info">
                   <b title={m.title}>{m.title}</b>
                   <span>{getTemplate(m.template).name} · {m.width}×{m.height} · {ago(m.updated)}</span>
                 </div>
                 <div className="map-actions">
-                  <button className="btn-icon" title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(m.id); }}><Copy size={14} /></button>
-                  <button className="btn-icon danger" title="Delete this map" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${m.title}"? This cannot be undone.`)) onDelete(m.id); }}><Trash2 size={14} /></button>
+                  <button className="btn-icon" title="Duplicate" aria-label={`Duplicate ${m.title}`} onClick={(e) => { e.stopPropagation(); onDuplicate(m.id); }}><Copy size={14} /></button>
+                  <button className="btn-icon danger" title="Delete this map" aria-label={`Delete ${m.title}`} onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${m.title}"? This cannot be undone.`)) onDelete(m.id); }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
@@ -82,7 +85,7 @@ export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImp
         <h2 className="home-h">Sample maps <small>opens a copy, the sample itself never changes</small></h2>
         <div className="map-grid">
           {PRESET_MAPS.filter((p) => p.id !== 'blank_canvas').map((p) => (
-            <div key={p.id} className="map-card" onClick={() => onOpenSample(p.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpenSample(p.id)}>
+            <div key={p.id} className="map-card" onClick={() => onOpenSample(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenSample(p.id); } }}>
               <div className="map-thumb">{sampleThumbs.get(p.id) ? <img src={sampleThumbs.get(p.id)} alt="" /> : <span>{p.heavy ? 'Stress test' : 'Rendering…'}</span>}</div>
               <div className="map-info">
                 <b title={p.title}>{p.title}</b>
@@ -92,6 +95,6 @@ export default function Home({ maps, onOpen, onNew, onDelete, onDuplicate, onImp
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

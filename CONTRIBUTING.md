@@ -57,6 +57,8 @@ Run all checks before submitting a pull request:
 ```bash
 # Run the node:test suite (print planning, zip creation, pdf writer, river descent, etc.)
 npm test
+# (tests/a11y.browser.test.js drives the app in Chromium; it is skipped unless Playwright is installed:
+#  npm i -g playwright && npx playwright install chromium)
 
 # Run strict TypeScript type checks
 npm run typecheck

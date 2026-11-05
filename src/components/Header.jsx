@@ -65,6 +65,7 @@ export default function Header({
           <div className="logo-text">
             <span className="brand-name">INKFORGE</span>
             <span className="brand-sub">Fantasy Cartographer</span>
+            <span className="sr-only">: main menu</span>
           </div>
         </button>
 
@@ -72,6 +73,7 @@ export default function Header({
           <input
             type="text"
             className="map-title-input"
+            aria-label="Map title"
             value={mapTitle}
             onChange={(e) => setMapTitle(e.target.value)}
             placeholder="Name your realm..."
@@ -86,7 +88,7 @@ export default function Header({
         className="theme-toggle"
         onClick={() => setTheme(nextTheme.id)}
         title={`Theme: ${THEMES[themeIndex].name} (click for ${nextTheme.name}, more in Settings)`}
-        aria-label="Switch theme"
+        aria-label={`Theme: ${THEMES[themeIndex].name}. Switch to ${nextTheme.name}`}
       >
         {theme === 'dark' ? '☾' : theme === 'parchment' ? '☀' : '◉'}
       </button>
@@ -98,11 +100,12 @@ export default function Header({
       </button>
 
       {/* History and Zoom Controls */}
-      <div className="center-controls">
+      <div className="center-controls" role="group" aria-label="History and view">
         <div className="btn-group">
           <button
             className="btn-icon"
             title="Undo (Ctrl+Z)"
+            aria-label="Undo"
             disabled={!canUndo}
             onClick={onUndo}
           >
@@ -111,6 +114,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+            aria-label="Redo"
             disabled={!canRedo}
             onClick={onRedo}
           >
@@ -124,6 +128,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Zoom Out"
+            aria-label="Zoom out"
             onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.25))}
           >
             <ZoomOut size={17} />
@@ -132,6 +137,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Zoom In"
+            aria-label="Zoom in"
             onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.25))}
           >
             <ZoomIn size={17} />
@@ -139,6 +145,7 @@ export default function Header({
           <button
             className="btn-icon"
             title="Fit to Screen"
+            aria-label="Fit to screen"
             onClick={fitToScreen}
           >
             <Maximize2 size={17} />
@@ -151,6 +158,8 @@ export default function Header({
         <button
           className={`btn-icon ${gridEnabled ? 'active' : ''}`}
           title="Toggle Grid Overlay"
+          aria-label="Grid overlay"
+          aria-pressed={!!gridEnabled}
           onClick={() => setGridEnabled((v) => !v)}
         >
           <GridIcon size={17} />
@@ -182,6 +191,8 @@ export default function Header({
           type="file"
           accept=".inkforge,.json"
           style={{ display: 'none' }}
+          aria-hidden="true"
+          tabIndex={-1}
           onChange={handleFileChange}
         />
 

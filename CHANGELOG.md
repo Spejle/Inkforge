@@ -3,6 +3,21 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+### Accessibility
+Everything around the canvas now works from the keyboard and with a screen reader. The canvas itself is still pointer-first.
+- **Dialogs** (New map, Settings, Export, Add stamps, Print): focus moves into the dialog when it opens, Tab and Shift+Tab stay inside, Escape closes, and focus goes back to the button that opened it (also when Print is opened from Export). They are announced as modal dialogs with their title, and editor shortcuts no longer fire behind an open dialog.
+- **Stamp library**: the stamp tiles, family variants and "My stamps" were mouse-only `div`s. They are now buttons you can Tab to and press, and they report which one is selected and whether a family is expanded.
+- **Right-hand panel**: the Tool / Layers & FX / Objects tabs are a real tab list (arrow keys, one Tab stop). The collapse button reports open or closed. The resize edge can be focused and moved with the arrow keys (Shift for bigger steps, Home and End for the limits). Layer rows and Objects rows can be selected from the keyboard, and the eye and lock buttons say which layer they belong to and whether they are on.
+- **Main menu**: saved map cards no longer nest buttons inside a button. Sample cards open with Space as well as Enter. Opening a map, or going back to the menu, puts focus on the new screen's heading instead of leaving it nowhere.
+- **Names and states**: icon-only buttons (undo, redo, zoom, fit, grid, panel, layers) have names. Hovering one used to erase its name, because the custom tooltip removed the `title`; the tooltip now keeps it, and it also shows on keyboard focus. Tool buttons, toggles and option chips report whether they are pressed. Every slider, colour picker and text field has a label. The page has landmarks (banner, tools, main canvas, tool panel) and headings in order.
+- **Contrast** (WCAG AA, 4.5:1 for text) in all three themes: dim text, parchment's gold accent and orbit's blue accent are slightly stronger. Text on "on" toggles, value badges and Delete buttons uses new per-theme text colours. The "Carve water" toggle's label is no longer red on blue. Nothing else is restyled.
+- **Reduced motion**: with the system setting on, transitions, the tooltip fade and the hover lifts are switched off.
+- Space no longer arms canvas panning while a button or other control has focus.
+- New test `tests/a11y.browser.test.js` (part of `npm test`) drives the real app in Chromium. It checks the dialogs (focus in, trap, Escape, focus return, Export to Print), the tab order of the header, tool rail and panel, the panel tabs, the stamp library and the resize edge, and runs axe-core on the menu, editor, tool panels and dialogs in every theme. It is skipped when Playwright is not installed. `axe-core` is a new dev dependency.
+
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

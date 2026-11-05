@@ -82,8 +82,8 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
   return (
     <div className="fx-card">
       <div className="fx-card-header">
-        <h4>Layers</h4>
-        <button className="layer-eye" title="Add a layer" onClick={addLayer}><Plus size={15} /></button>
+        <h3>Layers</h3>
+        <button className="layer-eye" title="Add a layer" aria-label="Add a layer" onClick={addLayer}><Plus size={15} /></button>
       </div>
       <div className="fx-card-content">
         {rows.map(({ key, name, custom }) => (
@@ -91,6 +91,8 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
             <button
               className="layer-eye"
               title={layers[key].visible ? 'Hide' : 'Show'}
+              aria-label={`Show ${name}`}
+              aria-pressed={!!layers[key].visible}
               onClick={(e) => { e.stopPropagation(); set(key, { visible: !layers[key].visible }); }}
             >
               {layers[key].visible ? <Eye size={15} /> : <EyeOff size={15} />}
@@ -98,11 +100,14 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
             <button
               className="layer-eye"
               title={layers[key].locked ? 'Unlock (objects can be selected)' : 'Lock (objects cannot be selected)'}
+              aria-label={`Lock ${name}`}
+              aria-pressed={!!layers[key].locked}
               onClick={(e) => { e.stopPropagation(); set(key, { locked: !layers[key].locked }); }}
             >
               {layers[key].locked ? <Lock size={14} /> : <Unlock size={14} />}
             </button>
-            <span style={{ flex: 1 }}>{name}{custom && activeLayer === key ? ' •' : ''}</span>
+            {/* the row is clickable with the mouse; this button is the same action for the keyboard */}
+            <button type="button" className="layer-name" aria-pressed={open === key} aria-label={`${name}${custom && activeLayer === key ? ' (drawing on this layer)' : ''}: edit opacity and blend`} onClick={(e) => { e.stopPropagation(); setOpen(key); }}>{name}{custom && activeLayer === key ? ' •' : ''}</button>
             {layers[key].opacity < 1 && <span className="val-badge">{Math.round(layers[key].opacity * 100)}%</span>}
           </div>
         ))}
@@ -110,13 +115,13 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
           <div className="layer-detail">
             {sel.name !== undefined && (
               <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                <button className="chip" onClick={() => setActiveLayer(open)} title="New stamps, paths and labels go on this layer">
+                <button className="chip" onClick={() => setActiveLayer(open)} aria-pressed={activeLayer === open} title="New stamps, paths and labels go on this layer">
                   {activeLayer === open ? 'Active ✓' : 'Draw on this'}
                 </button>
-                <button className="layer-eye" title="Rename" onClick={() => rename(open)}><PenLine size={14} /></button>
-                <button className="layer-eye" title="Move up" onClick={() => move(open, 1)}><ChevronUp size={15} /></button>
-                <button className="layer-eye" title="Move down" onClick={() => move(open, -1)}><ChevronDown size={15} /></button>
-                <button className="layer-eye" title="Delete layer (its objects return to the default layers)" onClick={() => { onDeleteLayer(open); setOpen('land'); }}><Trash2 size={14} /></button>
+                <button className="layer-eye" title="Rename" aria-label="Rename layer" onClick={() => rename(open)}><PenLine size={14} /></button>
+                <button className="layer-eye" title="Move up" aria-label="Move layer up" onClick={() => move(open, 1)}><ChevronUp size={15} /></button>
+                <button className="layer-eye" title="Move down" aria-label="Move layer down" onClick={() => move(open, -1)}><ChevronDown size={15} /></button>
+                <button className="layer-eye" title="Delete layer (its objects return to the default layers)" aria-label="Delete layer" onClick={() => { onDeleteLayer(open); setOpen('land'); }}><Trash2 size={14} /></button>
               </div>
             )}
             {hasSelection && sel.name !== undefined && (
@@ -125,14 +130,14 @@ export default function LayersPanel({ layers, setLayers, setAtmosphere, activeLa
             {hasSelection && sel.name === undefined && (
               <button className="chip" style={{ marginBottom: 6 }} onClick={() => onMoveSelectionTo('')}>Move selection to default layer</button>
             )}
-            <label className="fx-slider-label"><span>Opacity</span><span className="val-badge">{Math.round(sel.opacity * 100)}%</span></label>
-            <input type="range" min="0" max="1" step="0.05" value={sel.opacity} onChange={(e) => set(open, { opacity: parseFloat(e.target.value) })} />
+            <label className="fx-slider-label" htmlFor="layer-opacity"><span>Opacity</span><span className="val-badge">{Math.round(sel.opacity * 100)}%</span></label>
+            <input id="layer-opacity" type="range" min="0" max="1" step="0.05" value={sel.opacity} onChange={(e) => set(open, { opacity: parseFloat(e.target.value) })} />
             <label className="fx-slider-label mt-2"><span>Blend</span></label>
             <BlendPicker value={sel.blend} onChange={(v) => set(open, { blend: v })} />
           </div>
         )}
-        <label className="fx-slider-label mt-3"><span>Map style</span></label>
-        <div className="style-chips">
+        <span className="fx-slider-label mt-3" id="map-style-label"><span>Map style</span></span>
+        <div className="style-chips" role="group" aria-labelledby="map-style-label">
           {Object.entries(MAP_STYLES).map(([name, preset]) => (
             <button key={name} className="chip" onClick={() => setAtmosphere((p) => ({ ...p, ...preset }))}>{name}</button>
           ))}

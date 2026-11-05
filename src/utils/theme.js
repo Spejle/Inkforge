@@ -1,8 +1,8 @@
 // Colour themes. Each one is a block of CSS variables under :root[data-theme="<id>"] in App.css.
 export const THEMES = [
   { id: 'dark', name: 'Candlelit', desc: 'Warm ink on a dark desk. The default.', swatch: ['#14100c', '#231b14', '#d9a441', '#f1e6cf'] },
-  { id: 'parchment', name: 'Parchment', desc: 'Light vellum with brown ink.', swatch: ['#d8c9a6', '#f1e5c6', '#a8641a', '#3a2a17'] },
-  { id: 'orbit', name: 'Orbit', desc: 'The look of the Orbit panel: neutral greys, heaven blue, hell red.', swatch: ['#121214', '#1a1a1e', '#4a86ee', '#d8323d'] }
+  { id: 'parchment', name: 'Parchment', desc: 'Light vellum with brown ink.', swatch: ['#d8c9a6', '#f1e5c6', '#7b4913', '#3a2a17'] },
+  { id: 'orbit', name: 'Orbit', desc: 'The look of the Orbit panel: neutral greys, heaven blue, hell red.', swatch: ['#121214', '#1a1a1e', '#538cef', '#d8323d'] }
 ];
 
 export function loadTheme() {

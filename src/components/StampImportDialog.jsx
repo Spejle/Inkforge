@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { X, Upload } from 'lucide-react';
+import Modal from './Modal';
 
 /** Crop fully transparent edges; returns { dataUrl, img, trimmed } (trimmed = px removed per axis). */
 function trim(img) {
@@ -49,12 +50,6 @@ export default function StampImportDialog({ onClose, onAdd }) {
   const [license, setLicense] = useState('Private');
   const inputRef = React.useRef(null);
 
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const addFiles = async (files) => {
     const got = (await Promise.all([...files].filter((f) => /^image\//.test(f.type)).map(load))).filter(Boolean);
     setItems((p) => [...p, ...got]);
@@ -63,21 +58,20 @@ export default function StampImportDialog({ onClose, onAdd }) {
   const it = items[cur];
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Add stamps" onClick={(e) => e.stopPropagation()}
-        onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
+    <Modal onClose={onClose}
+      onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>{(titleId) => (<>
         <div className="dialog-head">
-          <h3>Add stamps <span className="val-badge">{items.length} {items.length === 1 ? "file" : "files"}</span></h3>
+          <h2 id={titleId}>Add stamps <span className="val-badge">{items.length} {items.length === 1 ? "file" : "files"}</span></h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <div className="dialog-body stamp-import">
           <div className="si-list">
             {items.map((x, i) => (
-              <button key={x.key + i} className={`si-item ${i === cur ? 'on' : ''}`} onClick={() => setCur(i)}>
+              <button key={x.key + i} className={`si-item ${i === cur ? 'on' : ''}`} aria-pressed={i === cur} onClick={() => setCur(i)}>
                 <img src={x.dataUrl} alt="" /> <span>{x.name}</span>
               </button>
             ))}
-            <button className="si-drop" onClick={() => inputRef.current?.click()}><Upload size={16} /> Drop more PNG or SVG</button>
+            <button className="si-drop" onClick={() => inputRef.current?.click()} aria-label="Choose PNG, SVG or WebP files (or drop them here)"><Upload size={16} /> Drop more PNG or SVG</button>
             <input ref={inputRef} type="file" multiple accept="image/png,image/svg+xml,image/webp" hidden
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
           </div>
@@ -89,20 +83,20 @@ export default function StampImportDialog({ onClose, onAdd }) {
                   <span className={`si-anchor ${it.anchor}`} />
                 </div>
                 <p className="mute">{it.trimmed ? `Trimmed ${it.trimmed} px of empty space` : 'Nothing to trim'} · Anchor: {it.anchor}</p>
-                <label className="fx-slider-label"><span>Name</span></label>
-                <input className="select-input" style={{ width: '100%' }} value={it.name} onChange={(e) => patch({ name: e.target.value })} />
-                <label className="fx-slider-label mt-2"><span>Anchor</span></label>
-                <div className="style-chips">
+                <label className="fx-slider-label" htmlFor="si-name"><span>Name</span></label>
+                <input id="si-name" className="select-input" style={{ width: '100%' }} value={it.name} onChange={(e) => patch({ name: e.target.value })} />
+                <span className="fx-slider-label mt-2" id="si-anchor"><span>Anchor</span></span>
+                <div className="style-chips" role="group" aria-labelledby="si-anchor">
                   {['base', 'center'].map((a) => (
-                    <button key={a} className={`chip ${it.anchor === a ? 'active' : ''}`} onClick={() => patch({ anchor: a })}>{a === 'base' ? 'Base (stands on ground)' : 'Centre'}</button>
+                    <button key={a} className={`chip ${it.anchor === a ? 'active' : ''}`} aria-pressed={it.anchor === a} onClick={() => patch({ anchor: a })}>{a === 'base' ? 'Base (stands on ground)' : 'Centre'}</button>
                   ))}
                 </div>
-                <label className="fx-slider-label mt-2"><span>Pack</span></label>
-                <input className="select-input" style={{ width: '100%' }} value={pack} onChange={(e) => setPack(e.target.value)} />
-                <label className="fx-slider-label mt-2"><span>License (saved with the stamp)</span></label>
-                <div className="style-chips">
+                <label className="fx-slider-label mt-2" htmlFor="si-pack"><span>Pack</span></label>
+                <input id="si-pack" className="select-input" style={{ width: '100%' }} value={pack} onChange={(e) => setPack(e.target.value)} />
+                <span className="fx-slider-label mt-2" id="si-license"><span>License (saved with the stamp)</span></span>
+                <div className="style-chips" role="group" aria-labelledby="si-license">
                   {['Private', 'CC0', 'CC BY'].map((l) => (
-                    <button key={l} className={`chip ${license === l ? 'active' : ''}`} onClick={() => setLicense(l)}>{l}</button>
+                    <button key={l} className={`chip ${license === l ? 'active' : ''}`} aria-pressed={license === l} onClick={() => setLicense(l)}>{l}</button>
                   ))}
                 </div>
               </>
@@ -116,7 +110,6 @@ export default function StampImportDialog({ onClose, onAdd }) {
             Add {items.length || ''} stamps
           </button>
         </div>
-      </div>
-    </div>
+    </>)}</Modal>
   );
 }

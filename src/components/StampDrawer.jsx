@@ -7,6 +7,7 @@ import { GridTypePicker } from './PreviewPicker';
 import { usePluginVersion } from '../plugins/registry';
 import { STAMP_CATEGORIES, STAMPS } from '../engine/stampsCatalog';
 import { useStampPrefs } from '../utils/stampPrefs';
+import { tabKeys } from '../utils/tabKeys';
 import {
   Upload,
   Search,
@@ -18,6 +19,8 @@ import {
   Grid as GridIcon,
   Sun
 } from 'lucide-react';
+
+const PANEL_TABS = ['tool', 'fx', 'objects'];
 
 export default function StampDrawer({
   allowedCategories = null,
@@ -81,12 +84,15 @@ export default function StampDrawer({
   );
 
   return (
-    <aside className={`stamp-drawer ${isOpen ? 'open' : 'closed'}`}>
+    <aside className={`stamp-drawer ${isOpen ? 'open' : 'closed'}`} aria-label="Tool panel">
       {/* Toggle collapse button */}
       <button
         className="drawer-toggle-btn"
         onClick={() => setIsOpen((v) => !v)}
         title={isOpen ? 'Collapse Sidebar' : 'Open Sidebar'}
+        aria-label={isOpen ? 'Collapse panel' : 'Open panel'}
+        aria-expanded={isOpen}
+        aria-controls="tool-panel-content"
       >
         {isOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
@@ -97,7 +103,22 @@ export default function StampDrawer({
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize panel"
-          title="Drag to resize the panel"
+          aria-valuemin={PANEL_MIN}
+          aria-valuemax={PANEL_MAX}
+          aria-valuenow={layout.panelWidth}
+          tabIndex={0}
+          title="Drag to resize the panel (or focus it and use the arrow keys)"
+          onKeyDown={(e) => {
+            // arrows widen or narrow the panel (towards the canvas = wider), Shift for big steps, Home / End for the limits
+            const step = e.shiftKey ? 40 : 10;
+            const towards = layout.panelSide === 'right' ? 'ArrowLeft' : 'ArrowRight';
+            const away = layout.panelSide === 'right' ? 'ArrowRight' : 'ArrowLeft';
+            const next = e.key === towards ? layout.panelWidth + step : e.key === away ? layout.panelWidth - step
+              : e.key === 'Home' ? PANEL_MIN : e.key === 'End' ? PANEL_MAX : null;
+            if (next === null) return;
+            e.preventDefault();
+            setLayout((l) => ({ ...l, panelWidth: Math.min(PANEL_MAX, Math.max(PANEL_MIN, next)) }));
+          }}
           onPointerDown={(e) => {
             e.preventDefault();
             const x0 = e.clientX, w0 = layout.panelWidth, dir = layout.panelSide === 'right' ? -1 : 1;
@@ -110,29 +131,29 @@ export default function StampDrawer({
       )}
 
       {isOpen && (
-        <div className="drawer-content">
+        <div className="drawer-content" id="tool-panel-content">
+          <h2 className="sr-only">Tool panel</h2>
           {/* Top Sidebar Navigation Tabs */}
-          <div className="drawer-nav-tabs">
-            <button
-              className={`drawer-tab-btn ${activeTab === 'tool' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tool')}
-            >
-              <Sparkles size={15} /> {activeTool === 'stamp' ? `Stamps (${pool.length})` : tool?.name || 'Tool'}
-            </button>
-            <button
-              className={`drawer-tab-btn ${activeTab === 'fx' ? 'active' : ''}`}
-              onClick={() => setActiveTab('fx')}
-            >
-              <Layers size={15} /> Layers & FX
-            </button>
-            <button
-              className={`drawer-tab-btn ${activeTab === 'objects' ? 'active' : ''}`}
-              onClick={() => setActiveTab('objects')}
-            >
-              Objects
-            </button>
+          <div className="drawer-nav-tabs" role="tablist" aria-label="Panel" onKeyDown={(e) => tabKeys(e, PANEL_TABS, activeTab, setActiveTab)}>
+            {PANEL_TABS.map((id) => (
+              <button
+                key={id}
+                role="tab"
+                id={`panel-tab-${id}`}
+                data-tab={id}
+                aria-selected={activeTab === id}
+                aria-controls="panel-tabpanel"
+                tabIndex={activeTab === id ? 0 : -1}
+                className={`drawer-tab-btn ${activeTab === id ? 'active' : ''}`}
+                onClick={() => setActiveTab(id)}
+              >
+                {id === 'tool' ? <><Sparkles size={15} aria-hidden="true" /> {activeTool === 'stamp' ? `Stamps (${pool.length})` : tool?.name || 'Tool'}</>
+                  : id === 'fx' ? <><Layers size={15} aria-hidden="true" /> Layers & FX</> : 'Objects'}
+              </button>
+            ))}
           </div>
 
+          <div className="drawer-tabpanel" role="tabpanel" id="panel-tabpanel" aria-labelledby={`panel-tab-${activeTab}`}>
           {activeTab === 'tool' && <div className={`tool-pane ${activeTool === 'stamp' ? 'compact' : ''}`}>{toolOptions}</div>}
 
           {activeTab === 'tool' && activeTool === 'stamp' && (
@@ -152,9 +173,10 @@ export default function StampDrawer({
 
               {/* Search bar */}
               <div className="search-box">
-                <Search size={15} className="search-icon" />
+                <Search size={15} className="search-icon" aria-hidden="true" />
                 <input
-                  type="text"
+                  type="search"
+                  aria-label="Search stamps"
                   placeholder="Search mountains, castles, trees..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -162,16 +184,17 @@ export default function StampDrawer({
               </div>
 
               {allowedCategories && (
-                <button className={`filter-note ${showAll ? 'off' : ''}`} onClick={() => { setShowAll(!showAll); setSelectedCat('all'); }}
+                <button className={`filter-note ${showAll ? 'off' : ''}`} aria-pressed={showAll} onClick={() => { setShowAll(!showAll); setSelectedCat('all'); }}
                   title={showAll ? 'Hide stamps that do not fit this map type' : 'Show every stamp, even ones that do not fit this map type'}>
                   {showAll ? 'Showing all stamps' : `Filtered for ${templateName}`} · <u>{showAll ? 'filter' : 'show all'}</u>
                 </button>
               )}
 
               {/* Category Tabs */}
-              <div className="category-chips">
+              <div className="category-chips" role="group" aria-label="Stamp category">
                 <button
                   className={`chip ${selectedCat === 'all' ? 'active' : ''}`}
+                  aria-pressed={selectedCat === 'all'}
                   onClick={() => setSelectedCat('all')}
                 >
                   All ({pool.length})
@@ -179,6 +202,7 @@ export default function StampDrawer({
                 {customStamps.length > 0 && (
                   <button
                     className={`chip ${selectedCat === 'mine' ? 'active' : ''}`}
+                    aria-pressed={selectedCat === 'mine'}
                     onClick={() => setSelectedCat('mine')}
                   >
                     My stamps ({customStamps.length})
@@ -188,6 +212,7 @@ export default function StampDrawer({
                   <button
                     key={cat.id}
                     className={`chip ${selectedCat === cat.id ? 'active' : ''}`}
+                    aria-pressed={selectedCat === cat.id}
                     onClick={() => setSelectedCat(cat.id)}
                   >
                     {cat.name}
@@ -196,11 +221,13 @@ export default function StampDrawer({
               </div>
 
               {/* Stamp Grid */}
-              <div className="stamp-grid">
+              <div className="stamp-grid" role="group" aria-label="Stamps">
                 {myStamps.map((c) => (
-                  <div
+                  <button
+                    type="button"
                     key={c.id}
                     className={`stamp-card ${activeStampId === c.id ? 'selected' : ''}`}
+                    aria-pressed={activeStampId === c.id}
                     onClick={() => setActiveStampId(c.id)}
                     title={`${c.name} · ${c.pack} · ${c.license}`}
                   >
@@ -208,7 +235,7 @@ export default function StampDrawer({
                       <img src={c.dataUrl} alt="" className="thumbnail-canvas" style={{ objectFit: 'contain' }} />
                     </div>
                     <span className="stamp-name-caption">{c.name}</span>
-                  </div>
+                  </button>
                 ))}
                 {tiles.map((stamp) => {
                   const members = !searchQuery && stamp.group ? groupMembers(stamp.group) : [];
@@ -218,8 +245,11 @@ export default function StampDrawer({
 
                   return (
                     <React.Fragment key={stamp.id}>
-                      <div
+                      <button
+                        type="button"
                         className={`stamp-card ${isSelected ? 'selected' : ''}`}
+                        aria-pressed={isSelected}
+                        aria-expanded={isGroup ? openGroup === stamp.group : undefined}
                         onClick={() => {
                           setActiveStampId(isSelected ? activeStampId : stamp.id);
                           setOpenGroup(isGroup && openGroup !== stamp.group ? stamp.group : null);
@@ -228,25 +258,27 @@ export default function StampDrawer({
                       >
                         <div className="stamp-preview-canvas-box">
                           <StampThumbnail stamp={shown} />
-                          {isGroup && <span className="stamp-group-badge">{members.length}</span>}
+                          {isGroup && <span className="stamp-group-badge" aria-hidden="true">{members.length}</span>}
                         </div>
-                        <span className="stamp-name-caption">{isGroup ? stamp.groupName || stamp.name : stamp.name}</span>
-                      </div>
+                        <span className="stamp-name-caption">{isGroup ? stamp.groupName || stamp.name : stamp.name}{isGroup && <span className="sr-only">, {members.length} variants</span>}</span>
+                      </button>
                       {isGroup && openGroup === stamp.group && (
-                        <div className="stamp-variants">
+                        <div className="stamp-variants" role="group" aria-label={`${stamp.groupName || stamp.name} variants`}>
                           {members.map((m) => {
                             // the original art of a directional stamp has no suffix in its name; new views already do
                             const label = m.view && !/\([^)]+\)$/.test(m.name) ? `${m.name} (${m.view[0].toUpperCase()}${m.view.slice(1)})` : m.name;
                             return (
-                            <div
+                            <button
+                              type="button"
                               key={m.id}
                               className={`stamp-card small ${activeStampId === m.id ? 'selected' : ''}`}
+                              aria-pressed={activeStampId === m.id}
                               onClick={() => setActiveStampId(m.id)}
                               title={label}
                             >
                               <div className="stamp-preview-canvas-box"><StampThumbnail stamp={m} /></div>
                               <span className="stamp-name-caption">{label}</span>
-                            </div>
+                            </button>
                             );
                           })}
                         </div>
@@ -270,7 +302,7 @@ export default function StampDrawer({
                 <div className="fx-card">
                   <div className="fx-card-header">
                     <Sun size={16} className="text-amber-400" />
-                    <h4>Atmospheric Filter Shader</h4>
+                    <h3>Atmospheric Filter Shader</h3>
                   </div>
                   <div className="fx-card-content">
                     <label className="fx-slider-label">
@@ -279,6 +311,7 @@ export default function StampDrawer({
                     </label>
                     <input
                       type="range"
+                      aria-label="Vignette Edge Shading"
                       min="0"
                       max="1"
                       step="0.05"
@@ -292,6 +325,7 @@ export default function StampDrawer({
                     </label>
                     <input
                       type="range"
+                      aria-label="Parchment Paper Texture"
                       min="0"
                       max="1"
                       step="0.05"
@@ -305,6 +339,7 @@ export default function StampDrawer({
                     </label>
                     <input
                       type="range"
+                      aria-label="Sepia Warmth Tone"
                       min="0"
                       max="1"
                       step="0.05"
@@ -318,6 +353,7 @@ export default function StampDrawer({
                     </label>
                     <input
                       type="range"
+                      aria-label="Overall Canvas Brightness"
                       min="0.5"
                       max="1.5"
                       step="0.05"
@@ -333,7 +369,7 @@ export default function StampDrawer({
                 <div className="fx-card">
                   <div className="fx-card-header">
                     <Waves size={16} className="text-cyan-400" />
-                    <h4>Coastline & Shallow Sea</h4>
+                    <h3>Coastline & Shallow Sea</h3>
                   </div>
                   <div className="fx-card-content">
                     <label className="checkbox-label font-medium">
@@ -353,6 +389,7 @@ export default function StampDrawer({
                         </label>
                         <input
                           type="range"
+                      aria-label="Wave Spacing"
                           min="4"
                           max="24"
                           value={coastlineConfig.rippleSpacing || 9}
@@ -365,6 +402,7 @@ export default function StampDrawer({
                         </label>
                         <input
                           type="range"
+                      aria-label="Wave Opacity"
                           min="0.1"
                           max="0.8"
                           step="0.05"
@@ -400,7 +438,7 @@ export default function StampDrawer({
                 <div className="fx-card">
                   <div className="fx-card-header">
                     <GridIcon size={16} className="text-emerald-400" />
-                    <h4>Tactical Battle Grid</h4>
+                    <h3>Tactical Battle Grid</h3>
                   </div>
                   <div className="fx-card-content">
                     <label className="checkbox-label font-medium">
@@ -427,6 +465,7 @@ export default function StampDrawer({
               )}
             </div>
           )}
+          </div>
         </div>
       )}
     </aside>
@@ -457,5 +496,5 @@ function StampThumbnail({ stamp }) {
     }
   }, [stamp]);
 
-  return <canvas ref={canvasRef} width={72} height={72} className="thumbnail-canvas" />;
+  return <canvas ref={canvasRef} width={72} height={72} className="thumbnail-canvas" aria-hidden="true" />;
 }
