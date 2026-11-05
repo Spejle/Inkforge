@@ -70,6 +70,22 @@ export function sanitizeMeta(m) {
 
 const isLoadedImage = (v) => typeof HTMLImageElement !== 'undefined' && v instanceof HTMLImageElement && !v.src.startsWith('http');
 
+/** Sprites are drawn on a canvas sized by scale and aspect: past the browser's canvas limit drawing throws. */
+function sanitizeStamp(s) {
+  const out = {
+    ...s,
+    x: finite(s.x, -MAP_MAX, 2 * MAP_MAX, 0),
+    y: finite(s.y, -MAP_MAX, 2 * MAP_MAX, 0),
+    scale: finite(s.scale, 0.05, 10, 1),
+    rotation: finite(s.rotation, -1e4, 1e4, 0),
+    stampId: str(s.stampId, 200),
+    customImage: safeImageSrc(s.customImage) || (isLoadedImage(s.customImage) ? s.customImage : null)
+  };
+  if (s.aspect !== undefined) out.aspect = finite(s.aspect, 0.2, 5, 1);
+  if (s.zIndex !== undefined) out.zIndex = finite(s.zIndex, -1e6, 1e6, 0);
+  return out;
+}
+
 /** Shallow copy of a parsed project with the dangerous parts normalised. */
 export function sanitizeProject(d) {
   const p = d && typeof d === 'object' ? d : {};
@@ -90,7 +106,9 @@ export function sanitizeProject(d) {
     }),
     paths: list(p.paths).map((x) => (x.points === undefined || PATH_TYPES.includes(x.type) ? withPoints(x, isPair) : { ...withPoints(x, isPair), type: 'road' })),
     texts: list(p.texts).map((t) => ({ ...t, text: str(t.text, 5000) ?? '' })),
-    stamps: list(p.stamps).map((s) => ({ ...s, customImage: safeImageSrc(s.customImage) || (isLoadedImage(s.customImage) ? s.customImage : null) })),
-    customStamps: list(p.customStamps).filter((c) => safeImageSrc(c.dataUrl))
+    stamps: list(p.stamps).map(sanitizeStamp),
+    customStamps: list(p.customStamps).filter((c) => safeImageSrc(c.dataUrl)).map((c) => ({
+      ...c, name: str(c.name, 120) ?? 'Custom stamp', pack: str(c.pack, 120), license: str(c.license, 200), aspect: finite(c.aspect, 0.2, 5, 1)
+    }))
   };
 }
