@@ -15,6 +15,22 @@ export function clampDim(v, fallback) {
   return Number.isFinite(n) ? Math.min(MAP_MAX, Math.max(MAP_MIN, n)) : fallback;
 }
 
+const finite = (v, lo, hi, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+
+/** The grid drawing loops step by `size`: zero, negative or tiny sizes would never finish. Not an object: dropped. */
+function sanitizeGrid(g) {
+  if (!g || typeof g !== 'object' || Array.isArray(g)) return undefined;
+  return {
+    ...g,
+    enabled: !!g.enabled,
+    size: finite(g.size, 16, 1000, 60),
+    opacity: finite(g.opacity, 0, 1, 0.15),
+    offsetX: finite(g.offsetX, -MAP_MAX, MAP_MAX, 0),
+    offsetY: finite(g.offsetY, -MAP_MAX, MAP_MAX, 0),
+    color: typeof g.color === 'string' ? g.color.slice(0, 64) : undefined
+  };
+}
+
 const isLoadedImage = (v) => typeof HTMLImageElement !== 'undefined' && v instanceof HTMLImageElement && !v.src.startsWith('http');
 
 /** Shallow copy of a parsed project with the dangerous parts normalised. */
@@ -24,6 +40,7 @@ export function sanitizeProject(d) {
   return {
     ...p,
     width: clampDim(p.width, 1920),
+    grid: sanitizeGrid(p.grid),
     height: clampDim(p.height, 1080),
     landmasses: list(p.landmasses),
     brushStrokes: list(p.brushStrokes),

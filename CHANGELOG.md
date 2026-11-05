@@ -10,6 +10,7 @@ All notable changes to **InkForge** will be documented in this file.
 - **Load project file in the editor no longer overwrites the open map.** The file is added to the library as a new map (the open one is saved first); before, it took over the open map's library entry and the original was lost at the next autosave.
 - **Leaving the editor when the map cannot be saved** (browser storage full or blocked) no longer goes back to the main menu and silently drops the unsaved changes. The map stays open, the status bar says the save failed, and InkForge offers to download it as an .inkforge file.
 - **The same map open in two tabs**: the tab that saved last used to silently replace the other tab's edits. Library entries now carry a revision; a tab that finds the map changed elsewhere saves its own version as a separate map, "<title> (copy from another tab)", tells you, and carries on editing the copy. A tab that merely re-saved identical content does not count as a change.
+- A map file with a zero, negative or tiny grid size (or a non-numeric one) froze the tab: the grid loop never ended. Grid size is now clamped to 16-1000 px, opacity to 0-1, offsets to finite values, and a grid that is not an object is ignored.
 
 ## 1.14.0 (2026-10-24)
 
