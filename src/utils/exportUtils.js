@@ -1,5 +1,5 @@
 // Export and Import utilities for InkForge
-import { parseProjectText } from './projectFormat.js';
+import { parseProjectText, FORMAT_VERSION } from './projectFormat.js';
 import { renderMap } from '../engine/renderer.js';
 
 export const IMAGE_FORMATS = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg' };
@@ -61,7 +61,7 @@ export async function exportImage({ mapState, format = 'png', quality = 0.92, sc
   download(await toBlob(canvas, format, quality), filename);
 }
 
-/** Project serialization (.inkforge JSON format v1.1.0) */
+/** Project serialization (.inkforge JSON; see FORMAT_VERSION in projectFormat.js) */
 export function exportToJson(mapData, filename = 'fantasy_map_project.inkforge') {
   // Convert any image stamp objects to serializable dataUrls
   const serializedStamps = (mapData.stamps || []).map((s) => {
@@ -72,7 +72,8 @@ export function exportToJson(mapData, filename = 'fantasy_map_project.inkforge')
   });
 
   const payload = {
-    version: '1.1.0',
+    version: '1.1.0', // read by nothing; kept for files compared with older saves
+    formatVersion: FORMAT_VERSION,
     app: 'InkForge',
     savedAt: new Date().toISOString(),
     ...mapData,

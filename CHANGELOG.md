@@ -13,6 +13,9 @@ All notable changes to **InkForge** will be documented in this file.
 - A map file with a zero, negative or tiny grid size (or a non-numeric one) froze the tab: the grid loop never ended. Grid size is now clamped to 16-1000 px, opacity to 0-1, offsets to finite values, and a grid that is not an object is ignored.
 - A map file whose landmass, path or brush points are not lists of numbers (`"points": 5`, `null` entries, mask-fill `runs` that are not a list) crashed the editor to a blank page. Bad points are dropped when the file is read; valid points (all sample maps included) are kept as they are.
 
+### Added
+- **Versioned map format with migrations.** Saved files and library entries now record `formatVersion` (currently 2). Maps without it (every file and library entry from 1.14 and earlier, including 1.5/1.6 maps that only have `type`) are migrated step by step when opened (`MIGRATIONS` in `src/utils/projectFormat.js`). A file or library entry from a newer InkForge is refused with a message asking you to update, instead of being opened and saved back in the older shape.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

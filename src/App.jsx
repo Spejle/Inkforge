@@ -10,7 +10,7 @@ import StampImportDialog from './components/StampImportDialog';
 import ExportDialog from './components/ExportDialog';
 import { useFeatureVersion, feature, isInstalled, install, FEATURES } from './plugins/features';
 import { DEFAULT_LAYERS } from './components/LayersPanel';
-import { sanitizeProject } from './utils/importGuard';
+import { readProject, FORMAT_VERSION } from './utils/projectFormat';
 import { actionFor, comboOf, loadKeymap, saveKeymap } from './utils/keymap';
 import { stepAngle, stepScale } from './utils/adjust';
 import { applyTheme, loadTheme } from './utils/theme';
@@ -633,6 +633,7 @@ export default function App() {
   };
 
   const buildProject = () => ({
+    formatVersion: FORMAT_VERSION,
     title: mapTitle,
     type: mapType,
     template,
@@ -660,7 +661,7 @@ export default function App() {
 
   // Load a parsed project (from a file or from autosave) into state and reset history
   const applyProject = (raw) => {
-    const data = sanitizeProject(raw); // files and old library entries are not trusted
+    const data = readProject(raw); // files and old library entries are not trusted; older formats are migrated
     const tpl = getTemplate(data.template || data.type);
     setMapTitle(data.title || 'Imported Realm');
     setTemplate(tpl.id);
@@ -802,8 +803,13 @@ export default function App() {
   const openMap = async (id) => {
     const rec = await loadMapRecord(id);
     if (!rec) return;
+    try {
+      applyProject(rec.project);
+    } catch (e) { // e.g. saved by a newer InkForge: opening it here would save it back in the older format
+      alert('Could not open this map: ' + (e && e.name === 'ProjectFileError' ? e.message : 'it could not be read.'));
+      return;
+    }
     savedRef.current.set(id, { rev: rec.rev, project: rec.project });
-    applyProject(rec.project);
     enterEditor(id);
   };
   const adoptProject = async (project) => {
