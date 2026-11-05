@@ -224,6 +224,7 @@ export default function App() {
     setPaths(snap.paths);
     setTexts(snap.texts);
     setSelectedStampId(null);
+    setGroupIds([]);
     setSelectedTextId(null);
     setSelectedPathId(null);
   }, []);
