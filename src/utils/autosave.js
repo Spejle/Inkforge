@@ -5,16 +5,26 @@ import { sanitizeMeta } from './importGuard.js';
 const DB = 'inkforge';
 const OLD_KEY = 'autosave'; // single-map autosave from v1.5/1.6, migrated on first list
 
+// One connection, reused: a save started while the tab closes must create its transaction at once, and opening a
+// new connection takes a round trip the closing page does not wait for.
+let conn = null;
 function open() {
-  return new Promise((resolve, reject) => {
+  if (conn) return conn;
+  conn = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of ['kv', 'projects', 'meta']) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      db.onversionchange = () => { db.close(); conn = null; }; // let a newer InkForge in another tab upgrade
+      db.onclose = () => { conn = null; };
+      resolve(db);
+    };
+    req.onerror = () => { conn = null; reject(req.error); };
   });
+  return conn;
 }
 
 async function tx(stores, mode, fn) {

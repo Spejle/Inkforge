@@ -765,16 +765,27 @@ export default function App() {
   useEffect(() => {
     refreshLibrary();
   }, []);
+  const pendingSave = useRef(null); // runs the waiting autosave now
   useEffect(() => {
     if (view !== 'editor' || !currentMapId) return;
-    const t = setTimeout(() => {
+    const run = () => {
+      pendingSave.current = null;
       saveOpenMap(false)
         .then((r) => setAutosaveStatus(r === 'copied' ? 'Changed in another tab: saved as a copy' : 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
         .catch(() => setAutosaveStatus('Save failed (storage full?)'));
-    }, 1500);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(run, 1500);
+    pendingSave.current = () => { clearTimeout(t); run(); };
+    return () => { clearTimeout(t); pendingSave.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentMapId, mapTitle, template, mapWidth, mapHeight, landmasses, brushStrokes, stamps, paths, texts, grid, atmosphere, coastline, layers, customStamps]);
+  // Closing or hiding the tab inside the autosave delay would drop the last edits: save them straight away instead
+  useEffect(() => {
+    const flush = (e) => { if (e.type === 'pagehide' || document.visibilityState === 'hidden') pendingSave.current?.(); };
+    document.addEventListener('visibilitychange', flush);
+    window.addEventListener('pagehide', flush);
+    return () => { document.removeEventListener('visibilitychange', flush); window.removeEventListener('pagehide', flush); };
+  }, []);
 
   const enterEditor = (id) => {
     setCurrentMapId(id);
