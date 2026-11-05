@@ -95,15 +95,23 @@ Browser storage keys (localStorage): `inkforge-keys`, `inkforge-layout`, `inkfor
 ## File and save formats
 
 - **Library**: IndexedDB database `inkforge` v2, stores `projects` (full map, key = map id `map_<time><rand>`),
-  `meta` (title, template, size, thumbnail, `updated`) and `kv` (legacy single-map autosave `autosave`, migrated
-  into the library by `listMaps()`). Autosave runs 1.5 s after any document change while in the editor; leaving
-  to home saves with a fresh thumbnail (otherwise thumbnails refresh at most every 10 s).
-- **Project (`buildProject`)**: `title, type, template, width, height, landmasses, brushStrokes, stamps, paths,
-  texts, grid, atmosphere, coastline, layers, customStamps` (custom stamp image sources as data URLs).
-- **`.inkforge` file**: pretty JSON from `exportToJson`: `{version:'1.1.0', app:'InkForge', savedAt, ...project}`.
-  `importFromJson` runs `sanitizeProject` (importGuard): width/height clamped to 64..8000, list fields must be
-  arrays of objects, images kept only as `data:image/(png|jpeg|webp|gif|svg+xml)` URLs (no remote URLs), then
-  rebuilds `Image` objects.
+  `meta` (title, template, size, thumbnail, `updated`, `rev`) and `kv` (legacy single-map autosave `autosave`, migrated
+  into the library by `listMaps()`; a failed migration is retried later and never hides the library). Autosave runs
+  1.5 s after any document change while in the editor, and at once when the tab is hidden or closed; leaving to home
+  saves with a fresh thumbnail (otherwise thumbnails refresh at most every 10 s) and stays in the editor, offering
+  a download, if that save fails. `autosave.js` keeps one connection open.
+- **Two tabs**: `saveMap(id, project, meta, expectRev)` checks `meta.rev` in the same transaction and rejects with
+  `SaveConflictError` when another tab saved since. The editor (`saveOpenMap` in App.jsx) serialises its saves,
+  accepts an identical re-save, and otherwise saves its version as `<title> (copy from another tab)`.
+- **Project (`buildProject`)**: `formatVersion, title, type, template, width, height, landmasses, brushStrokes, stamps,
+  paths, texts, grid, atmosphere, coastline, layers, customStamps` (custom stamp image sources as data URLs).
+- **`.inkforge` file**: pretty JSON from `exportToJson`: `{version:'1.1.0', formatVersion, app:'InkForge', savedAt,
+  ...project}`. Files and library entries are read by `readProject` (`utils/projectFormat.js`): anything that is not
+  a map is refused with a `ProjectFileError`, older formats are upgraded through `MIGRATIONS` (no `formatVersion` =
+  1), newer ones are refused, then `sanitizeProject` (importGuard) clamps sizes, grid, stamp scale/aspect, keeps only
+  numeric points, makes displayed text fields strings, and keeps images only as `data:image/(png|jpeg|webp|gif|svg+xml)`
+  URLs (no remote URLs). Opening a file always adds a new library map. Bump `FORMAT_VERSION` and add a migration
+  step whenever the project shape changes.
 - **Export dialog** (`ExportDialog`, prefs in `inkforge.export`): PNG/WebP/JPG, VTT (`.dd2vtt`), layers ZIP
   (store-only writer `buildZip`), print PDF (`planPrint` + `buildPdf`). Scale 0.5 to 8, capped by
   `maxExportScale` = min(16384/longest side, sqrt(190e6/pixels)).

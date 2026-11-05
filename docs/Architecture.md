@@ -167,6 +167,7 @@ A serialized InkForge project file contains:
 ```json
 {
   "version": "1.1.0",
+  "formatVersion": 2,
   "app": "InkForge",
   "savedAt": "2026-10-16T18:00:00.000Z",
   "title": "My Realm",
@@ -193,13 +194,20 @@ InkForge stores user projects in the browser's IndexedDB database named `inkforg
 - **`meta` Store**: Stores lightweight metadata records (`{ id, title, template, width, height, updated, thumb }`) enabling fast rendering of the Home screen library without deserializing large map geometries.
 - **`kv` Store**: Houses legacy migration keys.
 
-In `App.jsx`, autosave executes with a **1.5-second debounce** whenever map geometry, stamps, paths, labels, or layers change.
+In `App.jsx`, autosave executes with a **1.5-second debounce** whenever map geometry, stamps, paths, labels, or layers change, and immediately when the tab is hidden or closed. Each `meta` record carries a revision (`rev`); a save from a tab that is behind is refused (`SaveConflictError`) and that tab's version is kept as a separate map, `<title> (copy from another tab)`. If a save fails when leaving the editor, the map stays open and a download is offered.
+
+### Format Versions and Migration (`src/utils/projectFormat.js`)
+Files and library entries record `formatVersion` (currently 2; entries without it are version 1). `readProject` refuses anything that is not a map (with a readable `ProjectFileError`), upgrades older versions step by step through `MIGRATIONS`, and refuses versions newer than `FORMAT_VERSION` so an older InkForge never saves a newer map back in its own shape. When the project shape changes, bump `FORMAT_VERSION` and add the step from the previous version.
 
 ### Import Sanitization (`src/utils/importGuard.js`)
 Imported `.inkforge` files, library records, and plugin packs are treated as untrusted data and sanitized by `sanitizeProject`:
 - Clamps canvas dimensions to a safe range (64px to 8000px) to prevent denial-of-service memory allocations.
-- Enforces array types for all entity collections (`landmasses`, `stamps`, `paths`, etc.).
+- Enforces array types for all entity collections (`landmasses`, `stamps`, `paths`, etc.) and keeps only numeric points.
+- Clamps grid settings (size 16-1000 px) and stamp scale (0.05-10) and aspect (0.2-5), so drawing always ends and sprite canvases stay within browser limits.
+- Makes every field shown as text (titles, labels, layer and stamp names) a string; `sanitizeMeta` does the same for library records.
 - Strips any remote image URLs (`http://`, `https://`), permitting only inline base64 image data URLs (`data:image/(png|webp|svg+xml);base64,...`).
+
+Stored content packs that no longer validate (for example an `inkforgeVersion` range this release does not meet) are kept untouched in storage and listed as unusable, never dropped.
 
 ---
 
@@ -483,6 +491,8 @@ Tests run using Node's native test runner (`node --test`) and require no externa
 - `tests/plugins.test.js`: Tests JSON plugin pack schema validation against `examplePack.json`.
 - `tests/previews.test.js`: Verifies canvas preview drawing helpers.
 - `tests/riverGen.test.js`: Tests chamfer distance transforms and river descent logic.
+- `tests/projectFile.test.js`, `formatVersion.test.js`, `hostileGrid.test.js`, `hostileGeometry.test.js`, `hostileText.test.js`, `hostileStamps.test.js`: map files that are not maps, format migration, and hostile values.
+- Saving in the real app (`editorOpenFile`, `saveFailure`, `twoTabs`, `closeTab`, `legacyAutosave`, `packStorage` and parts of the above): these start Vite's dev server and drive Chromium through `tests/helpers/app.js`. They need Playwright with its browser installed (not a project dependency) and are skipped when it cannot be loaded.
 
 ### Code Style Guidelines
 - Modern ES Modules (`import`/`export`).
