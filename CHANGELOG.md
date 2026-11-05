@@ -3,6 +3,11 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+### Fixed (saving and loading)
+- Opening a file that is not a map (an empty or truncated download, `[]`, `null`, a content pack) no longer opens a blank "Imported Realm" that replaces the open map and is then autosaved over it. The file is refused with a message saying what is wrong, and nothing changes.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

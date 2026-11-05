@@ -1,5 +1,5 @@
 // Export and Import utilities for InkForge
-import { sanitizeProject } from './importGuard.js';
+import { parseProjectText } from './projectFormat.js';
 import { renderMap } from '../engine/renderer.js';
 
 export const IMAGE_FORMATS = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg' };
@@ -89,32 +89,16 @@ export function exportToJson(mapData, filename = 'fantasy_map_project.inkforge')
   URL.revokeObjectURL(url);
 }
 
-/** Project deserialization with image hydration */
-export function importFromJson(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = sanitizeProject(JSON.parse(e.target.result));
-
-        // Hydrate custom images
-        if (Array.isArray(parsed.stamps)) {
-          parsed.stamps = parsed.stamps.map((s) => {
-            if (typeof s.customImage === 'string') { // sanitizeProject has already kept only embedded images
-              const img = new Image();
-              img.src = s.customImage;
-              return { ...s, customImage: img };
-            }
-            return s;
-          });
-        }
-
-        resolve(parsed);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsText(file);
+/** Project deserialization with image hydration. Rejects with a ProjectFileError (readable message) for bad files. */
+export async function importFromJson(file) {
+  const parsed = parseProjectText(await file.text());
+  parsed.stamps = parsed.stamps.map((s) => {
+    if (typeof s.customImage === 'string') { // sanitizeProject has already kept only embedded images
+      const img = new Image();
+      img.src = s.customImage;
+      return { ...s, customImage: img };
+    }
+    return s;
   });
+  return parsed;
 }

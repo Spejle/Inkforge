@@ -703,8 +703,8 @@ export default function App() {
     try {
       const data = await importFromJson(file);
       if (data) applyProject(data);
-    } catch {
-      alert('Could not open file: invalid .inkforge JSON format.');
+    } catch (e) {
+      alert('Could not open file: ' + (e && e.name === 'ProjectFileError' ? e.message : 'it could not be read.'));
     }
   };
 
@@ -781,8 +781,8 @@ export default function App() {
     try {
       const data = await importFromJson(file);
       if (data) adoptProject({ ...data, template: data.template || data.type });
-    } catch {
-      alert('Could not open file: invalid .inkforge JSON format.');
+    } catch (e) {
+      alert('Could not open file: ' + (e && e.name === 'ProjectFileError' ? e.message : 'it could not be read.'));
     }
   };
 
