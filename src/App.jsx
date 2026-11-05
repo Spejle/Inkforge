@@ -699,10 +699,12 @@ export default function App() {
     });
   };
 
+  // Opening a file from the editor adds it to the library as a new map; it never replaces the map that is open
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
-      if (data) applyProject(data);
+      if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+      await adoptProject({ ...data, template: data.template || data.type });
     } catch (e) {
       alert('Could not open file: ' + (e && e.name === 'ProjectFileError' ? e.message : 'it could not be read.'));
     }
