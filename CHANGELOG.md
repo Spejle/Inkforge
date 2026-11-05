@@ -8,6 +8,7 @@ All notable changes to **InkForge** will be documented in this file.
 ### Fixed (saving and loading)
 - Opening a file that is not a map (an empty or truncated download, `[]`, `null`, a content pack) no longer opens a blank "Imported Realm" that replaces the open map and is then autosaved over it. The file is refused with a message saying what is wrong, and nothing changes.
 - **Load project file in the editor no longer overwrites the open map.** The file is added to the library as a new map (the open one is saved first); before, it took over the open map's library entry and the original was lost at the next autosave.
+- **Leaving the editor when the map cannot be saved** (browser storage full or blocked) no longer goes back to the main menu and silently drops the unsaved changes. The map stays open, the status bar says the save failed, and InkForge offers to download it as an .inkforge file.
 
 ## 1.14.0 (2026-10-24)
 

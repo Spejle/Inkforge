@@ -703,7 +703,7 @@ export default function App() {
   const handleImportJson = async (file) => {
     try {
       const data = await importFromJson(file);
-      if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+      if (!(await saveNow())) return;
       await adoptProject({ ...data, template: data.template || data.type });
     } catch (e) {
       alert('Could not open file: ' + (e && e.name === 'ProjectFileError' ? e.message : 'it could not be read.'));
@@ -743,8 +743,20 @@ export default function App() {
     setActiveTool('select');
     setView('editor');
   };
+  // Saves the open map before leaving it. When that fails nothing is left behind: the editor stays open and offers a download.
+  const saveNow = async () => {
+    if (!currentMapId) return true;
+    try {
+      await persist(buildProject(), currentMapId, true);
+      return true;
+    } catch {
+      setAutosaveStatus('Save failed (storage full?)');
+      if (confirm('This map could not be saved in the browser (storage may be full), so leaving it now would lose your latest changes.\n\nDownload it as an .inkforge file? The map stays open either way.')) handleExportJson();
+      return false;
+    }
+  };
   const goHome = async () => {
-    if (currentMapId) await persist(buildProject(), currentMapId, true).catch(() => {});
+    if (!(await saveNow())) return;
     await refreshLibrary();
     setView('home');
   };
