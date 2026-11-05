@@ -91,10 +91,13 @@ export const deleteMap = (id) =>
 
 export async function listMaps() {
   const old = await tx(['kv'], 'readonly', (k) => k.get(OLD_KEY)).catch(() => null);
-  if (old) {
-    const id = newMapId();
-    await saveMap(id, old, { title: old.title || 'Restored map', template: old.template || old.type || 'world', width: old.width, height: old.height, thumb: null });
-    await tx(['kv'], 'readwrite', (k) => k.delete(OLD_KEY));
+  if (old && typeof old === 'object') {
+    // A failure here (storage full) must not hide the rest of the library: the old entry stays and is retried next time
+    try {
+      const id = newMapId();
+      await saveMap(id, old, { title: old.title || 'Restored map', template: old.template || old.type || 'world', width: old.width, height: old.height, thumb: null });
+      await tx(['kv'], 'readwrite', (k) => k.delete(OLD_KEY));
+    } catch { /* keep OLD_KEY */ }
   }
   const all = await tx(['meta'], 'readonly', (m) => m.getAll()).catch(() => []);
   return (all || []).sort((a, b) => b.updated - a.updated);
