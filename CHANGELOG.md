@@ -3,6 +3,16 @@
 All notable changes to **InkForge** will be documented in this file.
 
 
+## Unreleased
+
+- **Visual regression suite** (`npm run test:visual`, see `tests/visual/README.md`): renders every sample map plus stamp, transform and layer-blending sheets with the Canvas 2D export, the Canvas 2D live view and the Pixi live view (also at 2x), compares them with small stored baselines (384 px, 1.9 MB in all) and with each other, and checks the editor's on-screen Pixi canvas against the PNG its Export dialog downloads.
+- **Fixed (Pixi view, zoomed in)**: with an overlay or soft-light layer on the map, everything below that layer was drawn magnified about 2x once the view rendered above 1x (any zoom past 100 %, or a HiDPI screen). The view now keeps the renderer at resolution 1 and scales the stage.
+- **Fixed (Pixi view)**: overlay and soft-light layers did not match the export. Pixi's blend shaders used the premultiplied colour (a translucent wash darkened instead of tinting) and a different soft-light curve; they are replaced by the W3C formulas Canvas 2D uses. Visible in the Obsidian Reach sample's Magic fog and on labels in overlay layers.
+- **Fixed (Pixi view)**: a styled stamp layer (opacity or blend) was composited from a 1x texture, so it went blurry when zoomed in.
+- **Fixed (custom image stamps)**: the drop shadow was set on the main canvas, where shadow offsets ignore the transform: it did not turn or flip with the stamp (the Pixi view's did), and it shrank to half or a quarter in 2x / 4x exports. Image and shadow are now baked into one sprite shared by both backends, like procedural stamps.
+- **Fixed (Pixi view)**: placing a custom image stamp could throw, because the view built its cache key with string methods on what is a decoded `Image` in the editor.
+- The parchment grain tile is seeded, so the grain, and every export, is the same on each load.
+
 ## 1.14.0 (2026-10-24)
 
 - **Plugin marketplace** (new puzzle button in the header, also Settings > Plugins): optional features install and uninstall from a catalog instead of being always built in. Each one is a separate download fetched only when installed, from this site.

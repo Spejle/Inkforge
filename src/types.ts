@@ -5,7 +5,7 @@ export interface Stamp {
   x: number;
   y: number;
   stampId?: string;
-  customImage?: string; // data URL
+  customImage?: string | HTMLImageElement; // data URL on disk, a decoded Image once placed in the editor
   aspect?: number;
   scale?: number;
   rotation?: number; // radians

@@ -4,10 +4,12 @@
 //   - stamps: one sprite per stamp, so moving one stamp touches one sprite instead of redrawing the whole layer
 //   - layer opacity / blend and the atmosphere run on the GPU
 import 'pixi.js/unsafe-eval'; // Pixi's code generation uses new Function; this build avoids it so the page needs no 'unsafe-eval'
-import { Application, CanvasSource, Container, Rectangle, RenderTexture, Sprite, Texture, TilingSprite } from 'pixi.js';
+import { Application, CanvasSource, Container, RenderTexture, Sprite, Texture, TilingSprite } from 'pixi.js';
 import 'pixi.js/advanced-blend-modes'; // overlay and soft-light
+import './pixiBlends'; // ...replaced by versions that match Canvas 2D (after the import above)
 import {
   atmosphereOps,
+  customStampSprite,
   drawLiveStroke,
   drawStampSelection,
   drawVignette,
@@ -67,7 +69,6 @@ export class PixiMapView {
   private live: { sprite: Sprite; canvas: HTMLCanvasElement } | null = null;
   private atmo: { key: AtmosphereSettings | null; size: string; container: Container } = { key: null, size: '', container: new Container() };
   private canvasTex = new WeakMap<HTMLCanvasElement, Texture>();
-  private customTex = new Map<string, { canvas: HTMLCanvasElement; pad: number; res: number }>();
   private dead = false;
   private q = 1; // canvas pixels per map unit (the zoom you are looking at), see setQuality
   private rr = 1; // the same for the raster layers, capped lower because there is one canvas per layer
@@ -82,8 +83,8 @@ export class PixiMapView {
     await app.init({
       width,
       height,
-      resolution: 1,
-      autoDensity: true, // css size stays in map units whatever the backing resolution
+      resolution: 1, // always 1: the zoom density is a bigger backing store plus a stage scale, see render()
+      autoDensity: false,
       antialias: false,
       backgroundAlpha: 0,
       preference: 'webgl',
@@ -131,7 +132,14 @@ export class PixiMapView {
   render(plan: Plan) {
     if (this.dead) return;
     const { renderer, stage } = this.app;
-    if (renderer.width !== plan.width || renderer.height !== plan.height || renderer.resolution !== this.q) renderer.resize(plan.width, plan.height, this.q);
+    // The density goes into the backing size and a stage scale, not the renderer resolution: with resolution != 1 the
+    // overlay / soft-light layers (read from the back buffer) composited everything below them magnified.
+    const pw = Math.max(1, Math.round(plan.width * this.q));
+    const ph = Math.max(1, Math.round(plan.height * this.q));
+    if (renderer.width !== pw || renderer.height !== ph) renderer.resize(pw, ph, 1);
+    this.canvas.style.width = plan.width + 'px'; // css size stays in map units whatever the backing size
+    this.canvas.style.height = plan.height + 'px';
+    stage.scale.set(pw / plan.width, ph / plan.height);
 
     const order: Container[] = [];
     for (const it of plan.items) {
@@ -145,11 +153,16 @@ export class PixiMapView {
     renderer.render(stage);
   }
 
-  /** Pixels of the current frame as a canvas, for tests. */
+  /** The frame as shown (backing size, map size x quality) copied to a 2D canvas, for tests. */
   extract(): HTMLCanvasElement {
     const { stage, renderer } = this.app;
-    // explicit frame: by default extract crops to the content bounds, which shift when a stamp overhangs the map edge
-    return renderer.extract.canvas({ target: stage, frame: new Rectangle(0, 0, renderer.width, renderer.height) }) as HTMLCanvasElement;
+    renderer.render(stage);
+    // copied in the same task as the draw, before the browser may discard the drawing buffer
+    const c = document.createElement('canvas');
+    c.width = this.canvas.width;
+    c.height = this.canvas.height;
+    (c.getContext('2d') as CanvasRenderingContext2D).drawImage(this.canvas, 0, 0);
+    return c;
   }
 
   // ---- items -------------------------------------------------------------------------------------------------------
@@ -179,11 +192,12 @@ export class PixiMapView {
       node.container.alpha = 1;
       node.container.blendMode = 'normal';
       let rt = node.rt;
+      // at the view's density: a 1x texture would blur the zoomed-in view
       if (!rt) {
-        rt = node.rt = RenderTexture.create({ width: plan.width, height: plan.height });
+        rt = node.rt = RenderTexture.create({ width: plan.width, height: plan.height, resolution: this.q });
         node.groupSprite = new Sprite(rt);
-      } else if (rt.width !== plan.width || rt.height !== plan.height) {
-        rt.resize(plan.width, plan.height);
+      } else if (rt.width !== plan.width || rt.height !== plan.height || rt.source.resolution !== this.q) {
+        rt.source.resize(plan.width, plan.height, this.q);
         changed = true;
       }
       if (changed || !node.rendered) {
@@ -252,32 +266,6 @@ export class PixiMapView {
     return t;
   }
 
-  /** Custom image stamp with its drop shadow baked in, like procedural stamps, at the current density. */
-  private customSprite(src: string, img: HTMLImageElement, fw: number, fh: number, sc: number) {
-    const q = this.q;
-    const key = `${src.length}:${src.slice(-48)}|${Math.round(fw)}|${Math.round(fh)}|${sc}|${q}`;
-    let c = this.customTex.get(key);
-    if (!c) {
-      const pad = Math.ceil(16 * sc);
-      const lw = fw + pad * 2;
-      const lh = fh + pad * 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.ceil(lw * q));
-      canvas.height = Math.max(1, Math.ceil(lh * q));
-      const g = canvas.getContext('2d') as Ctx2D;
-      g.scale(canvas.width / lw, canvas.height / lh);
-      g.shadowColor = 'rgba(20, 15, 10, 0.35)';
-      g.shadowBlur = Math.max(3, 6 * sc) * q; // shadow blur and offsets are in canvas pixels, not map units
-      g.shadowOffsetX = 2 * sc * q;
-      g.shadowOffsetY = 4 * sc * q;
-      g.drawImage(img, pad, pad, fw, fh);
-      c = { canvas, pad, res: canvas.width / lw };
-      this.customTex.set(key, c);
-      if (this.customTex.size > 200) this.customTex.delete(this.customTex.keys().next().value as string);
-    }
-    return c;
-  }
-
   /** Put a sprite whose texture covers [lx0, ly0, lw, lh] of the stamp's own frame where the Canvas 2D renderer would draw it. */
   private place(sp: Sprite, s: Stamp, fw: number, fh: number, lx0: number, ly0: number, lw: number, lh: number) {
     const ay = s.anchor === 'base' ? fh : fh / 2;
@@ -295,14 +283,15 @@ export class PixiMapView {
     let canvas: HTMLCanvasElement | null = null;
     let pad = 0;
     let res = 1;
+    // sprites are baked at the density the canvas is drawn at (1, 2 or 4 pixels per map unit)
+    const density = { getTransform: () => ({ a: this.q, b: 0 }) };
     if (s.customImage) {
       const img = stampImage(s.customImage);
-      if (img) ({ canvas, pad, res } = this.customSprite(s.customImage, img, fw, fh, s.scale || 1));
+      if (img) ({ canvas, pad, k: res } = customStampSprite(density, img, s, fw, fh));
     } else {
       const def = getStampById(s.stampId);
       if (def?.render) {
-        // baked at the density the canvas is drawn at (1, 2 or 4 pixels per map unit)
-        const r = stampSprite({ getTransform: () => ({ a: this.q, b: 0 }) }, def, s, size, fw, fh);
+        const r = stampSprite(density, def, s, size, fw, fh);
         canvas = r.canvas;
         pad = r.pad;
         res = r.k;

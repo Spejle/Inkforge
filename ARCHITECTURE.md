@@ -36,6 +36,8 @@ utils/
   importGuard.js    sanitizeProject, size clamp
   keymap.js         rebindable keys            layout.js, theme.js, stampPrefs.js, quality.js (zoom, quality levels)
   pathSmooth.js, thumb.js, adjust.js, previews.js
+tests/visual/       visual regression suite (npm run test:visual): sample maps and stamp sheets through Canvas 2D
+                    export, Canvas 2D live view and Pixi, against small baselines and each other (README inside)
 tests/*.test.js     node:test unit tests for the pure modules (keymap, layout, importGuard, planPrint, buildPdf,
                     buildZip, lighting, maskFill, riverGen, plugins, marketplace, previews, pathSmooth, liveStroke)
 ```
@@ -143,6 +145,11 @@ npm test | npm run typecheck | npm run lint
 - Only landmasses, brushStrokes, stamps, paths and texts are undoable.
 - Layer ordering and caching are defined solely by `buildPlan`; adding a layer means changing it and `types.ts`,
   and both backends must handle the new part.
+- Pixi view density (`setQuality`) is a larger backing store plus a stage scale, never `renderer.resolution`: at
+  resolution != 1 the back-buffer blends (overlay, soft-light) drew the layers below them magnified. Those two blends
+  come from `engine/pixiBlends.ts` (W3C formulas, matching Canvas 2D), which replaces Pixi's own.
+- Stamp drop shadows are baked into sprites (`stampSprite`, `customStampSprite`); never set `shadowOffset` on the map
+  canvas, it is in device pixels and ignores rotation, flips and the export scale.
 - Stamps are 80 map units at scale 1 (`BASE` in pixiView.ts; keep equal to the Canvas 2D renderer).
 - Large maps (4000x2800 stress map) make live land preview choppy (CHANGELOG 1.12.0).
 - The Vite dev watcher ignores `**/.claude/**` because agent worktrees inside the project exhaust file watches.

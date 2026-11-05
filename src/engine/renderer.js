@@ -1000,6 +1000,35 @@ export function stampSprite(ctx, def, s, size, w, h) {
   return sp;
 }
 
+// Custom image stamps get the same treatment: image plus one baked drop shadow, at the density they are drawn at. Canvas 2D
+// shadow offsets are in device pixels and ignore the transform, so a shadow set on the big canvas did not turn with the
+// stamp and shrank in 2x/4x exports; baking it keeps both backends and every export scale alike.
+const customCache = new WeakMap(); // decoded image -> Map(key -> sprite)
+export function customStampSprite(ctx, img, s, w, h) {
+  const a = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
+  const k = Math.min(4, Math.max(0.25, 2 ** Math.ceil(Math.log2(a))));
+  const sc = s.scale || 1.0;
+  const key = [Math.round(w * 4), Math.round(h * 4), k, sc, !!s.flipX, !!s.flipY].join('|');
+  let byImg = customCache.get(img);
+  if (!byImg) customCache.set(img, (byImg = new Map()));
+  let sp = byImg.get(key);
+  if (sp) return sp;
+  const pad = Math.ceil(16 * sc);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil((w + pad * 2) * k));
+  c.height = Math.max(1, Math.ceil((h + pad * 2) * k));
+  const g = c.getContext('2d');
+  g.shadowColor = 'rgba(20, 15, 10, 0.35)';
+  g.shadowBlur = Math.max(3, 6 * sc) * k;
+  g.shadowOffsetX = 2 * sc * k * (s.flipX ? -1 : 1); // mirrored like stampSprite, so the light falls the same way
+  g.shadowOffsetY = 4 * sc * k * (s.flipY ? -1 : 1);
+  g.drawImage(img, pad * k, pad * k, w * k, h * k);
+  sp = { canvas: c, pad, k };
+  byImg.set(key, sp);
+  if (byImg.size > 24) byImg.delete(byImg.keys().next().value);
+  return sp;
+}
+
 /** Selection box and transform handles, in the stamp's own frame (origin = top-left of its w x h box). */
 export function drawStampSelection(ctx, finalW, finalH) {
   ctx.strokeStyle = '#f59e0b';
@@ -1065,22 +1094,15 @@ function renderStamps(ctx, stamps, selectedStampId) {
 
     // Custom image stamp or procedural vector stamp (procedural sprites carry their own baked shadow)
     if (s.customImage) {
-      ctx.shadowColor = 'rgba(20, 15, 10, 0.35)';
-      ctx.shadowBlur = Math.max(3, 6 * (s.scale || 1.0));
-      ctx.shadowOffsetX = 2 * (s.scale || 1.0);
-      ctx.shadowOffsetY = 4 * (s.scale || 1.0);
       const img = stampImage(s.customImage);
-      if (img) ctx.drawImage(img, 0, 0, finalW, finalH);
+      if (img) {
+        const sp = customStampSprite(ctx, img, s, finalW, finalH);
+        ctx.drawImage(sp.canvas, -sp.pad, -sp.pad, finalW + sp.pad * 2, finalH + sp.pad * 2);
+      }
     } else if (def && def.render) {
       const sp = stampSprite(ctx, def, s, finalSize, finalW, finalH);
       ctx.drawImage(sp.canvas, -sp.pad, -sp.pad, finalW + sp.pad * 2, finalH + sp.pad * 2);
     }
-
-    // Reset shadow before drawing selection indicator
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
 
     if (s.id === selectedStampId) drawStampSelection(ctx, finalW, finalH);
 
@@ -1255,7 +1277,7 @@ function renderGrid(ctx, width, height, grid) {
 }
 
 /** Atmospheric post-processing: Vignette, Parchment Grain, Sepia warmth, and Brightness */
-// 128px parchment noise tile, built once
+// 128px parchment noise tile, built once. Seeded, so the grain (and every export) is the same on each load.
 let noiseCanvas = null;
 export function getNoiseCanvas() {
   if (!noiseCanvas) {
@@ -1265,8 +1287,16 @@ export function getNoiseCanvas() {
     noiseCanvas.height = nSize;
     const nctx = noiseCanvas.getContext('2d');
     const imgData = nctx.createImageData(nSize, nSize);
+    let seed = 0x9e3779b9;
+    const rand = () => {
+      // mulberry32
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
     for (let i = 0; i < imgData.data.length; i += 4) {
-      const val = 120 + Math.floor(Math.random() * 80);
+      const val = 120 + Math.floor(rand() * 80);
       imgData.data[i] = val;
       imgData.data[i + 1] = val - 10;
       imgData.data[i + 2] = val - 20;
