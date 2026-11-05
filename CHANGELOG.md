@@ -52,6 +52,7 @@ Live brush strokes (Landmass Sculptor and Biome brush). Same setup: headless Chr
 - Edits made in the second and a half before the tab was reloaded, closed or hidden were not autosaved.
 - Generating a river, double-clicking a river or road to add or remove a point, and finishing a drawn path did not record their own undo step: after generating a river, Undo also removed the edit before it and Redo never brought the river back.
 - Dismissing the missing-plugin bar hid it for every map opened afterwards until the page was reloaded.
+- Universal VTT export: on a map that is not a whole number of grid cells, `map_size` was rounded, so VTT importers stretched the image and it no longer lined up with the exported walls. It now matches the image exactly.
 - New `npm run test:browser`: tests in `tests/browser/` drive the app in headless Chromium (needs Playwright).
 
 ## 1.14.0 (2026-10-24)

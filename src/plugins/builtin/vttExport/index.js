@@ -58,6 +58,16 @@ export function buildVttGeometry({ stamps = [], paths = [], grid = {} }) {
   return { lineOfSight, portals, lights, origin: { x: n(-offX / gridSize), y: n(-offY / gridSize) } };
 }
 
+/**
+ * The `resolution` block for an image of imgW x imgH px. Universal VTT importers size the scene as map_size *
+ * pixels_per_grid, so map_size must match the image exactly (fractional when the map is not a whole number of cells):
+ * rounding it stretched the image against the walls.
+ */
+export function vttResolution(imgW, imgH, gridSize, scale, origin) {
+  const ppg = Math.max(1, Math.round(gridSize * scale));
+  return { map_origin: origin, map_size: { x: Number((imgW / ppg).toFixed(4)), y: Number((imgH / ppg).toFixed(4)) }, pixels_per_grid: ppg };
+}
+
 export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 'png', quality = 0.92, filename = 'battlemap.dd2vtt' }) {
   const { mapWidth, mapHeight, stamps, paths, grid, atmosphere } = mapState;
   const gridSize = grid.size || 60;
@@ -75,14 +85,7 @@ export async function exportToUniversalVtt({ mapState, scale = 1, imageFormat = 
 
   const uvttData = {
     format: 0.3,
-    resolution: {
-      map_origin: origin,
-      map_size: {
-        x: Math.round(mapWidth / gridSize),
-        y: Math.round(mapHeight / gridSize)
-      },
-      pixels_per_grid: Math.round(gridSize * scale)
-    },
+    resolution: vttResolution(vttCanvas.width, vttCanvas.height, gridSize, scale, origin),
     line_of_sight: lineOfSight,
     portals: portals,
     environment: {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildVttGeometry } from '../src/plugins/builtin/vttExport/index.js';
+import { buildVttGeometry, vttResolution } from '../src/plugins/builtin/vttExport/index.js';
 
 const grid = { size: 60, offsetX: 0, offsetY: 0 };
 
@@ -38,4 +38,14 @@ test('grid offset moves the origin so VTT grid lines match ours', () => {
   const { origin, lineOfSight } = buildVttGeometry({ grid: g, paths: [{ type: 'wall', points: [[15, 30], [75, 30]] }] });
   assert.deepEqual(origin, { x: -0.25, y: -0.5 });
   assert.deepEqual(lineOfSight[0][0], { x: 0, y: 0 }, 'a point on a grid line lands on an integer');
+});
+
+test('resolution: map_size * pixels_per_grid is the image size, also off a whole number of cells', () => {
+  // 1920 x 1080 with a 70 px grid is 27.43 x 15.43 cells; map_size used to be rounded to 27 x 15, so importers
+  // squeezed the image into 1890 x 1050 px and it no longer lined up with the walls
+  const r = vttResolution(1920, 1080, 70, 1, { x: 0, y: 0 });
+  assert.equal(r.pixels_per_grid, 70);
+  assert.ok(Math.abs(r.map_size.x * 70 - 1920) < 0.5 && Math.abs(r.map_size.y * 70 - 1080) < 0.5, JSON.stringify(r));
+  const whole = vttResolution(1800, 1200, 60, 1, { x: 0, y: 0 });
+  assert.deepEqual(whole.map_size, { x: 30, y: 20 });
 });
