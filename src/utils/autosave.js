@@ -1,3 +1,5 @@
+import { sanitizeMeta } from './importGuard.js';
+
 // Map library in IndexedDB (localStorage's ~5 MB quota is too small once custom stamps are embedded).
 // `projects` holds the full map, `meta` a small record per map so the main menu lists fast.
 const DB = 'inkforge';
@@ -100,7 +102,7 @@ export async function listMaps() {
     } catch { /* keep OLD_KEY */ }
   }
   const all = await tx(['meta'], 'readonly', (m) => m.getAll()).catch(() => []);
-  return (all || []).sort((a, b) => b.updated - a.updated);
+  return (all || []).map(sanitizeMeta).sort((a, b) => b.updated - a.updated); // records from older versions are not trusted either
 }
 
 /** Stamps saved with an embedded data URL get their Image back (the renderer also accepts strings). */
