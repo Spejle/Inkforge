@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Trash2, Download } from 'lucide-react';
-import { installPack, removePack, setEnabled, listPacks, usePluginVersion } from '../plugins/registry';
+import { installPack, removePack, setEnabled, listPacks, listDormantPacks, usePluginVersion } from '../plugins/registry';
 import { FEATURES, isInstalled, isFeatureOn, isPending, loadError, install, uninstall, useFeatureVersion } from '../plugins/features';
 import { useStampPrefs, setStampPref } from '../utils/stampPrefs';
 import '../plugins/plugins.css';
@@ -22,6 +22,7 @@ export default function PluginsSettings() {
   };
 
   const packs = listPacks();
+  const dormant = listDormantPacks();
   return (
     <div className="plugins-settings">
       <h4>Marketplace</h4>
@@ -78,6 +79,15 @@ export default function PluginsSettings() {
           </div>
         );
       })}
+      {dormant.map((d) => (
+        <div key={'dormant:' + d.id} className="plugin-row">
+          <div className="plugin-info">
+            <b>{d.id}</b> <span className="mute">not usable in this version, kept</span>
+            <div className="mute">{d.errors.slice(0, 2).join('; ')}</div>
+          </div>
+          <button className="btn-icon" onClick={() => removePack(d.id)} aria-label={`Remove ${d.id}`} title="Remove"><Trash2 size={14} /></button>
+        </div>
+      ))}
     </div>
   );
 }
